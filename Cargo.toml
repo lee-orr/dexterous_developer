@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "reload-macros",
+    "hot-reload",
+    "hot_reload_example",
+    "bevy_hot_winit",
+]
