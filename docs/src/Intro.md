@@ -1,10 +1,21 @@
 # Introduction
 
-This library provides the capacity to use generative grammars within bevy.
+This library provides an experimental hot reload system for Bevy.
 
-At the moment, it provides two things:
+## Features
 
-- an set of traits that an be used to build your own grammars (in `bevy_generative_grammars::generator::*`)
-- an implementation of the [tracery generative grammar](https://github.com/galaxykate/tracery) - in both a stateful generator and a stateless one (in `bevy_generative_grammars::tracery::*`). These are able to act as bevy resources or components, and use the bevy hashmap implementation internally.
+- Define the reloadable areas of your game explicitly - which can include systems, components and resources (w/ some limitations)
+- Reset resources to a default or pre-determined value upon reload
+- serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
+- mark entities to get removed on hot reload
+- run systems after hot-reload
+- create functions to set-up & tear down upon either entering/exiting a state or on hot reload
+- default to bypassing hot reload - only add the costs of hot reload during development, using the "hot" feature
 
-We also have [API Docs](https://lee-orr.github.io/bevy-generative-grammars/doc/bevy_generative_grammars/index.html)
+## Additional Resources
+
+We also have [API Docs](https://lee-orr.github.io/bevy-dexterous-developer/doc/bevy_dexterous_developer/index.html)
+
+## Credits
+
+This project was inspired by [DGriffin91's Ridiculous bevy hot reloading](https://github.com/DGriffin91/ridiculous_bevy_hot_reloading).

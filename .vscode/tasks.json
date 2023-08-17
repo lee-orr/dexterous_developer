@@ -3,11 +3,11 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "cargo run -p hot_reload_example",
+			"command": "cargo run -p bevy_dexterous_developer_example",
 			"problemMatcher": [
 				"$rustc"
 			],
-			"label": "Simple Hot Reload"
+			"label": "Example"
 		},
 		{
 			"type": "shell",

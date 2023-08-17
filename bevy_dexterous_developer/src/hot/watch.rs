@@ -14,7 +14,7 @@ pub fn run_watcher(
         println!("Spawned watch thread");
         println!("Watch Thread: {:?}", std::thread::current().id());
         let build_cmd = format!(
-            "build --lib --target-dir {} --features bevy/dynamic_linking",
+            "build --lib --target-dir {} --features bevy/dynamic_linking --features bevy_dexterous_developer/hot",
             folder.parent().unwrap().to_string_lossy()
         );
 

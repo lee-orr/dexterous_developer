@@ -102,10 +102,10 @@ fn setup_sphere(
         Sphere,
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.1,
+                radius: 0.3,
                 ..Default::default()
             })),
-            material: materials.add(Color::ORANGE.into()),
+            material: materials.add(Color::PINK.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
