@@ -24,13 +24,18 @@ impl InitialPlugins {
         Self(plugin)
     }
 
+    #[cfg(not(feature = "hot"))]
     pub fn with_default_plugins(self) -> PluginGroupBuilder {
-        #[cfg(features = "hot")]
-        let initial = initial
-            .disable(bevy::winit::WinitPlugin)
-            .add(bevy_hot_winit::HotWinitPlugin);
-
         DefaultPlugins.build().add(self.0)
+    }
+
+    #[cfg(feature = "hot")]
+    pub fn with_default_plugins(self) -> PluginGroupBuilder {
+        DefaultPlugins
+            .build()
+            .add(self.0)
+            .disable::<bevy::winit::WinitPlugin>()
+            .add(dexterous_developer_bevy_winit::HotWinitPlugin)
     }
 
     pub fn with_minimal_plugins(self) -> PluginGroupBuilder {
