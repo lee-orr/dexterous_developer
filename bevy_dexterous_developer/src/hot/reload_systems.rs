@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::{
     hot::{
-        bevy_dexterous_developer_internal::InternalHotReload, update_lib, CleanupReloaded,
+        hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded,
         DeserializeReloadables, HotReload, HotReloadEvent, ReloadableAppCleanupData,
         ReloadableAppContents, ReloadableSchedule, ReloadableSetup, SerializeReloadables,
         SetupReload,

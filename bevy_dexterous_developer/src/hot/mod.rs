@@ -1,4 +1,4 @@
-mod bevy_dexterous_developer_internal;
+mod hot_reload_internal;
 mod lib_set;
 mod library_holder;
 mod reload_systems;
