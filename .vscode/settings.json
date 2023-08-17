@@ -1,0 +1,5 @@
+{
+    "testExplorer.addToEditorContextMenu": true,
+    "testExplorer.useNativeTesting": false,
+    "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml"
+}

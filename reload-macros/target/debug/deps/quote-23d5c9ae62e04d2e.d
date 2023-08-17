@@ -1,0 +1,11 @@
+e:\bevy-ecs-ui-experiment\macros\target\debug\deps\quote-23d5c9ae62e04d2e.rmeta: C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\lib.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ext.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\format.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ident_fragment.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\to_tokens.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\runtime.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\spanned.rs
+
+e:\bevy-ecs-ui-experiment\macros\target\debug\deps\quote-23d5c9ae62e04d2e.d: C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\lib.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ext.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\format.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ident_fragment.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\to_tokens.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\runtime.rs C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\spanned.rs
+
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\lib.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ext.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\format.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\ident_fragment.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\to_tokens.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\runtime.rs:
+C:\Users\Lee-Orr\.cargo\registry\src\index.crates.io-6f17d22bba15001f\quote-1.0.32\src\spanned.rs:

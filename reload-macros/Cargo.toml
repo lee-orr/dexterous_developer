@@ -1,0 +1,20 @@
+[package]
+name = "reload-macros"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+syn = { version = "2.0", features = ["extra-traits", "derive", "full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+libloading = "0.8"
+proc-macro-crate = "1.2"
+
+[lib]
+proc-macro = true
+
+[features]
+# Enables hot reload
+hot = []
