@@ -31,7 +31,10 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: 'latest'
+          mdbook-version: "latest"
+
+      - name: Add Dependencies
+        run: apt-get install -y libasound2-dev portaudio19-dev build-essential libpulse-dev libdbus-1-dev
 
       - run: mdbook build
       - name: build docs
@@ -45,7 +48,7 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
-          path: './book'
+          path: "./book"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1
