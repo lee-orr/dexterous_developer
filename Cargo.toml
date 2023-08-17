@@ -1,7 +1,8 @@
 [workspace]
+resolver = "2"
 members = [
     "dexterous_developer_macros",
-    "bevy_dexterous_developer",
-    "bevy_dexterous_developer_example",
+    "dexterous_developer",
+    "dexterous_developer_example",
     "dexterous_developer_bevy_winit",
 ]

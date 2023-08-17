@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "cargo run -p bevy_dexterous_developer_example",
+			"command": "cargo run -p dexterous_developer_example",
 			"problemMatcher": [
 				"$rustc"
 			],

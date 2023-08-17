@@ -50,7 +50,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(HotReloadPlugin)> = lib
-                .get("bevy_dexterous_developer_internal_main".as_bytes())
+                .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
             println!("Run App Thread: {:?}", std::thread::current().id());
             func(HotReloadPlugin::new(library_paths.clone()));

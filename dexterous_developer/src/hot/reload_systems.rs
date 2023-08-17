@@ -14,25 +14,25 @@ use crate::{
 };
 
 pub fn update_lib_system(
-    mut bevy_dexterous_developer_int: ResMut<InternalHotReload>,
-    mut bevy_dexterous_developer: ResMut<HotReload>,
+    mut dexterous_developer_int: ResMut<InternalHotReload>,
+    mut dexterous_developer: ResMut<HotReload>,
     mut event: EventWriter<HotReloadEvent>,
 ) {
-    bevy_dexterous_developer_int.updated_this_frame = false;
-    bevy_dexterous_developer.updated_this_frame = false;
+    dexterous_developer_int.updated_this_frame = false;
+    dexterous_developer.updated_this_frame = false;
 
-    if let Some(lib) = update_lib::update_lib(&bevy_dexterous_developer_int.libs) {
+    if let Some(lib) = update_lib::update_lib(&dexterous_developer_int.libs) {
         println!("Got Update");
-        bevy_dexterous_developer_int.last_lib = bevy_dexterous_developer_int.library.clone();
-        bevy_dexterous_developer_int.library = Some(lib);
-        bevy_dexterous_developer_int.updated_this_frame = true;
-        bevy_dexterous_developer.updated_this_frame = true;
-        bevy_dexterous_developer_int.last_update_time = Instant::now();
+        dexterous_developer_int.last_lib = dexterous_developer_int.library.clone();
+        dexterous_developer_int.library = Some(lib);
+        dexterous_developer_int.updated_this_frame = true;
+        dexterous_developer.updated_this_frame = true;
+        dexterous_developer_int.last_update_time = Instant::now();
     }
 
-    bevy_dexterous_developer.updated_this_frame = bevy_dexterous_developer_int.updated_this_frame;
+    dexterous_developer.updated_this_frame = dexterous_developer_int.updated_this_frame;
     event.send(HotReloadEvent {
-        last_update_time: bevy_dexterous_developer_int.last_update_time,
+        last_update_time: dexterous_developer_int.last_update_time,
     });
 }
 
@@ -156,6 +156,6 @@ pub fn cleanup(
     println!("Cleanup complete");
 }
 
-pub fn bevy_dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
+pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
     reload.updated_this_frame
 }

@@ -14,7 +14,7 @@ This library provides an experimental hot reload system for Bevy.
 
 ## Additional Resources
 
-We also have [API Docs](https://lee-orr.github.io/bevy-dexterous-developer/doc/bevy_dexterous_developer/index.html)
+We also have [API Docs](https://lee-orr.github.io/dexterous_developer/doc/dexterous_developer/index.html)
 
 ## Credits
 

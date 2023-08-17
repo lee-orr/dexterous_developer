@@ -11,7 +11,7 @@ impl Plugin for MyPlugin {
     }
 }
 
-#[bevy_dexterous_developer_setup]
+#[dexterous_developer_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     app
         .add_systems(Update, this_system_will_reload);

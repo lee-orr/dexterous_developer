@@ -1,5 +1,5 @@
 [package]
-name = "dexterous_developer_macros"
+name = "dexterous_developer"
 version = "0.0.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -11,20 +11,23 @@ authors = ["Lee-Orr"]
 homepage = "https://lee-orr.github.io/dexterous_developer"
 repository = "https://github.com/lee-orr/dexterous_developer"
 documentation = "https://lee-orr.github.io/dexterous_developer"
-description = "macros for hot reloading"
+description = "a hot-reload library for bevy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+hot = ["dexterous_developer_macros/hot"]
+
 
 [dependencies]
-syn = { version = "2.0", features = ["extra-traits", "derive", "full"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+bevy = { version = "0.11", default-features = false, features = [
+    "bevy_winit",
+    "serialize",
+] }
 libloading = "0.8"
-proc-macro-crate = "1.2"
-
-[lib]
-proc-macro = true
-
-[features]
-# Enables hot reload
-hot = []
+dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.1" }
+crossbeam = "0.8"
+tempfile = "3"
+uuid = "1"
+dexterous_developer_bevy_winit = { path = "../dexterous_developer_bevy_winit", version = "0.0.1" }
+serde = "1"
+rmp-serde = "1"

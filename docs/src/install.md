@@ -4,7 +4,7 @@ In your `Cargo.toml` add the following:
 
 ```toml
 [features]
-hot = ["bevy_dexterous_developer_example/hot", "bevy/dynamic_linking"]
+hot = ["dexterous_developer_example/hot", "bevy/dynamic_linking"]
 
 [lib]
 name = "lib_THE_NAME_OF_YOUR_GAME"
@@ -13,7 +13,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-bevy_dexterous_developer_example = "0.0.1"
+dexterous_developer_example = "0.0.1"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -22,7 +22,7 @@ If your game is not a library yet, move all your main logic to `lib.rs` rather t
 ```rust
 
 fn main() {
-    lib_THE_NAME_OF_YOUR_GAME::bevy_main(bevy_dexterous_developer::HotReloadOptions::default());
+    lib_THE_NAME_OF_YOUR_GAME::bevy_main(dexterous_developer::HotReloadOptions::default());
 }
 
 ```
