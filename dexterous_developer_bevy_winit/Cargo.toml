@@ -1,5 +1,5 @@
 [package]
-name = "bevy_hot_winit"
+name = "dexterous_developer_bevy_winit"
 version = "0.11.1"
 edition = "2021"
 description = "A winit window and input backend for Bevy Engine"

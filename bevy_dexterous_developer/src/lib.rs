@@ -7,7 +7,7 @@ mod cold;
 mod types;
 
 use bevy::{app::PluginGroup, app::PluginGroupBuilder, DefaultPlugins, MinimalPlugins};
-pub use reload_macros::*;
+pub use dexterous_developer_macros::*;
 
 pub use types::*;
 

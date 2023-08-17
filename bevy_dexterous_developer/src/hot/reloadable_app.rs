@@ -10,7 +10,7 @@ use bevy::{
 use crate::{
     clear_marked_system,
     hot::{
-        reload_systems::hot_reload_occured,
+        reload_systems::bevy_dexterous_developer_occured,
         replacable_types::{
             deserialize_replacable_component, deserialize_replacable_resource,
             serialize_replacable_component, serialize_replacable_resource,
@@ -122,10 +122,9 @@ impl crate::ReloadableApp for ReloadableAppContents {
             .add_systems(OnExit(state.clone()), clear_marked_system::<C>)
             .add_systems(
                 PreUpdate,
-                systems.run_if(
-                    in_state(state)
-                        .and_then(hot_reload_occured.or_else(resource_changed::<State<S>>())),
-                ),
+                systems.run_if(in_state(state).and_then(
+                    bevy_dexterous_developer_occured.or_else(resource_changed::<State<S>>()),
+                )),
             )
     }
 }

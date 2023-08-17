@@ -7,12 +7,12 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
-pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn bevy_dexterous_developer_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: ItemFn = parse_macro_input!(item as ItemFn);
 
     let fn_name = &ast.sig.ident;
 
-    let inner_fn_name_str = format!("hot_reloaded_inner_{fn_name}");
+    let inner_fn_name_str = format!("bevy_dexterous_developered_inner_{fn_name}");
     let inner_fn_name = Ident::new(&inner_fn_name_str, Span::call_site());
 
     quote! {
@@ -27,7 +27,7 @@ pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(non_camel_case_types)]
         struct #fn_name;
 
-        impl hot_reload::ReloadableSetup for #fn_name {
+        impl bevy_dexterous_developer::ReloadableSetup for #fn_name {
             fn setup_function_name() -> &'static str {
                 #inner_fn_name_str
             }
@@ -51,15 +51,15 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(feature = "hot")]
     {
         return quote! {
-            pub fn #fn_name(options: hot_reload::HotReloadOptions) {
-                hot_reload::run_reloadabe_app(options);
+            pub fn #fn_name(options: bevy_dexterous_developer::HotReloadOptions) {
+                bevy_dexterous_developer::run_reloadabe_app(options);
             }
 
             #[no_mangle]
-            pub fn hot_reload_internal_main(plugin: hot_reload::HotReloadPlugin) {
+            pub fn bevy_dexterous_developer_internal_main(plugin: bevy_dexterous_developer::HotReloadPlugin) {
                 #ast
 
-                let initial = hot_reload::InitialPlugins::new(plugin);
+                let initial = bevy_dexterous_developer::InitialPlugins::new(plugin);
 
                 #fn_name(initial);
             }
@@ -70,10 +70,10 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(not(feature = "hot"))]
     {
         return quote! {
-            pub fn #fn_name(options: hot_reload::HotReloadOptions) {
+            pub fn #fn_name(options: bevy_dexterous_developer::HotReloadOptions) {
                 #ast
 
-                let initial = hot_reload::InitialPlugins::new(HotReloadPlugin);
+                let initial = bevy_dexterous_developer::InitialPlugins::new(HotReloadPlugin);
 
                 #fn_name(initial);
             }

@@ -1,11 +1,11 @@
 [package]
-name = "hot-reload"
+name = "bevy_dexterous_developer"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-hot = ["reload-macros/hot"]
+hot = ["dexterous_developer_macros/hot"]
 
 
 [dependencies]
@@ -14,10 +14,10 @@ bevy = { version = "0.11", default-features = false, features = [
     "serialize",
 ] }
 libloading = "0.8"
-reload-macros = { path = "../reload-macros" }
+dexterous_developer_macros = { path = "../dexterous_developer_macros" }
 crossbeam = "0.8"
 tempfile = "3"
 uuid = "1"
-bevy_hot_winit = { path = "../bevy_hot_winit" }
+dexterous_developer_bevy_winit = { path = "../dexterous_developer_bevy_winit" }
 serde = "1"
 rmp-serde = "1"

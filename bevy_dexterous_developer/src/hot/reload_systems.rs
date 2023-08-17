@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::{
     hot::{
-        hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded,
+        bevy_dexterous_developer_internal::InternalHotReload, update_lib, CleanupReloaded,
         DeserializeReloadables, HotReload, HotReloadEvent, ReloadableAppCleanupData,
         ReloadableAppContents, ReloadableSchedule, ReloadableSetup, SerializeReloadables,
         SetupReload,
@@ -14,25 +14,25 @@ use crate::{
 };
 
 pub fn update_lib_system(
-    mut hot_reload_int: ResMut<InternalHotReload>,
-    mut hot_reload: ResMut<HotReload>,
+    mut bevy_dexterous_developer_int: ResMut<InternalHotReload>,
+    mut bevy_dexterous_developer: ResMut<HotReload>,
     mut event: EventWriter<HotReloadEvent>,
 ) {
-    hot_reload_int.updated_this_frame = false;
-    hot_reload.updated_this_frame = false;
+    bevy_dexterous_developer_int.updated_this_frame = false;
+    bevy_dexterous_developer.updated_this_frame = false;
 
-    if let Some(lib) = update_lib::update_lib(&hot_reload_int.libs) {
+    if let Some(lib) = update_lib::update_lib(&bevy_dexterous_developer_int.libs) {
         println!("Got Update");
-        hot_reload_int.last_lib = hot_reload_int.library.clone();
-        hot_reload_int.library = Some(lib);
-        hot_reload_int.updated_this_frame = true;
-        hot_reload.updated_this_frame = true;
-        hot_reload_int.last_update_time = Instant::now();
+        bevy_dexterous_developer_int.last_lib = bevy_dexterous_developer_int.library.clone();
+        bevy_dexterous_developer_int.library = Some(lib);
+        bevy_dexterous_developer_int.updated_this_frame = true;
+        bevy_dexterous_developer.updated_this_frame = true;
+        bevy_dexterous_developer_int.last_update_time = Instant::now();
     }
 
-    hot_reload.updated_this_frame = hot_reload_int.updated_this_frame;
+    bevy_dexterous_developer.updated_this_frame = bevy_dexterous_developer_int.updated_this_frame;
     event.send(HotReloadEvent {
-        last_update_time: hot_reload_int.last_update_time,
+        last_update_time: bevy_dexterous_developer_int.last_update_time,
     });
 }
 
@@ -156,6 +156,6 @@ pub fn cleanup(
     println!("Cleanup complete");
 }
 
-pub fn hot_reload_occured(reload: Res<InternalHotReload>) -> bool {
+pub fn bevy_dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
     reload.updated_this_frame
 }

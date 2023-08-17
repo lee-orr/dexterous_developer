@@ -1,6 +1,6 @@
 use bevy::prelude::*;
+use bevy_dexterous_developer::{bevy_dexterous_developer_setup, hot_bevy_main, *};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use hot_reload::{hot_bevy_main, hot_reload_setup, *};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
@@ -25,7 +25,7 @@ pub enum AppState {
     AnotherState,
 }
 
-#[hot_reload_setup]
+#[bevy_dexterous_developer_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     println!("Setting up reloadables");
     app.add_systems(Update, (move_cube, toggle))

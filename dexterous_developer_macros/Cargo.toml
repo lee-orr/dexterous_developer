@@ -1,5 +1,5 @@
 [package]
-name = "reload-macros"
+name = "dexterous_developer_macros"
 version = "0.1.0"
 edition = "2021"
 

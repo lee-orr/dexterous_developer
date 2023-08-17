@@ -1,4 +1,4 @@
-mod hot_reload_internal;
+mod bevy_dexterous_developer_internal;
 mod lib_set;
 mod library_holder;
 mod reload_systems;
@@ -17,8 +17,8 @@ use bevy::prelude::{App, First, Plugin, PreStartup};
 
 use bevy::utils::Instant;
 
+pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
-pub extern crate reload_macros;
 
 pub use crate::types::*;
 use lib_set::*;
@@ -50,7 +50,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(HotReloadPlugin)> = lib
-                .get("hot_reload_internal_main".as_bytes())
+                .get("bevy_dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
             println!("Run App Thread: {:?}", std::thread::current().id());
             func(HotReloadPlugin::new(library_paths.clone()));
