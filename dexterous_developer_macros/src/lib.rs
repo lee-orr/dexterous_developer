@@ -78,7 +78,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     {
         stream.push(
             quote! {
-                pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
+                pub fn #fn_name() {
                     #ast
 
                     #fn_name(dexterous_developer::InitialPluginsEmpty);
@@ -124,10 +124,10 @@ impl Parse for Loader {
 pub fn hot_bevy_loader(args: TokenStream) -> TokenStream {
     let Loader { library, options } = parse_macro_input!(args as Loader);
 
-    #[cfg(not(all(feature = "hot", feature = "hot_internal")))]
+    #[cfg(not(any(feature = "hot", feature = "hot_internal")))]
     {
         return quote! {
-            #library(#options);
+            #library();
         }
         .into();
     }

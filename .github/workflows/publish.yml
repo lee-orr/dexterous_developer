@@ -27,14 +27,8 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: publish macros
-        # See tools/ci/src/main.rs for the commands this runs
         run: cargo publish -p dexterous_developer_macros
-      - name: publish winit
-        # See tools/ci/src/main.rs for the commands this runs
-        run: cargo publish -p dexterous_developer_bevy_winit
       - name: publish main crate
-        # See tools/ci/src/main.rs for the commands this runs
         run: cargo publish -p dexterous_developer
       - name: publish cli
-        # See tools/ci/src/main.rs for the commands this runs
         run: cargo publish -p dexterous_developer_cli
