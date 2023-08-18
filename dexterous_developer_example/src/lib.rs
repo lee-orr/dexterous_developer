@@ -56,7 +56,7 @@ struct VelocityMultiplier(Vec3);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0., 3., 1.))
+        Self(Vec3::new(0.5, 3., 0.))
     }
 }
 
