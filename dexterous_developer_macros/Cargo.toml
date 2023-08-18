@@ -8,9 +8,9 @@ categories = ["games", "game-development"]
 keywords = ["bevy"]
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
 authors = ["Lee-Orr"]
-homepage = "https://lee-orr.github.io/dexterous_developer"
+homepage = "https://lee-orr.github.io/dexterous_developer/"
 repository = "https://github.com/lee-orr/dexterous_developer"
-documentation = "https://lee-orr.github.io/dexterous_developer"
+documentation = "https://lee-orr.github.io/dexterous_developer/"
 description = "macros for hot reloading"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
