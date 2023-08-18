@@ -26,9 +26,6 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 In your `Cargo.toml` add the following:
 
 ```toml
-[features]
-hot = ["dexterous_developer_example/hot", "bevy/dynamic_linking"]
-
 [lib]
 name = "lib_THE_NAME_OF_YOUR_GAME"
 path = "src/lib.rs"
@@ -36,16 +33,20 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer_example = "0.0.1"
+dexterous_developer = "0.0.2"
 serde = "1" # If you want the serialization capacities
 ```
 
 If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs`:
 
 ```rust
+use dexterous_developer::{hot_bevy_loader, HotReloadOptions};
 
 fn main() {
-    lib_THE_NAME_OF_YOUR_GAME::bevy_main(dexterous_developer::HotReloadOptions::default());
+    hot_bevy_loader!(
+        lib_NAME_OF_YOUR_GAME::bevy_main,
+        HotReloadOptions::default()
+    );
 }
 
 ```
@@ -54,8 +55,8 @@ and in your `lib.rs`, your main function should become:
 
 ```rust
 #[hot_bevy_main]
-pub fn bevy_main(initial: InitialPlugins) {
-    App::new().add_plugins(initial.with_default_plugins()) // This should replace the "DefaultPlugins", and you can use ".set()" on these as well. Use "with_minimal_plugins()" if you don't want the defaults.
+pub fn bevy_main(app: App) {
+    // Here you can do what you'd normally do with app, except you should not include either DefaultPlugins or MinimalPlugins.
     // ... and so on
 }
 ```
