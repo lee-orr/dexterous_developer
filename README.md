@@ -1,6 +1,8 @@
 # Dexterous Developer
 
-An experimental hot reload system for the bevy game engine. Inspired by [DGriffin91's Ridiculous bevy hot reloading](https://github.com/DGriffin91/ridiculous_bevy_hot_reloading), it aims to resolve two particular problems I had with it: the ability to re-load arbitrary systems, and then ability to transform resource/component structures over time.
+An experimental hot reload system for the bevy game engine. Inspired by [DGriffin91's Ridiculous bevy hot reloading](https://github.com/DGriffin91/ridiculous_bevy_hot_reloading) - adding the ability to re-load arbitrary systems, and the ability to transform resource/component structures over time.
+
+Fuller documentation is available at: <https://lee-orr.github.io/dexterous_developer/>
 
 ## Features
 
