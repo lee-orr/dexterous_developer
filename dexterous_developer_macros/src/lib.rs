@@ -70,14 +70,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 pub fn dexterous_developer_internal_main(library_paths: dexterous_developer::LibPathSet, initial_plugins: dexterous_developer::PluginSet) {
                     #ast
 
-                    let mut app = App::new();
-
-                    app.add_plugins(dexterous_developer::HotReloadPlugin::new(library_paths)).add_plugins(match initial_plugins {
-                        dexterous_developer::PluginSet::Default => dexterous_developer::get_default_plugins(),
-                        dexterous_developer::PluginSet::Minimal => dexterous_developer::get_minimal_plugins(),
-                    });
-
-                    #fn_name(app);
+                    #fn_name(dexterous_developer::HotReloadPlugin::new(library_paths));
                 }
             }.into());
     }
@@ -88,16 +81,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
                     #ast
 
-                    let mut app = App::new();
-
-                    let initial_plugins = options.initial_plugins;
-
-                    app.add_plugins(match initial_plugins {
-                        dexterous_developer::PluginSet::Default => dexterous_developer::get_default_plugins(),
-                        dexterous_developer::PluginSet::Minimal => dexterous_developer::get_minimal_plugins(),
-                    });
-
-                    #fn_name(app);
+                    #fn_name(dexterous_developer::InitialPluginsEmpty);
                 }
             }
             .into(),

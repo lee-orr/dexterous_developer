@@ -12,7 +12,11 @@ mod internal_shared;
 
 mod types;
 
-use bevy::{app::PluginGroup, app::PluginGroupBuilder, DefaultPlugins, MinimalPlugins};
+use std::marker::PhantomData;
+
+use bevy::{
+    app::PluginGroup, app::PluginGroupBuilder, prelude::Plugin, DefaultPlugins, MinimalPlugins,
+};
 pub use dexterous_developer_macros::*;
 
 pub use types::*;
@@ -44,4 +48,37 @@ pub fn get_default_plugins() -> PluginGroupBuilder {
 
 pub fn get_minimal_plugins() -> PluginGroupBuilder {
     MinimalPlugins.build()
+}
+
+pub trait InitializablePlugins: PluginGroup {
+    fn generate_reloadable_initializer() -> PluginGroupBuilder;
+}
+
+impl InitializablePlugins for DefaultPlugins {
+    fn generate_reloadable_initializer() -> PluginGroupBuilder {
+        get_default_plugins()
+    }
+}
+impl InitializablePlugins for MinimalPlugins {
+    fn generate_reloadable_initializer() -> PluginGroupBuilder {
+        get_minimal_plugins()
+    }
+}
+
+pub struct InitialPluginsEmpty;
+
+impl InitialPlugins for InitialPluginsEmpty {
+    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
+        T::generate_reloadable_initializer()
+    }
+}
+
+impl<P: Plugin> InitialPlugins for P {
+    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
+        T::generate_reloadable_initializer().add(self)
+    }
+}
+
+pub trait InitialPlugins {
+    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder;
 }

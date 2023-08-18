@@ -1,20 +1,21 @@
-use bevy::prelude::*;
+use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dexterous_developer::{
-    dexterous_developer_setup, hot_bevy_main, ReloadableApp, ReloadableAppContents,
+    dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
 };
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
-pub fn bevy_main(mut app: App) {
-    app.add_state::<AppState>()
+pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+    App::new()
+        .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
+        .add_state::<AppState>()
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
-        .setup_reloadable_elements::<reloadable>();
-
-    app.run();
+        .setup_reloadable_elements::<reloadable>()
+        .run();
 }
 
 #[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default)]
@@ -56,7 +57,7 @@ struct VelocityMultiplier(Vec3);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0.5, 3., 0.))
+        Self(Vec3::new(0.5, 0., 2.))
     }
 }
 

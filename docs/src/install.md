@@ -32,8 +32,10 @@ and in your `lib.rs`, your main function should become:
 
 ```rust
 #[hot_bevy_main]
-pub fn bevy_main(app: App) {
-    // Here you can do what you'd normally do with app, except you should not include either DefaultPlugins or MinimalPlugins.
+pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+    App::new()
+        .add_plugins(initial_plugins.initialize::<DefaultPlugins>()) // You can use either DefaultPlugins or MinimnalPlugins here, and use "set" on this as you would with them
+    // Here you can do what you'd normally do with app
     // ... and so on
 }
 ```
