@@ -49,9 +49,6 @@ fn main() {
         };
         (lib.0.clone(), lib.1.clone())
     };
-
-    println!("Found Package: {package:#?}");
-
     let mut src = library.src_path.into_std_path_buf();
     src.pop();
 
@@ -67,6 +64,7 @@ fn main() {
         watch_folder: Some(src),
         target_folder: Some(target_dir),
         features,
+        package: Some(package.name.clone()),
     };
     dexterous_developer::run_reloadabe_app(options);
 }
@@ -85,6 +83,5 @@ fn get_metadata() -> cargo_metadata::Metadata {
         None => {}
     };
 
-    let metadata = cmd.exec().unwrap();
-    metadata
+    cmd.exec().unwrap()
 }

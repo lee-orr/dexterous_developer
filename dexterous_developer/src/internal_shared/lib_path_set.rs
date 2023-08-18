@@ -8,11 +8,11 @@ pub struct LibPathSet {
     pub name: String,
     pub extension: String,
     pub watch_folder: PathBuf,
+    pub package: String,
 }
 
 impl LibPathSet {
     pub fn new(options: &HotReloadOptions) -> Option<Self> {
-        println!("Setting Up Hot Reload Paths {options:#?}");
         let HotReloadOptions {
             lib_name,
             watch_folder,
@@ -64,12 +64,16 @@ impl LibPathSet {
 
         println!("Watch Folder {watch_folder:?}");
 
-        let lib_name = lib_name.as_ref().cloned().unwrap_or({
-            std::env::current_exe()
-                .ok()
-                .and_then(|v| v.file_stem().map(|v| v.to_string_lossy().to_string()))
-                .map(|v| format!("lib_{v}"))?
-        });
+        let exe_name = std::env::current_exe()
+            .ok()
+            .and_then(|v| v.file_stem().map(|v| v.to_string_lossy().to_string()))?;
+
+        let package = options.package.as_ref().cloned().unwrap_or(exe_name);
+
+        let lib_name = lib_name
+            .as_ref()
+            .cloned()
+            .unwrap_or(format!("lib_{package}"));
 
         #[cfg(unix)]
         let extension = String::from("so");
@@ -83,6 +87,7 @@ impl LibPathSet {
             name: lib_name,
             extension,
             watch_folder,
+            package,
         })
     }
 

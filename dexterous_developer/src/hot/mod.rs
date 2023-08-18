@@ -7,15 +7,15 @@ use crate::{
 };
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
-    println!("Current Thread: {:?}", std::thread::current().id());
     let library_paths = LibPathSet::new(&options).unwrap();
-    println!("Paths: {library_paths:?}");
 
     let _ = std::fs::remove_file(library_paths.library_path());
 
     let (end_watch_tx, end_watch_rx) = crossbeam::channel::bounded::<EndWatch>(1);
 
-    run_watcher(end_watch_rx.clone(), &library_paths);
+    run_watcher(end_watch_rx.clone(), &library_paths, &options.features);
+
+    setup_environment_variables(&library_paths);
 
     let lib = get_initial_library(&library_paths);
 
@@ -34,6 +34,38 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     println!("Got to the end for some reason...");
 
     let _ = end_watch_tx.send(EndWatch);
+}
+
+fn setup_environment_variables(library_paths: &LibPathSet) {
+    let target_path = library_paths.folder.as_os_str().to_str().unwrap();
+    let mut target_deps_path = library_paths.folder.clone();
+    target_deps_path.push("deps");
+    let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
+
+    if let Ok(path) = std::env::var("PATH") {
+        std::env::set_var("PATH", format!("{path};{target_path};{target_deps_path}"));
+        println!("Set PATH to {:?}", std::env::var("PATH"));
+    }
+    if let Ok(path) = std::env::var("DYLD_FALLBACK_LIBRARY_PATH") {
+        std::env::set_var(
+            "DYLD_FALLBACK_LIBRARY_PATH",
+            format!("{path}:{target_path}:{target_deps_path}"),
+        );
+        println!(
+            "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
+            std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
+        );
+    }
+    if let Ok(path) = std::env::var("LD_LIBRARY_PATH") {
+        std::env::set_var(
+            "LD_LIBRARY_PATH",
+            format!("{path}:{target_path}:{target_deps_path}"),
+        );
+        println!(
+            "Set LD_LIBRARY_PATH to {:?}",
+            std::env::var("LD_LIBRARY_PATH")
+        );
+    }
 }
 
 #[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]

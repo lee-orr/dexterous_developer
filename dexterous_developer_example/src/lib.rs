@@ -72,12 +72,18 @@ fn setup_cube(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    #[cfg(feature = "orange")]
+    let cube_color = Color::ORANGE;
+
+    #[cfg(not(feature = "orange"))]
+    let cube_color = Color::rgb(0.8, 0.7, 0.6);
+
     // cube
     commands.spawn((
         Cube::default(),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            material: materials.add(cube_color.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -86,7 +92,7 @@ fn setup_cube(
         Cube(Vec3::Z * 2.),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            material: materials.add(cube_color.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },

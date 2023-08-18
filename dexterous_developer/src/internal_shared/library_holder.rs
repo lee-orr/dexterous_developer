@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use libloading::Library;
 
@@ -24,14 +24,34 @@ impl LibraryHolderInner {
         std::fs::rename(path, &new_path).ok()?;
         println!("Copied file to new path");
 
-        // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
-        let lib = unsafe { libloading::Library::new(&new_path).ok() }?;
+        await_file(3, &new_path);
 
-        println!("Loaded library");
-        Some(Self(Some(lib), new_path))
+        // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
+        match unsafe { libloading::Library::new(&new_path) } {
+            Ok(lib) => {
+                println!("Loaded library");
+                Some(Self(Some(lib), new_path))
+            }
+            Err(err) => {
+                eprintln!("Error loading library: {err:?}");
+                None
+            }
+        }
     }
     pub fn library(&self) -> Option<&Library> {
         self.0.as_ref()
+    }
+}
+
+fn await_file(iterations: usize, path: &PathBuf) {
+    if path.exists() {
+        println!("Validated {path:?} Exists");
+        return;
+    }
+    if iterations > 0 {
+        println!("{path:?} doesn't exist yet...");
+        await_file(iterations.saturating_sub(1), path);
+        std::thread::sleep(Duration::from_secs_f32(0.5));
     }
 }
 

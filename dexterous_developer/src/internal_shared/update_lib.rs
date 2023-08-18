@@ -18,8 +18,6 @@ pub(crate) fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
 pub(crate) fn get_initial_library(library_paths: &LibPathSet) -> LibraryHolder {
     loop {
         if let Some(library) = update_lib(library_paths) {
-            println!("Update Thread: {:?}", std::thread::current().id());
-            println!("Updated lib");
             return library;
         }
     }

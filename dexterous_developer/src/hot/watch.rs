@@ -7,15 +7,22 @@ pub struct EndWatch;
 pub fn run_watcher(
     end_cargo_watch_rx: crossbeam::channel::Receiver<EndWatch>,
     library_paths: &LibPathSet,
+    features: &[String],
 ) {
     let watch_folder = library_paths.watch_folder.clone();
     let folder = library_paths.folder.clone();
+    let package = library_paths.package.clone();
+    let features = features
+        .iter()
+        .map(|v| format!("--features {v}"))
+        .collect::<Vec<String>>()
+        .join(" ");
     thread::spawn(move || {
         println!("Spawned watch thread");
         println!("Watch Thread: {:?}", std::thread::current().id());
         let build_cmd = format!(
-            "build --lib --target-dir {} --features bevy/dynamic_linking --features dexterous_developer/hot_internal",
-            folder.parent().unwrap().to_string_lossy()
+            "build -p {package} --lib --target-dir {} --features bevy/dynamic_linking --features dexterous_developer/hot_internal {features}",
+            folder.parent().unwrap().to_string_lossy(),
         );
 
         let mut cmd = std::process::Command::new("cargo");
