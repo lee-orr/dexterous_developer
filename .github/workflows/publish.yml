@@ -35,3 +35,6 @@ jobs:
       - name: publish main crate
         # See tools/ci/src/main.rs for the commands this runs
         run: cargo publish -p dexterous_developer
+      - name: publish cli
+        # See tools/ci/src/main.rs for the commands this runs
+        run: cargo publish -p dexterous_developer_cli
