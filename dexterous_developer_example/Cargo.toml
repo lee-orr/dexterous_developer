@@ -9,14 +9,8 @@ name = "lib_dexterous_developer_example"
 path = "src/lib.rs"
 crate-type = ["rlib", "dylib"]
 
-[features]
-default = ["bevy"]
-hot = ["dexterous_developer/hot"]
-bevy = ["dep:bevy"]
-
 [dependencies]
-
-bevy = { version = "0.11", optional = true }
+bevy = { version = "0.11" }
 bevy-inspector-egui = "*"
 dexterous_developer = { path = "../dexterous_developer" }
 serde = "*"
