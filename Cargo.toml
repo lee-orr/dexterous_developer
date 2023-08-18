@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "dexterous_developer_macros",
     "dexterous_developer",
+    "dexterous_developer_cli",
     "dexterous_developer_example",
     "dexterous_developer_bevy_winit",
     "tools/ci",

@@ -1,6 +1,6 @@
 [package]
 name = "dexterous_developer"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -15,20 +15,22 @@ description = "a hot-reload library for bevy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
+default = ["bevy"]
 hot = ["dexterous_developer_macros/hot"]
 hot_internal = ["dexterous_developer_macros/hot_internal"]
+bevy = ["dep:bevy", "dep:dexterous_developer_bevy_winit"]
 
 
 [dependencies]
 bevy = { version = "0.11", default-features = false, features = [
     "bevy_winit",
     "serialize",
-] }
+], optional = true }
 libloading = "0.8"
-dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.1" }
+dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.2" }
 crossbeam = "0.8"
 tempfile = "3"
-uuid = "1"
-dexterous_developer_bevy_winit = { path = "../dexterous_developer_bevy_winit", version = "0.0.1" }
+uuid = { version = "1", features = ["v4"] }
+dexterous_developer_bevy_winit = { path = "../dexterous_developer_bevy_winit", version = "0.0.2", optional = true }
 serde = "1"
 rmp-serde = "1"

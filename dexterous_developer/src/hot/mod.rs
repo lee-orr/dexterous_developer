@@ -3,7 +3,7 @@ use watch::*;
 
 use crate::{
     internal_shared::{lib_path_set::LibPathSet, update_lib::get_initial_library},
-    HotReloadOptions, PluginSet,
+    HotReloadOptions,
 };
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
@@ -23,10 +23,10 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet, PluginSet)> = lib
+            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet)> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
-            func(library_paths.clone(), options.initial_plugins);
+            func(library_paths.clone());
         };
     } else {
         eprint!("Library still somehow missing");
@@ -36,7 +36,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     let _ = end_watch_tx.send(EndWatch);
 }
 
-#[cfg(not(feature = "hot_internal"))]
+#[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]
 mod inner {
     pub struct ReloadableAppContents;
     impl crate::private::ReloadableAppSealed for ReloadableAppContents {}
@@ -90,5 +90,5 @@ mod inner {
     }
 }
 
-#[cfg(not(feature = "hot_internal"))]
+#[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]
 pub use inner::ReloadableAppContents;

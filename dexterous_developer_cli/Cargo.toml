@@ -1,0 +1,21 @@
+[package]
+name = "dexterous_developer_cli"
+version = "0.0.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+categories = ["games", "game-development"]
+keywords = ["bevy"]
+exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
+authors = ["Lee-Orr"]
+homepage = "https://lee-orr.github.io/dexterous_developer/"
+repository = "https://github.com/lee-orr/dexterous_developer"
+documentation = "https://lee-orr.github.io/dexterous_developer/"
+description = "A CLI for hot reloadable apps in bevy, using the dexterous_developer crate"
+
+[dependencies]
+dexterous_developer = { path = "../dexterous_developer", default-features = false, features = [
+    "hot",
+] }
+clap = { version = "4", features = ["derive"] }
+cargo_metadata = "0.17"

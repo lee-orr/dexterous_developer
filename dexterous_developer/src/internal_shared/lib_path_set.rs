@@ -29,9 +29,13 @@ impl LibPathSet {
 
         let target_folder = match target_folder {
             Some(v) => {
-                let mut t = root.clone();
-                t.push(v);
-                t
+                if v.is_absolute() {
+                    v.clone()
+                } else {
+                    let mut t = root.clone();
+                    t.push(v);
+                    t
+                }
             }
             None => match std::env::current_exe() {
                 Ok(mut v) => {
