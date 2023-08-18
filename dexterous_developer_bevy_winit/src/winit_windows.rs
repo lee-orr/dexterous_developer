@@ -39,7 +39,7 @@ pub struct WinitWindows {
 
 impl WinitWindows {
     /// Creates a `winit` window and associates it with our entity.
-    #[allow(clippy::needless-pass-by-ref-mut)]
+    #[allow(clippy::all)]
     pub fn create_window(
         &mut self,
         event_loop: &winit::event_loop::EventLoopWindowTarget<()>,
