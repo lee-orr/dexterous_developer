@@ -12,8 +12,6 @@ mod internal_shared;
 
 mod types;
 
-use std::marker::PhantomData;
-
 use bevy::{
     app::PluginGroup, app::PluginGroupBuilder, prelude::Plugin, DefaultPlugins, MinimalPlugins,
 };

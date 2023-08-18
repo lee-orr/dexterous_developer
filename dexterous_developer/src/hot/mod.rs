@@ -44,8 +44,8 @@ mod inner {
     impl crate::ReloadableApp for ReloadableAppContents {
         fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
             &mut self,
-            schedule: L,
-            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+            _schedule: L,
+            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
         ) -> &mut Self {
             todo!()
         }
@@ -60,7 +60,7 @@ mod inner {
 
         fn reset_resource_to_value<R: bevy::prelude::Resource + Clone>(
             &mut self,
-            value: R,
+            _value: R,
         ) -> &mut Self {
             todo!()
         }
@@ -75,15 +75,15 @@ mod inner {
 
         fn reset_setup<C: bevy::prelude::Component, M>(
             &mut self,
-            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
         ) -> &mut Self {
             todo!()
         }
 
         fn reset_setup_in_state<C: bevy::prelude::Component, S: bevy::prelude::States, M>(
             &mut self,
-            state: S,
-            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+            _state: S,
+            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
         ) -> &mut Self {
             todo!()
         }
