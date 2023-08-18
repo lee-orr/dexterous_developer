@@ -48,11 +48,11 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
 
     if let Some(lib) = lib.library() {
         println!("Executing first run");
+        // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(HotReloadPlugin)> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
-            println!("Run App Thread: {:?}", std::thread::current().id());
             func(HotReloadPlugin::new(library_paths.clone()));
         };
     } else {

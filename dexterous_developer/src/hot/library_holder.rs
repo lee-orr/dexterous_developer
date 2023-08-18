@@ -24,7 +24,9 @@ impl LibraryHolderInner {
         std::fs::rename(path, &new_path).ok()?;
         println!("Copied file to new path");
 
+        // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         let lib = unsafe { libloading::Library::new(&new_path).ok() }?;
+
         println!("Loaded library");
         Some(Self(Some(lib), new_path))
     }

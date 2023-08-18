@@ -56,45 +56,74 @@ pub fn reload(world: &mut World) {
 }
 
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
+    if let Err(e) = setup_reloadable_app_inner(name, world) {
+        eprintln!("Reloadable App Error: {e:?}");
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
+            return;
+        };
+        println!("setup default");
+
+        T::default_function(reloadable.as_mut());
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ReloadableSetupCallError {
+    InternalHotReloadStateMissing,
+    LibraryHolderNotSet,
+    LibraryUnavailable,
+    ReloadableAppContentsMissing,
+}
+
+impl std::fmt::Display for ReloadableSetupCallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let v = match self {
+            ReloadableSetupCallError::InternalHotReloadStateMissing => {
+                "No Internal Hot Reload Resource Available"
+            }
+            ReloadableSetupCallError::LibraryHolderNotSet => "Missing a library holder",
+            ReloadableSetupCallError::LibraryUnavailable => "No Library Available",
+            ReloadableSetupCallError::ReloadableAppContentsMissing => {
+                "No Reloadable App Contents - Called out of order"
+            }
+        };
+        write!(f, "{v}")
+    }
+}
+
+fn setup_reloadable_app_inner(
+    name: &'static str,
+    world: &mut World,
+) -> Result<(), ReloadableSetupCallError> {
     println!("Setting up reloadables at {name}");
     let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
-        return;
+        return Err(ReloadableSetupCallError::InternalHotReloadStateMissing);
     };
 
     println!("got internal reload state");
 
     let Some(lib) = &internal_state.library else {
-        println!("can't get library");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
-            return;
-        };
-        println!("setup default");
-
-        T::default_function(reloadable.as_mut());
-        return;
+        return Err(ReloadableSetupCallError::LibraryHolderNotSet);
     };
     let lib = lib.clone();
     let Some(lib) = lib.library() else {
-        println!("can't access library internals ");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
-            return;
-        };
-        println!("setup default");
-        T::default_function(reloadable.as_mut());
-        return;
+        return Err(ReloadableSetupCallError::LibraryUnavailable);
     };
 
     let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
-        println!("no reloadable app");
-        return;
+        return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
     };
+
+    // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
     unsafe {
         let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableAppContents)> = lib
             .get(name.as_bytes())
             .unwrap_or_else(|_| panic!("Can't find reloadable setup function",));
         func(&mut reloadable)
     };
+
     println!("setup for {name} complete");
+    Ok(())
 }
 
 pub fn register_schedules(world: &mut World) {
