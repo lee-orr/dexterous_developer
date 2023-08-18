@@ -10,7 +10,7 @@ This library provides an experimental hot reload system for Bevy.
 - mark entities to get removed on hot reload
 - run systems after hot-reload
 - create functions to set-up & tear down upon either entering/exiting a state or on hot reload
-- default to bypassing hot reload - only add the costs of hot reload during development, using the "hot" feature
+- only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
 
 ## Additional Resources
 

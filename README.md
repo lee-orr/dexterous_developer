@@ -1,4 +1,7 @@
 # Dexterous Developer
+![CI](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/CI) ![docs](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/publish_docs) ![crates.io](https://img.shields.io/crates/v/dexterous_developer?label=dexterous_developer) ![cli](https://img.shields.io/crates/v/dexterous_developer_cli?label=dexterous_developer_cli)
+![Static Badge](https://img.shields.io/badge/docs-github_pages-green?link=https%3A%2F%2Flee-orr.github.io%2Fdexterous_developer%2F)
+
 
 An experimental hot reload system for the bevy game engine. Inspired by [DGriffin91's Ridiculous bevy hot reloading](https://github.com/DGriffin91/ridiculous_bevy_hot_reloading) - adding the ability to re-load arbitrary systems, and the ability to transform resource/component structures over time.
 
@@ -12,7 +15,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - mark entities to get removed on hot reload
 - run systems after hot-reload
 - create functions to set-up & tear down upon either entering/exiting a state or on hot reload
-- default to bypassing hot reload - only add the costs of hot reload during development, using the "hot" feature
+- only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
 
 ## Known issues
 
@@ -22,6 +25,10 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
   - Relies on a fork of bevy_winit (only when hot reload is enabled, will use the regular bevy_winit otherwise). A PR for adding the required ability to bevy exists.
 
 ## Installation
+
+Grab the CLI by running: ```cargo install dexterous_developer_cli```. If you don't want to use the cli - there is more info in the docs.
+
+You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
 
 In your `Cargo.toml` add the following:
 
@@ -33,20 +40,15 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.2"
+dexterous_developer = "0.0.3"
 serde = "1" # If you want the serialization capacities
 ```
 
-If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs`:
+If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs` - call the bevy_main function:
 
 ```rust
-use dexterous_developer::{hot_bevy_loader, HotReloadOptions};
-
 fn main() {
-    hot_bevy_loader!(
-        lib_NAME_OF_YOUR_GAME::bevy_main,
-        HotReloadOptions::default()
-    );
+    lib_NAME_OF_YOUR_GAME::bevy_main();
 }
 
 ```
@@ -82,7 +84,7 @@ fn reloadable(app: &mut ReloadableAppContents) {
 
 ```
 
-You might also want the following in your `.cargo/config.toml`:
+For the best results, you'll want to add the following to your `.cargo/config.toml`:
 
 ```toml
 # Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.

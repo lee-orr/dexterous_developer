@@ -1,5 +1,9 @@
 # Installation
 
+Grab the CLI by running: ```cargo install dexterous_developer_cli```. If you don't want to use the cli - there is more info [here](./no_cli.md).
+
+You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
+
 In your `Cargo.toml` add the following:
 
 ```toml
@@ -10,20 +14,15 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_develope = "0.0.2"
+dexterous_developer = "0.0.3"
 serde = "1" # If you want the serialization capacities
 ```
 
-If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs`:
+If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs` - call the bevy_main function:
 
 ```rust
-use dexterous_developer::{hot_bevy_loader, HotReloadOptions};
-
 fn main() {
-    hot_bevy_loader!(
-        lib_NAME_OF_YOUR_GAME::bevy_main,
-        HotReloadOptions::default()
-    );
+    lib_NAME_OF_YOUR_GAME::bevy_main();
 }
 
 ```
