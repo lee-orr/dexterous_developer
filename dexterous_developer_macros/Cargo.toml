@@ -28,3 +28,4 @@ proc-macro = true
 [features]
 # Enables hot reload
 hot = []
+hot_internal = []

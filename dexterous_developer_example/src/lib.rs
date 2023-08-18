@@ -1,19 +1,18 @@
 use bevy::prelude::*;
+
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use dexterous_developer::{dexterous_developer_setup, hot_bevy_main, *};
+use dexterous_developer::{
+    dexterous_developer_setup, hot_bevy_main, ReloadableApp, ReloadableAppContents,
+    ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
+};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
-pub fn bevy_main(initial: InitialPlugins) {
-    println!("Creating app");
-    let mut app = App::new();
+pub fn bevy_main(mut app: App) {
     app.add_state::<AppState>()
-        .add_plugins(initial.with_default_plugins())
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>();
-
-    println!("Run App: {:?}", std::thread::current().id());
 
     app.run();
 }
@@ -29,7 +28,7 @@ pub enum AppState {
 fn reloadable(app: &mut ReloadableAppContents) {
     println!("Setting up reloadables");
     app.add_systems(Update, (move_cube, toggle))
-        .insert_replacable_resource::<VelocityMultiplier>()
+        .reset_resource::<VelocityMultiplier>()
         .reset_setup::<Cube, _>(setup_cube)
         .reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
 }
@@ -57,7 +56,7 @@ struct VelocityMultiplier(Vec3);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0., 3., 0.))
+        Self(Vec3::new(0., 3., 1.))
     }
 }
 

@@ -1,6 +1,6 @@
 use std::thread;
 
-use crate::hot::lib_set::LibPathSet;
+use crate::internal_shared::lib_path_set::LibPathSet;
 
 pub struct EndWatch;
 
@@ -14,7 +14,7 @@ pub fn run_watcher(
         println!("Spawned watch thread");
         println!("Watch Thread: {:?}", std::thread::current().id());
         let build_cmd = format!(
-            "build --lib --target-dir {} --features bevy/dynamic_linking --features dexterous_developer/hot",
+            "build --lib --target-dir {} --features bevy/dynamic_linking --features dexterous_developer/hot_internal",
             folder.parent().unwrap().to_string_lossy()
         );
 

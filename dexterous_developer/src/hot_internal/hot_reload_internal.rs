@@ -1,6 +1,6 @@
 use bevy::{prelude::Resource, utils::Instant};
 
-use crate::hot::{lib_set::LibPathSet, library_holder::LibraryHolder};
+use crate::internal_shared::{lib_path_set::LibPathSet, library_holder::LibraryHolder};
 
 #[derive(Resource)]
 pub struct InternalHotReload {

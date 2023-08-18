@@ -3,11 +3,19 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "cargo run -p dexterous_developer_example",
+			"command": "cargo run -p dexterous_developer_example --features hot",
 			"problemMatcher": [
 				"$rustc"
 			],
 			"label": "Example"
+		},
+		{
+			"type": "shell",
+			"command": "cargo run -p dexterous_developer_example",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "Example Cold"
 		},
 		{
 			"type": "shell",

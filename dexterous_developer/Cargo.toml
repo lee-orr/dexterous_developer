@@ -16,6 +16,7 @@ description = "a hot-reload library for bevy"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 hot = ["dexterous_developer_macros/hot"]
+hot_internal = ["dexterous_developer_macros/hot_internal"]
 
 
 [dependencies]

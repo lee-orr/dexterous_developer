@@ -1,31 +1,24 @@
 use std::path::PathBuf;
 
-use bevy::{ecs::schedule::ScheduleLabel, prelude::*, utils::Instant};
-use serde::{de::DeserializeOwned, Serialize};
-
-use crate::ReloadableAppContents;
-
-#[derive(Resource, Default, Reflect)]
-pub struct HotReload {
-    pub last_updated_frame: usize,
-    pub version: usize,
-    pub updated_this_frame: bool,
-}
-
-#[derive(Debug, Event, Reflect)]
-pub struct HotReloadEvent {
-    pub last_update_time: Instant,
-}
-
-#[derive(Debug, Default, Reflect)]
+#[derive(Debug, Default)]
 pub struct HotReloadOptions {
+    pub initial_plugins: PluginSet,
     pub lib_name: Option<String>,
     pub watch_folder: Option<PathBuf>,
     pub target_folder: Option<PathBuf>,
 }
 
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct OnReloadComplete;
+#[derive(Debug, Default)]
+pub enum PluginSet {
+    #[default]
+    Default,
+    Minimal,
+}
+
+use crate::ReloadableAppContents;
+
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;

@@ -1,39 +1,27 @@
 use bevy::{
-    prelude::{Commands, EventWriter, Res, ResMut, Schedule, Schedules, World},
+    prelude::{Commands, Res, ResMut, Schedule, Schedules, World},
     utils::Instant,
 };
 
 use crate::{
-    hot::{
-        hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded,
-        DeserializeReloadables, HotReload, HotReloadEvent, ReloadableAppCleanupData,
-        ReloadableAppContents, ReloadableSchedule, ReloadableSetup, SerializeReloadables,
-        SetupReload,
+    hot_internal::{
+        hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
+        DeserializeReloadables, ReloadableAppCleanupData, ReloadableAppContents,
+        ReloadableSchedule, ReloadableSetup, SerializeReloadables, SetupReload,
     },
-    OnReloadComplete,
+    internal_shared::update_lib,
 };
 
-pub fn update_lib_system(
-    mut dexterous_developer_int: ResMut<InternalHotReload>,
-    mut dexterous_developer: ResMut<HotReload>,
-    mut event: EventWriter<HotReloadEvent>,
-) {
-    dexterous_developer_int.updated_this_frame = false;
-    dexterous_developer.updated_this_frame = false;
+pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
+    internal.updated_this_frame = false;
 
-    if let Some(lib) = update_lib::update_lib(&dexterous_developer_int.libs) {
+    if let Some(lib) = update_lib::update_lib(&internal.libs) {
         println!("Got Update");
-        dexterous_developer_int.last_lib = dexterous_developer_int.library.clone();
-        dexterous_developer_int.library = Some(lib);
-        dexterous_developer_int.updated_this_frame = true;
-        dexterous_developer.updated_this_frame = true;
-        dexterous_developer_int.last_update_time = Instant::now();
+        internal.last_lib = internal.library.clone();
+        internal.library = Some(lib);
+        internal.updated_this_frame = true;
+        internal.last_update_time = Instant::now();
     }
-
-    dexterous_developer.updated_this_frame = dexterous_developer_int.updated_this_frame;
-    event.send(HotReloadEvent {
-        last_update_time: dexterous_developer_int.last_update_time,
-    });
 }
 
 pub fn reload(world: &mut World) {

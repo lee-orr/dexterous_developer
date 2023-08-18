@@ -1,4 +1,4 @@
-use crate::hot::{lib_set::LibPathSet, library_holder::LibraryHolder};
+use super::{lib_path_set::LibPathSet, library_holder::LibraryHolder};
 
 pub(crate) fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
     let lib_file_path = library_paths.library_path();

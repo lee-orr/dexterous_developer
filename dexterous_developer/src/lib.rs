@@ -1,8 +1,14 @@
+#[cfg(feature = "hot_internal")]
+mod hot_internal;
+
 #[cfg(feature = "hot")]
 mod hot;
 
-#[cfg(not(feature = "hot"))]
+#[cfg(not(any(feature = "hot", feature = "hot_internal")))]
 mod cold;
+
+#[cfg(any(feature = "hot", feature = "hot_internal"))]
+mod internal_shared;
 
 mod types;
 
@@ -14,31 +20,28 @@ pub use types::*;
 #[cfg(feature = "hot")]
 pub use hot::*;
 
-#[cfg(not(feature = "hot"))]
+#[cfg(feature = "hot_internal")]
+pub use hot_internal::*;
+
+#[cfg(any(feature = "hot", feature = "hot_internal"))]
+pub use internal_shared::*;
+
+#[cfg(not(any(feature = "hot", feature = "hot_internal")))]
 pub use cold::*;
 
-pub struct InitialPlugins(HotReloadPlugin);
+#[cfg(not(feature = "hot_internal"))]
+pub fn get_default_plugins() -> PluginGroupBuilder {
+    DefaultPlugins.build()
+}
 
-impl InitialPlugins {
-    pub fn new(plugin: HotReloadPlugin) -> Self {
-        Self(plugin)
-    }
+#[cfg(feature = "hot_internal")]
+pub fn get_default_plugins() -> PluginGroupBuilder {
+    DefaultPlugins
+        .build()
+        .disable::<bevy::winit::WinitPlugin>()
+        .add(dexterous_developer_bevy_winit::HotWinitPlugin)
+}
 
-    #[cfg(not(feature = "hot"))]
-    pub fn with_default_plugins(self) -> PluginGroupBuilder {
-        DefaultPlugins.build().add(self.0)
-    }
-
-    #[cfg(feature = "hot")]
-    pub fn with_default_plugins(self) -> PluginGroupBuilder {
-        DefaultPlugins
-            .build()
-            .add(self.0)
-            .disable::<bevy::winit::WinitPlugin>()
-            .add(dexterous_developer_bevy_winit::HotWinitPlugin)
-    }
-
-    pub fn with_minimal_plugins(self) -> PluginGroupBuilder {
-        MinimalPlugins.build().add(self.0)
-    }
+pub fn get_minimal_plugins() -> PluginGroupBuilder {
+    MinimalPlugins.build()
 }

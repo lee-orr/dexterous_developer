@@ -9,16 +9,17 @@ use bevy::{
 
 use crate::{
     clear_marked_system,
-    hot::{
+    hot_internal::{
         reload_systems::dexterous_developer_occured,
         replacable_types::{
             deserialize_replacable_component, deserialize_replacable_resource,
             serialize_replacable_component, serialize_replacable_resource,
         },
-        schedules::{CleanupReloaded, DeserializeReloadables, SerializeReloadables},
+        schedules::{
+            CleanupReloaded, DeserializeReloadables, OnReloadComplete, SerializeReloadables,
+        },
         ReplacableComponent, ReplacableResource,
     },
-    OnReloadComplete,
 };
 
 #[derive(Default, Resource, Clone, Debug)]

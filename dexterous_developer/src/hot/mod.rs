@@ -1,37 +1,10 @@
-mod hot_reload_internal;
-mod lib_set;
-mod library_holder;
-mod reload_systems;
-mod reloadable_app;
-mod reloadable_app_setup;
-mod replacable_types;
-mod schedules;
-mod update_lib;
 mod watch;
+use watch::*;
 
-use std::time::Duration;
-
-use bevy::ecs::prelude::*;
-
-use bevy::prelude::{App, First, Plugin, PreStartup};
-
-use bevy::utils::Instant;
-
-pub extern crate dexterous_developer_macros;
-pub extern crate libloading;
-
-pub use crate::types::*;
-use lib_set::*;
-
-pub use reloadable_app_setup::*;
-
-use crate::hot::hot_reload_internal::InternalHotReload;
-use crate::hot::reload_systems::{cleanup, reload, update_lib_system};
-pub use crate::hot::reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents};
-use crate::hot::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
-use crate::hot::schedules::*;
-use crate::hot::update_lib::get_initial_library;
-use crate::hot::watch::{run_watcher, EndWatch};
+use crate::{
+    internal_shared::{lib_path_set::LibPathSet, update_lib::get_initial_library},
+    HotReloadOptions, PluginSet,
+};
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
     println!("Current Thread: {:?}", std::thread::current().id());
@@ -50,10 +23,10 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(HotReloadPlugin)> = lib
+            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet, PluginSet)> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
-            func(HotReloadPlugin::new(library_paths.clone()));
+            func(library_paths.clone(), options.initial_plugins);
         };
     } else {
         eprint!("Library still somehow missing");
@@ -63,47 +36,59 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     let _ = end_watch_tx.send(EndWatch);
 }
 
-pub struct HotReloadPlugin(LibPathSet);
+#[cfg(not(feature = "hot_internal"))]
+mod inner {
+    pub struct ReloadableAppContents;
+    impl crate::private::ReloadableAppSealed for ReloadableAppContents {}
 
-impl HotReloadPlugin {
-    pub fn new(libs: LibPathSet) -> Self {
-        Self(libs)
+    impl crate::ReloadableApp for ReloadableAppContents {
+        fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
+            &mut self,
+            schedule: L,
+            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        ) -> &mut Self {
+            todo!()
+        }
+
+        fn insert_replacable_resource<R: crate::ReplacableResource>(&mut self) -> &mut Self {
+            todo!()
+        }
+
+        fn reset_resource<R: bevy::prelude::Resource + Default>(&mut self) -> &mut Self {
+            todo!()
+        }
+
+        fn reset_resource_to_value<R: bevy::prelude::Resource + Clone>(
+            &mut self,
+            value: R,
+        ) -> &mut Self {
+            todo!()
+        }
+
+        fn register_replacable_component<C: crate::ReplacableComponent>(&mut self) -> &mut Self {
+            todo!()
+        }
+
+        fn clear_marked_on_reload<C: bevy::prelude::Component>(&mut self) -> &mut Self {
+            todo!()
+        }
+
+        fn reset_setup<C: bevy::prelude::Component, M>(
+            &mut self,
+            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        ) -> &mut Self {
+            todo!()
+        }
+
+        fn reset_setup_in_state<C: bevy::prelude::Component, S: bevy::prelude::States, M>(
+            &mut self,
+            state: S,
+            systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        ) -> &mut Self {
+            todo!()
+        }
     }
 }
 
-impl Plugin for HotReloadPlugin {
-    fn build(&self, app: &mut App) {
-        println!(
-            "Build Hot Reload Plugin Thread: {:?}",
-            std::thread::current().id()
-        );
-        let reload_schedule = Schedule::new();
-        let cleanup_schedule = Schedule::new();
-        let serialize_schedule = Schedule::new();
-        let deserialize_schedule = Schedule::new();
-        let reload_complete = Schedule::new();
-
-        app.add_schedule(SetupReload, reload_schedule)
-            .add_schedule(CleanupReloaded, cleanup_schedule)
-            .add_schedule(SerializeReloadables, serialize_schedule)
-            .add_schedule(DeserializeReloadables, deserialize_schedule)
-            .add_schedule(OnReloadComplete, reload_complete)
-            .init_resource::<HotReload>()
-            .init_resource::<ReloadableAppContents>()
-            .init_resource::<ReloadableAppCleanupData>()
-            .init_resource::<ReplacableResourceStore>()
-            .init_resource::<ReplacableComponentStore>()
-            .add_event::<HotReloadEvent>()
-            .insert_resource(InternalHotReload {
-                library: None,
-                last_lib: None,
-                updated_this_frame: true,
-                last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
-                libs: self.0.clone(),
-            })
-            .add_systems(PreStartup, reload)
-            .add_systems(CleanupReloaded, cleanup)
-            .add_systems(First, (update_lib_system, reload).chain());
-        println!("Finished build");
-    }
-}
+#[cfg(not(feature = "hot_internal"))]
+pub use inner::ReloadableAppContents;

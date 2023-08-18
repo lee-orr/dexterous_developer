@@ -1,7 +1,7 @@
 use bevy::prelude::World;
 
 use crate::{
-    hot::{reload_systems::setup_reloadable_app, SetupReload},
+    hot_internal::{reload_systems::setup_reloadable_app, SetupReload},
     ReloadableElementsSetup, ReloadableSetup,
 };
 

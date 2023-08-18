@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use crate::hot::HotReloadOptions;
+use crate::HotReloadOptions;
 
 #[derive(Debug, Clone)]
 pub struct LibPathSet {
@@ -17,6 +17,7 @@ impl LibPathSet {
             lib_name,
             watch_folder,
             target_folder,
+            ..
         } = options;
 
         let root = match std::env::var("CARGO_MANIFEST_DIR") {

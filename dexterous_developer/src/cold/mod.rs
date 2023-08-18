@@ -1,27 +1,5 @@
-use bevy::{
-    prelude::{App, OnEnter, OnExit, Plugin, PreStartup, Startup, World},
-    winit::WinitPlugin,
-};
-
-use crate::{
-    clear_marked_system, private, HotReload, HotReloadEvent, OnReloadComplete, ReloadableApp,
-    ReloadableElementsSetup,
-};
-
-pub struct HotReloadPlugin;
-
-impl Plugin for HotReloadPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_plugins(WinitPlugin)
-            .init_resource::<HotReload>()
-            .add_event::<HotReloadEvent>()
-            .add_systems(PreStartup, run_reload_complete);
-    }
-}
-
-fn run_reload_complete(world: &mut World) {
-    let _ = world.try_run_schedule(OnReloadComplete);
-}
+use crate::types::*;
+use bevy::prelude::{App, OnEnter, OnExit, Startup};
 
 pub struct ReloadableAppContents<'a>(&'a mut App);
 

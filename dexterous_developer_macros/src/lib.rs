@@ -4,11 +4,12 @@ extern crate quote;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, ItemFn};
+use syn::{parse::Parse, parse_macro_input, punctuated::Punctuated, Expr, ExprPath, ItemFn, Token};
 
 #[proc_macro_attribute]
 pub fn dexterous_developer_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: ItemFn = parse_macro_input!(item as ItemFn);
+    let vis = &ast.vis;
 
     let fn_name = &ast.sig.ident;
 
@@ -25,7 +26,7 @@ pub fn dexterous_developer_setup(_attr: TokenStream, item: TokenStream) -> Token
         }
 
         #[allow(non_camel_case_types)]
-        struct #fn_name;
+        #vis struct #fn_name;
 
         impl dexterous_developer::ReloadableSetup for #fn_name {
             fn setup_function_name() -> &'static str {
@@ -48,36 +49,114 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let fn_name: &proc_macro2::Ident = &ast.sig.ident;
 
+    let mut stream: Vec<TokenStream> = vec![];
+    #[cfg(feature = "hot")]
+    {
+        stream.push(
+            quote! {
+                #[allow(dead_code)]
+                pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
+                    dexterous_developer::run_reloadabe_app(options);
+                }
+            }
+            .into(),
+        );
+    }
+    #[cfg(feature = "hot_internal")]
+    {
+        stream.push(quote!{
+
+                #[no_mangle]
+                pub fn dexterous_developer_internal_main(library_paths: dexterous_developer::LibPathSet, initial_plugins: dexterous_developer::PluginSet) {
+                    #ast
+
+                    let mut app = App::new();
+
+                    app.add_plugins(dexterous_developer::HotReloadPlugin::new(library_paths)).add_plugins(match initial_plugins {
+                        dexterous_developer::PluginSet::Default => dexterous_developer::get_default_plugins(),
+                        dexterous_developer::PluginSet::Minimal => dexterous_developer::get_minimal_plugins(),
+                    });
+
+                    #fn_name(app);
+                }
+            }.into());
+    }
+    #[cfg(not(any(feature = "hot", feature = "hot_internal")))]
+    {
+        stream.push(
+            quote! {
+                pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
+                    #ast
+
+                    let mut app = App::new();
+
+                    let initial_plugins = options.initial_plugins;
+
+                    app.add_plugins(match initial_plugins {
+                        dexterous_developer::PluginSet::Default => dexterous_developer::get_default_plugins(),
+                        dexterous_developer::PluginSet::Minimal => dexterous_developer::get_minimal_plugins(),
+                    });
+
+                    #fn_name(app);
+                }
+            }
+            .into(),
+        );
+    }
+    TokenStream::from_iter(stream)
+}
+
+struct Loader {
+    library: ExprPath,
+    options: Expr,
+}
+
+impl Parse for Loader {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let items = Punctuated::<Expr, Token![,]>::parse_separated_nonempty(input).unwrap();
+        let mut items = items.iter();
+        let Some(library) = items.next().and_then(|a| match a {
+            Expr::Path(p) => Some(p.clone()),
+            _ => None,
+        }) else {
+            return Err(syn::Error::new(
+                input.span(),
+                "First item must be the path to your bevy main function",
+            ));
+        };
+        let Some(options) = items.next().cloned() else {
+            return Err(syn::Error::new(
+                input.span(),
+                "Second item must be an expression",
+            ));
+        };
+
+        Ok(Self { library, options })
+    }
+}
+
+#[proc_macro]
+#[allow(clippy::needless_return, unused_variables, unreachable_code)]
+pub fn hot_bevy_loader(args: TokenStream) -> TokenStream {
+    let Loader { library, options } = parse_macro_input!(args as Loader);
+
+    #[cfg(not(all(feature = "hot", feature = "hot_internal")))]
+    {
+        return quote! {
+            #library(#options);
+        }
+        .into();
+    }
     #[cfg(feature = "hot")]
     {
         return quote! {
-            pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
-                dexterous_developer::run_reloadabe_app(options);
-            }
-
-            #[no_mangle]
-            pub fn dexterous_developer_internal_main(plugin: dexterous_developer::HotReloadPlugin) {
-                #ast
-
-                let initial = dexterous_developer::InitialPlugins::new(plugin);
-
-                #fn_name(initial);
-            }
+            dexterous_developer::run_reloadabe_app(#options);
         }
         .into();
     }
 
-    #[cfg(not(feature = "hot"))]
-    {
-        return quote! {
-            pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
-                #ast
-
-                let initial = dexterous_developer::InitialPlugins::new(HotReloadPlugin);
-
-                #fn_name(initial);
-            }
-        }
-        .into();
+    quote! {
+        println!("This is a loader that shouldn't be called");
     }
+    .into()
 }
