@@ -1,5 +1,3 @@
-use std::{process::ExitStatus, thread};
-
 use crate::internal_shared::lib_path_set::LibPathSet;
 
 pub fn create_build_command(library_paths: &LibPathSet, features: &[String]) -> String {

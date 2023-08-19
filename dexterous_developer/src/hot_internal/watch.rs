@@ -1,4 +1,4 @@
-use std::{process::ExitStatus, thread};
+use std::thread;
 
 use crate::internal_shared::lib_path_set::LibPathSet;
 
@@ -18,7 +18,7 @@ pub fn run_watcher(library_paths: &LibPathSet, build_command: &str) {
             .arg(build_command);
         println!("Spawning command: {cmd:?}");
 
-        let mut h = cmd
+        let _h = cmd
             .spawn()
             .expect("cargo watch command failed, make sure cargo watch is installed");
         println!("spawned watcher");

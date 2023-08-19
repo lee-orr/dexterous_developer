@@ -1,5 +1,5 @@
-mod watch;
-use watch::*;
+mod command;
+use command::*;
 
 use crate::{
     internal_shared::{lib_path_set::LibPathSet, update_lib::get_initial_library},
@@ -41,6 +41,11 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     println!("Got to the end for some reason...");
 }
 
+#[cfg(unix)]
+const SEPARATOR: &str = ":";
+#[cfg(windows)]
+const SEPARATOR: &str = ";";
+
 fn setup_environment_variables(library_paths: &LibPathSet) {
     let target_path = library_paths.folder.as_os_str().to_str().unwrap();
     let mut target_deps_path = library_paths.folder.clone();
@@ -48,13 +53,16 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
 
     if let Ok(path) = std::env::var("PATH") {
-        std::env::set_var("PATH", format!("{path};{target_path};{target_deps_path}"));
+        std::env::set_var(
+            "PATH",
+            [&path, target_path, target_deps_path].join(SEPARATOR),
+        );
         println!("Set PATH to {:?}", std::env::var("PATH"));
     }
     if let Ok(path) = std::env::var("DYLD_FALLBACK_LIBRARY_PATH") {
         std::env::set_var(
             "DYLD_FALLBACK_LIBRARY_PATH",
-            format!("{path}:{target_path}:{target_deps_path}"),
+            [&path, target_path, target_deps_path].join(SEPARATOR),
         );
         println!(
             "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
@@ -64,7 +72,7 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     if let Ok(path) = std::env::var("LD_LIBRARY_PATH") {
         std::env::set_var(
             "LD_LIBRARY_PATH",
-            format!("{path}:{target_path}:{target_deps_path}"),
+            [&path, target_path, target_deps_path].join(SEPARATOR),
         );
         println!(
             "Set LD_LIBRARY_PATH to {:?}",
