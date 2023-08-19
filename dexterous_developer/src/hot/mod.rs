@@ -101,9 +101,18 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     );
 }
 
-#[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]
+#[cfg(not(feature = "cli"))]
 mod inner {
+    use crate::ReloadableElementsSetup;
+
     pub struct ReloadableAppContents;
+
+    impl ReloadableElementsSetup for bevy::app::App {
+        fn setup_reloadable_elements<T: crate::ReloadableSetup>(&mut self) -> &mut Self {
+            self
+        }
+    }
+
     impl crate::private::ReloadableAppSealed for ReloadableAppContents {}
 
     impl crate::ReloadableApp for ReloadableAppContents {
@@ -155,5 +164,5 @@ mod inner {
     }
 }
 
-#[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]
+#[cfg(not(feature = "cli"))]
 pub use inner::ReloadableAppContents;

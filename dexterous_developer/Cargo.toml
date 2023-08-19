@@ -19,6 +19,7 @@ default = ["bevy"]
 hot = ["dexterous_developer_macros/hot"]
 hot_internal = ["dexterous_developer_macros/hot_internal"]
 bevy = ["dep:bevy"]
+cli = ["hot"]
 
 
 [dependencies]
