@@ -1,4 +1,6 @@
 mod command;
+use std::collections::HashSet;
+
 use command::*;
 
 use crate::{
@@ -52,28 +54,47 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     target_deps_path.push("deps");
     let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
 
-    let path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var(
-        "PATH",
-        [&path, target_path, target_deps_path].join(SEPARATOR),
-    );
-    println!("Set PATH to {:?}", std::env::var("PATH"));
+    let path = std::env::var("PATH")
+        .and_then(|v| {
+            Ok(v.split(SEPARATOR)
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>())
+        })
+        .unwrap_or_default();
+    let dyld_fallback = std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
+        .and_then(|v| {
+            Ok(v.split(SEPARATOR)
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>())
+        })
+        .unwrap_or_default();
+    let ld_path = std::env::var("LD_LIBRARY_PATH")
+        .and_then(|v| {
+            Ok(v.split(SEPARATOR)
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>())
+        })
+        .unwrap_or_default();
 
-    let path = std::env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap_or_default();
-    std::env::set_var(
-        "DYLD_FALLBACK_LIBRARY_PATH",
-        [&path, target_path, target_deps_path].join(SEPARATOR),
-    );
+    let merged = path
+        .iter()
+        .chain(dyld_fallback.iter())
+        .chain(ld_path.iter())
+        .map(|v| v.to_string())
+        .chain([target_path.to_string(), target_deps_path.to_string()].into_iter())
+        .collect::<HashSet<_>>();
+
+    let env = merged.into_iter().collect::<Vec<_>>().join(SEPARATOR);
+
+    std::env::set_var("PATH", &env);
+    println!("Set PATH to {:?}", std::env::var("PATH"));
+    std::env::set_var("DYLD_FALLBACK_LIBRARY_PATH", &env);
     println!(
         "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
         std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
     );
 
-    let path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
-    std::env::set_var(
-        "LD_LIBRARY_PATH",
-        [&path, target_path, target_deps_path].join(SEPARATOR),
-    );
+    std::env::set_var("LD_LIBRARY_PATH", env);
     println!(
         "Set LD_LIBRARY_PATH to {:?}",
         std::env::var("LD_LIBRARY_PATH")
