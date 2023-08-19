@@ -23,6 +23,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 - Won't work on mobile or WASM, and only tested on Windows
 - events and states still need to be pre-defined
+- The CLI doesn't work on every platform. There is a direction of research for resolving this, but at this point in time it's hit or miss.
 
 ## Installation
 

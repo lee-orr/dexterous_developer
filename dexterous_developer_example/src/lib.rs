@@ -120,6 +120,7 @@ fn setup_sphere(
     ));
 }
 
+#[allow(unused)]
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
