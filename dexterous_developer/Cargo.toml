@@ -18,7 +18,7 @@ description = "a hot-reload library for bevy"
 default = ["bevy"]
 hot = ["dexterous_developer_macros/hot"]
 hot_internal = ["dexterous_developer_macros/hot_internal"]
-bevy = ["dep:bevy", "dep:dexterous_developer_bevy_winit"]
+bevy = ["dep:bevy"]
 
 
 [dependencies]
@@ -31,6 +31,5 @@ dexterous_developer_macros = { path = "../dexterous_developer_macros", version =
 crossbeam = "0.8"
 tempfile = "3"
 uuid = { version = "1", features = ["v4"] }
-dexterous_developer_bevy_winit = { path = "../dexterous_developer_bevy_winit", version = "0.0.1", optional = true }
 serde = "1"
 rmp-serde = "1"

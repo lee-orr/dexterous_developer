@@ -4,6 +4,7 @@ mod reloadable_app;
 mod reloadable_app_setup;
 mod replacable_types;
 mod schedules;
+mod watch;
 
 use std::time::Duration;
 
@@ -16,6 +17,7 @@ use bevy::utils::Instant;
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
+use crate::hot_internal::watch::run_watcher;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 
@@ -27,11 +29,11 @@ pub use crate::hot_internal::reloadable_app::{ReloadableAppCleanupData, Reloadab
 use crate::hot_internal::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use crate::hot_internal::schedules::*;
 
-pub struct HotReloadPlugin(LibPathSet);
+pub struct HotReloadPlugin(LibPathSet, String);
 
 impl HotReloadPlugin {
-    pub fn new(libs: LibPathSet) -> Self {
-        Self(libs)
+    pub fn new(libs: LibPathSet, build_commands: String) -> Self {
+        Self(libs, build_commands)
     }
 }
 
@@ -46,6 +48,12 @@ impl Plugin for HotReloadPlugin {
         let serialize_schedule = Schedule::new();
         let deserialize_schedule = Schedule::new();
         let reload_complete = Schedule::new();
+
+        let watcher = {
+            let paths = self.0.clone();
+            let cmd = self.1.clone();
+            move || run_watcher(&paths, &cmd)
+        };
 
         app.add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
@@ -63,7 +71,7 @@ impl Plugin for HotReloadPlugin {
                 last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
                 libs: self.0.clone(),
             })
-            .add_systems(PreStartup, reload)
+            .add_systems(PreStartup, (reload, watcher))
             .add_systems(CleanupReloaded, cleanup)
             .add_systems(First, (update_lib_system, reload).chain());
         println!("Finished build");

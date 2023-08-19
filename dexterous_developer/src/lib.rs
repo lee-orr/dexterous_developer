@@ -33,17 +33,9 @@ mod require_bevy {
     use bevy::{
         app::PluginGroup, app::PluginGroupBuilder, prelude::Plugin, DefaultPlugins, MinimalPlugins,
     };
-    #[cfg(not(feature = "hot_internal"))]
+
     pub fn get_default_plugins() -> PluginGroupBuilder {
         DefaultPlugins.build()
-    }
-
-    #[cfg(feature = "hot_internal")]
-    pub fn get_default_plugins() -> PluginGroupBuilder {
-        DefaultPlugins
-            .build()
-            .disable::<bevy::winit::WinitPlugin>()
-            .add(dexterous_developer_bevy_winit::HotWinitPlugin)
     }
 
     pub fn get_minimal_plugins() -> PluginGroupBuilder {

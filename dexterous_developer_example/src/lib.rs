@@ -111,7 +111,7 @@ fn setup_sphere(
                 radius: 0.3,
                 ..Default::default()
             })),
-            material: materials.add(Color::PINK.into()),
+            material: materials.add(Color::GREEN.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },

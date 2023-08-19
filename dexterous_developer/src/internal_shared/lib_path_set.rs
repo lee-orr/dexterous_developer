@@ -92,6 +92,14 @@ impl LibPathSet {
     }
 
     pub fn library_path(&self) -> PathBuf {
-        self.folder.join(&self.name).with_extension(&self.extension)
+        #[cfg(unix)]
+        {
+            return self
+                .folder
+                .join(&format!("lib{}", self.name))
+                .with_extension(&self.extension);
+        }
+        #[allow(unreachable_code)]
+        return self.folder.join(&self.name).with_extension(&self.extension);
     }
 }

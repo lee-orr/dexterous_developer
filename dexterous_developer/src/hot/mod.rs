@@ -11,9 +11,16 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
 
     let _ = std::fs::remove_file(library_paths.library_path());
 
-    let (end_watch_tx, end_watch_rx) = crossbeam::channel::bounded::<EndWatch>(1);
+    let build_command = create_build_command(&library_paths, &options.features);
 
-    run_watcher(end_watch_rx.clone(), &library_paths, &options.features);
+    match first_exec(&build_command) {
+        Ok(_) => {}
+        Err(err) => {
+            eprintln!("Initial Build Failed:");
+            eprintln!("{err:?}");
+            std::process::exit(1);
+        }
+    };
 
     setup_environment_variables(&library_paths);
 
@@ -23,17 +30,15 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet)> = lib
+            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet, String)> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
-            func(library_paths.clone());
+            func(library_paths.clone(), build_command);
         };
     } else {
         eprint!("Library still somehow missing");
     }
     println!("Got to the end for some reason...");
-
-    let _ = end_watch_tx.send(EndWatch);
 }
 
 fn setup_environment_variables(library_paths: &LibPathSet) {
