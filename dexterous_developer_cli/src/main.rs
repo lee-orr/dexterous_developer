@@ -65,6 +65,7 @@ fn main() {
         target_folder: Some(target_dir),
         features,
         package: Some(package.name.clone()),
+        set_env: true,
     };
     dexterous_developer::run_reloadabe_app(options);
 }

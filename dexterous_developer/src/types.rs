@@ -7,6 +7,7 @@ pub struct HotReloadOptions {
     pub watch_folder: Option<PathBuf>,
     pub target_folder: Option<PathBuf>,
     pub features: Vec<String>,
+    pub set_env: bool,
 }
 #[cfg(feature = "bevy")]
 mod require_bevy {

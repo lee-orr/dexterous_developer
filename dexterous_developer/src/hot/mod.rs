@@ -24,7 +24,9 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         }
     };
 
-    setup_environment_variables(&library_paths);
+    if options.set_env {
+        setup_environment_variables(&library_paths);
+    }
 
     let lib = get_initial_library(&library_paths);
 
