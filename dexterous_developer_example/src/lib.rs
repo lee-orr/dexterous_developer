@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
+#[allow(unused_imports)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+#[allow(unused_imports)]
 use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
