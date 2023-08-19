@@ -1,6 +1,6 @@
 [package]
 name = "dexterous_developer"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -27,7 +27,7 @@ bevy = { version = "0.11", default-features = false, features = [
     "serialize",
 ], optional = true }
 libloading = "0.8"
-dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.3" }
+dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.4" }
 crossbeam = "0.8"
 tempfile = "3"
 uuid = { version = "1", features = ["v4"] }

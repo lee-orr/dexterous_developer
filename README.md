@@ -23,8 +23,6 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 - Won't work on mobile or WASM, and only tested on Windows
 - events and states still need to be pre-defined
-- can't guarantee the main bevy thread will run on the main thread from an OS perspective, which can cause issues in some packages
-  - Relies on a fork of bevy_winit (only when hot reload is enabled, will use the regular bevy_winit otherwise). A PR for adding the required ability to bevy exists.
 
 ## Installation
 
@@ -42,7 +40,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.3"
+dexterous_developer = "0.0.4"
 serde = "1" # If you want the serialization capacities
 ```
 
