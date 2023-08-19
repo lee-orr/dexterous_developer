@@ -57,24 +57,24 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
 
     let path = std::env::var("PATH")
-        .and_then(|v| {
-            Ok(v.split(SEPARATOR)
+        .map(|v| {
+            v.split(SEPARATOR)
                 .map(|v| v.to_string())
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>()
         })
         .unwrap_or_default();
     let dyld_fallback = std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
-        .and_then(|v| {
-            Ok(v.split(SEPARATOR)
+        .map(|v| {
+            v.split(SEPARATOR)
                 .map(|v| v.to_string())
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>()
         })
         .unwrap_or_default();
     let ld_path = std::env::var("LD_LIBRARY_PATH")
-        .and_then(|v| {
-            Ok(v.split(SEPARATOR)
+        .map(|v| {
+            v.split(SEPARATOR)
                 .map(|v| v.to_string())
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>()
         })
         .unwrap_or_default();
 
@@ -83,7 +83,7 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
         .chain(dyld_fallback.iter())
         .chain(ld_path.iter())
         .map(|v| v.to_string())
-        .chain([target_path.to_string(), target_deps_path.to_string()].into_iter())
+        .chain([target_path.to_string(), target_deps_path.to_string()])
         .collect::<HashSet<_>>();
 
     let env = merged.into_iter().collect::<Vec<_>>().join(SEPARATOR);
