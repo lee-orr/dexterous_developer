@@ -52,33 +52,32 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     target_deps_path.push("deps");
     let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
 
-    if let Ok(path) = std::env::var("PATH") {
-        std::env::set_var(
-            "PATH",
-            [&path, target_path, target_deps_path].join(SEPARATOR),
-        );
-        println!("Set PATH to {:?}", std::env::var("PATH"));
-    }
-    if let Ok(path) = std::env::var("DYLD_FALLBACK_LIBRARY_PATH") {
-        std::env::set_var(
-            "DYLD_FALLBACK_LIBRARY_PATH",
-            [&path, target_path, target_deps_path].join(SEPARATOR),
-        );
-        println!(
-            "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
-            std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
-        );
-    }
-    if let Ok(path) = std::env::var("LD_LIBRARY_PATH") {
-        std::env::set_var(
-            "LD_LIBRARY_PATH",
-            [&path, target_path, target_deps_path].join(SEPARATOR),
-        );
-        println!(
-            "Set LD_LIBRARY_PATH to {:?}",
-            std::env::var("LD_LIBRARY_PATH")
-        );
-    }
+    let path = std::env::var("PATH").unwrap_or_default();
+    std::env::set_var(
+        "PATH",
+        [&path, target_path, target_deps_path].join(SEPARATOR),
+    );
+    println!("Set PATH to {:?}", std::env::var("PATH"));
+
+    let path = std::env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap_or_default();
+    std::env::set_var(
+        "DYLD_FALLBACK_LIBRARY_PATH",
+        [&path, target_path, target_deps_path].join(SEPARATOR),
+    );
+    println!(
+        "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
+        std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
+    );
+
+    let path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
+    std::env::set_var(
+        "LD_LIBRARY_PATH",
+        [&path, target_path, target_deps_path].join(SEPARATOR),
+    );
+    println!(
+        "Set LD_LIBRARY_PATH to {:?}",
+        std::env::var("LD_LIBRARY_PATH")
+    );
 }
 
 #[cfg(all(not(feature = "hot_internal"), feature = "bevy"))]
