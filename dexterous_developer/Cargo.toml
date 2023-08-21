@@ -16,9 +16,13 @@ description = "a hot-reload library for bevy"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = ["bevy"]
-hot = ["dexterous_developer_macros/hot"]
-hot_internal = ["dexterous_developer_macros/hot_internal"]
-bevy = ["dep:bevy"]
+hot = ["dexterous_developer_macros/hot", "dep:libloading", "dep:uuid"]
+hot_internal = [
+    "dexterous_developer_macros/hot_internal",
+    "dep:libloading",
+    "dep:uuid",
+]
+bevy = ["dep:bevy", "dep:serde", "dep:rmp-serde"]
 cli = ["hot"]
 
 
@@ -27,10 +31,8 @@ bevy = { version = "0.11", default-features = false, features = [
     "bevy_winit",
     "serialize",
 ], optional = true }
-libloading = "0.8"
 dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.5" }
-crossbeam = "0.8"
-tempfile = "3"
-uuid = { version = "1", features = ["v4"] }
-serde = "1"
-rmp-serde = "1"
+libloading = { version = "0.8", optional = true }
+uuid = { version = "1", features = ["v4"], optional = true }
+serde = { version = "1", optional = true }
+rmp-serde = { version = "1", optional = true }
