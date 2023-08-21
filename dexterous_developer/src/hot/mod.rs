@@ -23,11 +23,12 @@ pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
 
     let build_command = create_build_command(&library_paths, &options.features);
 
-    match first_exec(&build_command) {
+    match first_exec(&options.lib_name, &options.features) {
         Ok(_) => {}
         Err(err) => {
             eprintln!("Initial Build Failed:");
             eprintln!("{err:?}");
+            eprintln!("{:?}", err.source());
             std::process::exit(1);
         }
     };
@@ -114,7 +115,7 @@ fn setup_environment_variables(library_paths: &LibPathSet) {
     );
 }
 
-#[cfg(not(feature = "cli"))]
+#[cfg(feature = "bevy")]
 mod inner {
     use crate::ReloadableElementsSetup;
 
@@ -177,5 +178,5 @@ mod inner {
     }
 }
 
-#[cfg(not(feature = "cli"))]
+#[cfg(feature = "bevy")]
 pub use inner::ReloadableAppContents;

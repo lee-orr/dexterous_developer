@@ -16,7 +16,14 @@ description = "a hot-reload library for bevy"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = ["bevy"]
-hot = ["dexterous_developer_macros/hot", "dep:libloading", "dep:uuid"]
+hot = [
+    "dexterous_developer_macros/hot",
+    "dep:libloading",
+    "dep:uuid",
+    "dep:cargo",
+    "dep:notify",
+    "dep:debounce",
+]
 hot_internal = [
     "dexterous_developer_macros/hot_internal",
     "dep:libloading",
@@ -27,12 +34,16 @@ cli = ["hot"]
 
 
 [dependencies]
+anyhow = { version = "1" }
+dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.5" }
 bevy = { version = "0.11", default-features = false, features = [
     "bevy_winit",
     "serialize",
 ], optional = true }
-dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.5" }
 libloading = { version = "0.8", optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }
 serde = { version = "1", optional = true }
 rmp-serde = { version = "1", optional = true }
+cargo = { version = "0.72", optional = true }
+notify = { version = "6", optional = true }
+debounce = { version = "0.2", optional = true }

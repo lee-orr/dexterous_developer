@@ -29,7 +29,7 @@ pub enum AppState {
 
 #[dexterous_developer_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
-    println!("Setting up reloadables");
+    println!("Setting up reloadabless");
     app.add_systems(Update, (move_cube, toggle))
         .reset_resource::<VelocityMultiplier>()
         .reset_setup::<Cube, _>(setup_cube)
@@ -78,7 +78,7 @@ fn setup_cube(
     let cube_color = Color::ORANGE;
 
     #[cfg(not(feature = "orange"))]
-    let cube_color = Color::RED;
+    let cube_color = Color::GREEN;
 
     // cube
     commands.spawn((
