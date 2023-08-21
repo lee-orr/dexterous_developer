@@ -1,5 +1,5 @@
 mod command;
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Once};
 
 use command::*;
 
@@ -8,7 +8,15 @@ use crate::{
     HotReloadOptions,
 };
 
+static RUNNER: Once = Once::new();
+
 pub fn run_reloadabe_app(options: HotReloadOptions) {
+    RUNNER.call_once(|| {
+        run_reloadabe_app_inner(options);
+    });
+}
+
+pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
     let library_paths = LibPathSet::new(&options).unwrap();
 
     let _ = std::fs::remove_file(library_paths.library_path());
@@ -34,10 +42,13 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet, String)> = lib
+            let func: libloading::Symbol<
+                unsafe extern "C" fn(LibPathSet, fn(&LibPathSet, &str) -> (), String),
+            > = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
-            func(library_paths.clone(), build_command);
+
+            func(library_paths.clone(), run_watcher, build_command);
         };
     } else {
         eprint!("Library still somehow missing");

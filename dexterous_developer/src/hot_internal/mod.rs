@@ -6,6 +6,7 @@ mod replacable_types;
 mod schedules;
 mod watch;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use bevy::ecs::prelude::*;
@@ -17,9 +18,10 @@ use bevy::utils::Instant;
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
-use crate::hot_internal::watch::run_watcher;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
+
+pub use watch::*;
 
 pub use reloadable_app_setup::*;
 
@@ -29,11 +31,20 @@ pub use crate::hot_internal::reloadable_app::{ReloadableAppCleanupData, Reloadab
 use crate::hot_internal::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use crate::hot_internal::schedules::*;
 
-pub struct HotReloadPlugin(LibPathSet, String);
+pub struct HotReloadPlugin(LibPathSet, Arc<InitializeWatchClosure>, String);
 
 impl HotReloadPlugin {
-    pub fn new(libs: LibPathSet, build_commands: String) -> Self {
-        Self(libs, build_commands)
+    pub fn new(
+        libs: LibPathSet,
+        closure: fn(&LibPathSet, &str) -> (),
+        build_command: String,
+    ) -> Self {
+        println!("Building Hot Reload Plugin");
+        Self(
+            libs,
+            Arc::new(InitializeWatchClosure::new(closure)),
+            build_command,
+        )
     }
 }
 
@@ -50,9 +61,12 @@ impl Plugin for HotReloadPlugin {
         let reload_complete = Schedule::new();
 
         let watcher = {
-            let paths = self.0.clone();
-            let cmd = self.1.clone();
-            move || run_watcher(&paths, &cmd)
+            let lib = self.0.clone();
+            let cmd = self.2.clone();
+            let watch = self.1.clone();
+            move || {
+                watch.run(&lib, &cmd);
+            }
         };
 
         app.add_schedule(SetupReload, reload_schedule)
