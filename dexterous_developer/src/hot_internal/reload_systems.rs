@@ -59,7 +59,7 @@ pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut 
 enum ReloadableSetupCallError {
     InternalHotReloadStateMissing,
     LibraryHolderNotSet,
-    LibraryUnavailable,
+    CallFailed,
     ReloadableAppContentsMissing,
 }
 
@@ -70,7 +70,7 @@ impl std::fmt::Display for ReloadableSetupCallError {
                 "No Internal Hot Reload Resource Available"
             }
             ReloadableSetupCallError::LibraryHolderNotSet => "Missing a library holder",
-            ReloadableSetupCallError::LibraryUnavailable => "No Library Available",
+            ReloadableSetupCallError::CallFailed => "Library Call Failed",
             ReloadableSetupCallError::ReloadableAppContentsMissing => {
                 "No Reloadable App Contents - Called out of order"
             }
@@ -94,21 +94,14 @@ fn setup_reloadable_app_inner(
         return Err(ReloadableSetupCallError::LibraryHolderNotSet);
     };
     let lib = lib.clone();
-    let Some(lib) = lib.library() else {
-        return Err(ReloadableSetupCallError::LibraryUnavailable);
-    };
 
     let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
     };
 
-    // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
-    unsafe {
-        let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableAppContents)> = lib
-            .get(name.as_bytes())
-            .unwrap_or_else(|_| panic!("Can't find reloadable setup function",));
-        func(&mut reloadable)
-    };
+    if let Err(e) = lib.call(name, reloadable.as_mut()) {
+        return Err(ReloadableSetupCallError::CallFailed);
+    }
 
     println!("setup for {name} complete");
     Ok(())

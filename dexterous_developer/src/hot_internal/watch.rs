@@ -9,7 +9,7 @@ impl InitializeWatchClosure {
         Self(RwLock::new(Some(func)))
     }
 
-    pub fn run(&self, lib: &LibPathSet, cmd: &str) {
+    pub fn run(&self) {
         println!("Attempting to Initialize Watcher");
         if let Ok(read) = self.0.read() {
             if read.is_none() {

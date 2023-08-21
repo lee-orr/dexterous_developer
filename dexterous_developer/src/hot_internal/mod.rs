@@ -31,16 +31,12 @@ pub use crate::hot_internal::reloadable_app::{ReloadableAppCleanupData, Reloadab
 use crate::hot_internal::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use crate::hot_internal::schedules::*;
 
-pub struct HotReloadPlugin(LibPathSet, Arc<InitializeWatchClosure>, String);
+pub struct HotReloadPlugin(LibPathSet, Arc<InitializeWatchClosure>);
 
 impl HotReloadPlugin {
-    pub fn new(libs: LibPathSet, closure: fn() -> (), build_command: String) -> Self {
+    pub fn new(libs: LibPathSet, closure: fn() -> ()) -> Self {
         println!("Building Hot Reload Plugin");
-        Self(
-            libs,
-            Arc::new(InitializeWatchClosure::new(closure)),
-            build_command,
-        )
+        Self(libs, Arc::new(InitializeWatchClosure::new(closure)))
     }
 }
 
@@ -57,11 +53,9 @@ impl Plugin for HotReloadPlugin {
         let reload_complete = Schedule::new();
 
         let watcher = {
-            let lib = self.0.clone();
-            let cmd = self.2.clone();
             let watch = self.1.clone();
             move || {
-                watch.run(&lib, &cmd);
+                watch.run();
             }
         };
 

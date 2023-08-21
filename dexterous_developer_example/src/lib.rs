@@ -30,10 +30,14 @@ pub enum AppState {
 #[dexterous_developer_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     println!("Setting up reloadabless");
-    app.add_systems(Update, (move_cube, toggle))
-        .reset_resource::<VelocityMultiplier>()
-        .reset_setup::<Cube, _>(setup_cube)
-        .reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
+    app.add_systems(Update, (move_cube, toggle));
+    println!("Reset Resource");
+    app.reset_resource::<VelocityMultiplier>();
+    println!("Reset Setup");
+    app.reset_setup::<Cube, _>(setup_cube);
+    println!("Reset Setup In State");
+    app.reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
+    println!("Done");
 }
 
 #[derive(Component, Serialize, Deserialize)]
@@ -110,10 +114,10 @@ fn setup_sphere(
         Sphere,
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.3,
+                radius: 0.2,
                 ..Default::default()
             })),
-            material: materials.add(Color::GREEN.into()),
+            material: materials.add(Color::RED.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
