@@ -34,11 +34,7 @@ use crate::hot_internal::schedules::*;
 pub struct HotReloadPlugin(LibPathSet, Arc<InitializeWatchClosure>, String);
 
 impl HotReloadPlugin {
-    pub fn new(
-        libs: LibPathSet,
-        closure: fn(&LibPathSet, &str) -> (),
-        build_command: String,
-    ) -> Self {
+    pub fn new(libs: LibPathSet, closure: fn() -> (), build_command: String) -> Self {
         println!("Building Hot Reload Plugin");
         Self(
             libs,

@@ -2,10 +2,10 @@ use std::sync::RwLock;
 
 use crate::LibPathSet;
 
-pub struct InitializeWatchClosure(RwLock<Option<fn(&LibPathSet, &str) -> ()>>);
+pub struct InitializeWatchClosure(RwLock<Option<fn() -> ()>>);
 
 impl InitializeWatchClosure {
-    pub(crate) fn new(func: fn(&LibPathSet, &str) -> ()) -> Self {
+    pub(crate) fn new(func: fn() -> ()) -> Self {
         Self(RwLock::new(Some(func)))
     }
 
@@ -25,7 +25,7 @@ impl InitializeWatchClosure {
             return;
         };
         println!("Initialize Watcher has been accessed");
-        call(lib, cmd);
+        call();
         println!("Initialize Watcher Call Completed");
     }
 }

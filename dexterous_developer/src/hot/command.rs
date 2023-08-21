@@ -34,16 +34,21 @@ pub fn create_build_command(library_paths: &LibPathSet, features: &[String]) -> 
     )
 }
 
-struct CompilePrep {
+struct BuildSettings {
+    watch_folder: PathBuf,
     manifest: PathBuf,
     features: BTreeSet<FeatureValue>,
     spect: Packages,
     filter: CompileFilter,
 }
 
-static BUILD_SETTINGS: OnceLock<CompilePrep> = OnceLock::new();
+static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
 
-pub fn first_exec(library: &Option<String>, features: &[String]) -> anyhow::Result<()> {
+pub fn first_exec(
+    library: &Option<String>,
+    watch: &Option<PathBuf>,
+    features: &[String],
+) -> anyhow::Result<()> {
     let mut manifest = std::env::current_dir().context("Couldn't get current directory")?;
     manifest.push("Cargo.toml");
     let config = Config::default().context("Couldn't setup initial config")?;
@@ -104,11 +109,20 @@ pub fn first_exec(library: &Option<String>, features: &[String]) -> anyhow::Resu
         FilterRule::none(),
     );
 
-    BUILD_SETTINGS.set(CompilePrep {
+    let watch_folder = if let Some(watch) = watch.as_ref() {
+        watch.clone()
+    } else {
+        let mut path = pkg.root().to_path_buf();
+        path.push("src");
+        path
+    };
+
+    BUILD_SETTINGS.set(BuildSettings {
         manifest,
         features: options.cli_features.features.as_ref().clone(),
         spect: options.spec.clone(),
         filter: options.filter.clone(),
+        watch_folder,
     });
 
     options
@@ -132,15 +146,20 @@ pub fn first_exec(library: &Option<String>, features: &[String]) -> anyhow::Resu
 
 static WATCHER: Once = Once::new();
 
-pub fn run_watcher(library_paths: &LibPathSet, build_command: &str) {
+pub fn run_watcher() {
     WATCHER.call_once(|| {
-        run_watcher_inner(library_paths, build_command);
+        if let Err(e) = run_watcher_inner() {
+            eprintln!("Couldn't set up watcher - {e:?}");
+        };
     });
 }
 
-fn run_watcher_inner(library_paths: &LibPathSet, build_command: &str) {
-    let mut watch_folder = library_paths.watch_folder.clone();
+fn run_watcher_inner() -> anyhow::Result<()> {
     let delay = Duration::from_secs(2);
+    let Some(BuildSettings { watch_folder, .. }) = BUILD_SETTINGS.get() else {
+        bail!("Couldn't get settings...");
+    };
+
     println!("Setting up watcher with {watch_folder:?}");
     thread::spawn(move || {
         let (tx, rx) = mpsc::channel();
@@ -171,6 +190,7 @@ fn run_watcher_inner(library_paths: &LibPathSet, build_command: &str) {
             rebuild();
         }
     });
+    Ok(())
 }
 
 fn rebuild() {
@@ -180,11 +200,12 @@ fn rebuild() {
 }
 
 fn rebuild_internal() -> anyhow::Result<()> {
-    let Some(CompilePrep {
+    let Some(BuildSettings {
         manifest,
         features,
         spect,
         filter,
+        ..
     }) = BUILD_SETTINGS.get()
     else {
         bail!("Couldn't get settings...");
