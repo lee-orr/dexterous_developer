@@ -1,6 +1,6 @@
 # Use with the CLI
 
-The CLI allows you to avoid needing to compile your dependencies twice, or needing to set up a separate launcher package for hot reloading your  application. It provides a very simple interface with just a couple of options:
+The CLI handles building the application with the correct settings, and triggering rebuild as neeeded. It provides a very simple interface with just a couple of options:
 
 If you are working in a non-workspace package, you can just run `dexterous_developer_cli`.
 If you are working in a workspace with multiple libraries set up, you will need to specify the package containing your game with `dexterous_developer_cli -p PACKAGE_NAME`.

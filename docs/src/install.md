@@ -1,6 +1,6 @@
 # Installation
 
-Grab the CLI by running: ```cargo install dexterous_developer_cli```. If you don't want to use the cli - there is more info [here](./no_cli.md).
+Grab the CLI by running: ```cargo install dexterous_developer_cli```.
 
 You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
 
@@ -14,7 +14,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.5"
+dexterous_developer = "0.0.6"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -40,6 +40,28 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
 ```
 
 You might also want the following in your `.cargo/config.toml`:
+
+```toml
+# Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
+# In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
+#[profile.dev]
+#debug = 1
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev.package.gfx-backend-vulkan]
+opt-level = 3
+debug-assertions = false
+
+```
+
+Note that the CLI will automatically add some additional build flags for dynamic linking, but you can include them in the config.toml as well:
 
 ```toml
 # Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
@@ -70,22 +92,4 @@ rustflags = [
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
 rustflags = ["-Zshare-generics=n"]
-
-# Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
-# In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
-#[profile.dev]
-#debug = 1
-
-# Enable a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
-
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev.package.gfx-backend-vulkan]
-opt-level = 3
-debug-assertions = false
-
 ```

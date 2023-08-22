@@ -1,6 +1,6 @@
 [package]
 name = "dexterous_developer"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -35,7 +35,7 @@ cli = ["hot"]
 
 [dependencies]
 anyhow = { version = "1" }
-dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.5" }
+dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.6" }
 bevy = { version = "0.11", default-features = false, features = [
     "bevy_winit",
     "serialize",

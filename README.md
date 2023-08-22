@@ -23,11 +23,10 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 - Won't work on mobile or WASM, and only tested on Windows
 - events and states still need to be pre-defined
-- The CLI doesn't work on every platform. There is a direction of research for resolving this, but at this point in time it's hit or miss.
 
 ## Installation
 
-Grab the CLI by running: ```cargo install dexterous_developer_cli```. If you don't want to use the cli - there is more info in the docs.
+Grab the CLI by running: ```cargo install dexterous_developer_cli```.
 
 You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
 
@@ -41,7 +40,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.5"
+dexterous_developer = "0.0.6"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -82,56 +81,5 @@ fn reloadable(app: &mut ReloadableAppContents) {
     app
         .add_systems(Update, this_system_will_reload);
 }
-
-```
-
-For the best results, you'll want to add the following to your `.cargo/config.toml`:
-
-```toml
-# Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
-
-# NOTE: For maximum performance, build using a nightly compiler
-# If you are using rust stable, remove the "-Zshare-generics=y" below.
-
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zshare-generics=y"]
-
-# NOTE: you must install [Mach-O LLD Port](https://lld.llvm.org/MachO/index.html) on mac. you can easily do this by installing llvm which includes lld with the "brew" package manager:
-# `brew install llvm`
-[target.x86_64-apple-darwin]
-rustflags = [
-    "-C",
-    "link-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
-    "-Zshare-generics=y",
-]
-
-[target.aarch64-apple-darwin]
-rustflags = [
-    "-C",
-    "link-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
-    "-Zshare-generics=y",
-]
-
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
-rustflags = ["-Zshare-generics=n"]
-
-# Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
-# In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
-#[profile.dev]
-#debug = 1
-
-# Enable a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
-
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev.package.gfx-backend-vulkan]
-opt-level = 3
-debug-assertions = false
 
 ```
