@@ -33,10 +33,6 @@ pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
         }
     };
 
-    if options.set_env {
-        setup_environment_variables(&library_paths);
-    }
-
     let lib = get_initial_library(&library_paths);
 
     if let Some(lib) = lib.library() {
@@ -54,65 +50,6 @@ pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
     }
     println!("Got to the end for some reason...");
 }
-
-#[cfg(unix)]
-const SEPARATOR: &str = ":";
-#[cfg(windows)]
-const SEPARATOR: &str = ";";
-
-fn setup_environment_variables(library_paths: &LibPathSet) {
-    let target_path = library_paths.folder.as_os_str().to_str().unwrap();
-    let mut target_deps_path = library_paths.folder.clone();
-    target_deps_path.push("deps");
-    let target_deps_path = target_deps_path.as_os_str().to_str().unwrap();
-
-    let path = std::env::var("PATH")
-        .map(|v| {
-            v.split(SEPARATOR)
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let dyld_fallback = std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
-        .map(|v| {
-            v.split(SEPARATOR)
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let ld_path = std::env::var("LD_LIBRARY_PATH")
-        .map(|v| {
-            v.split(SEPARATOR)
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-
-    let merged = path
-        .iter()
-        .chain(dyld_fallback.iter())
-        .chain(ld_path.iter())
-        .map(|v| v.to_string())
-        .chain([target_path.to_string(), target_deps_path.to_string()])
-        .collect::<HashSet<_>>();
-
-    let env = merged.into_iter().collect::<Vec<_>>().join(SEPARATOR);
-
-    std::env::set_var("PATH", &env);
-    println!("Set PATH to {:?}", std::env::var("PATH"));
-    std::env::set_var("DYLD_FALLBACK_LIBRARY_PATH", &env);
-    println!(
-        "Set DYLD_FALLBACK_LIBRARY_PATH to {:?}",
-        std::env::var("DYLD_FALLBACK_LIBRARY_PATH")
-    );
-
-    std::env::set_var("LD_LIBRARY_PATH", env);
-    println!(
-        "Set LD_LIBRARY_PATH to {:?}",
-        std::env::var("LD_LIBRARY_PATH")
-    );
-}
-
 #[cfg(feature = "bevy")]
 mod inner {
     use crate::ReloadableElementsSetup;

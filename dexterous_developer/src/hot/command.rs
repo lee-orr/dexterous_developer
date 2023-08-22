@@ -44,12 +44,52 @@ struct BuildSettings {
 
 static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
 
+#[cfg(target_os = "windows")]
+const RUSTC_ARGS: [(&str, &str); 3] = [
+    ("RUSTUP_TOOLCHAIN", "nightly"),
+    ("RUSTC_LINKER", "rust-lld.exe"),
+    ("RUSTFLAGS", "-Zshare-generics=n"),
+];
+#[cfg(target_os = "linux")]
+const RUSTC_ARGS: [(&str, &str); 3] = [
+    ("RUSTUP_TOOLCHAIN", "nightly"),
+    ("RUSTC_LINKER", "clang"),
+    ("RUSTFLAGS", "-Zshare-generics=y -Clink-arg=-fuse-ld=lld"),
+];
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const RUSTC_ARGS: [(&str, &str); 2] = [
+    ("RUSTUP_TOOLCHAIN", "nightly"),
+    (
+        "RUSTFLAGS",
+        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.ll",
+    ),
+];
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const RUSTC_ARGS: [(&str, &str); 2] = [
+    ("RUSTUP_TOOLCHAIN", "nightly"),
+    (
+        "RUSTFLAGS",
+        "-Zshare-generics=y -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
+    ),
+];
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+const RUSTC_ARGS: [(&str, &str); 2] = [
+    ("RUSTUP_TOOLCHAIN", "nightly"),
+    ("RUSTFLAGS", "-Zshare-generics=y"),
+];
+
+fn set_envs() {
+    for (var, val) in RUSTC_ARGS.iter() {
+        std::env::set_var(var, val);
+    }
+}
+
 pub fn first_exec(
     library: &Option<String>,
     watch: &Option<PathBuf>,
     features: &[String],
 ) -> anyhow::Result<()> {
-    std::env::set_var("RUSTUP_TOOLCHAIN", "nightly");
+    set_envs();
     let mut manifest = std::env::current_dir().context("Couldn't get current directory")?;
     manifest.push("Cargo.toml");
     let mut config = Config::default().context("Couldn't setup initial config")?;
@@ -213,7 +253,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         bail!("Couldn't get settings...");
     };
 
-    std::env::set_var("RUSTUP_TOOLCHAIN", "nightly");
+    set_envs();
     let mut config = Config::default().context("Couldn't setup initial config")?;
     config.nightly_features_allowed = true;
     let ws = cargo::core::Workspace::new(&manifest, &config).context("Couldn't open workspace")?;
