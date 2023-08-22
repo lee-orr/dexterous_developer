@@ -49,9 +49,11 @@ pub fn first_exec(
     watch: &Option<PathBuf>,
     features: &[String],
 ) -> anyhow::Result<()> {
+    std::env::set_var("RUSTUP_TOOLCHAIN", "nightly");
     let mut manifest = std::env::current_dir().context("Couldn't get current directory")?;
     manifest.push("Cargo.toml");
-    let config = Config::default().context("Couldn't setup initial config")?;
+    let mut config = Config::default().context("Couldn't setup initial config")?;
+    config.nightly_features_allowed = true;
 
     let features = features
         .iter()
@@ -211,7 +213,9 @@ fn rebuild_internal() -> anyhow::Result<()> {
         bail!("Couldn't get settings...");
     };
 
-    let config = Config::default().context("Couldn't setup initial config")?;
+    std::env::set_var("RUSTUP_TOOLCHAIN", "nightly");
+    let mut config = Config::default().context("Couldn't setup initial config")?;
+    config.nightly_features_allowed = true;
     let ws = cargo::core::Workspace::new(&manifest, &config).context("Couldn't open workspace")?;
 
     let mut options = CompileOptions::new(&config, CompileMode::Build)

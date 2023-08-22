@@ -45,7 +45,7 @@ struct Cube(Vec3);
 
 impl Default for Cube {
     fn default() -> Self {
-        Self(Vec3::NEG_X * 1.)
+        Self((Vec3::NEG_X + Vec3::Y) * 1.)
     }
 }
 
@@ -63,7 +63,7 @@ struct VelocityMultiplier(Vec3);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0.1, 1., 2.))
+        Self(Vec3::new(0.5, 0.2, 0.2))
     }
 }
 
@@ -82,7 +82,7 @@ fn setup_cube(
     let cube_color = Color::ORANGE;
 
     #[cfg(not(feature = "orange"))]
-    let cube_color = Color::GREEN;
+    let cube_color = Color::PURPLE;
 
     // cube
     commands.spawn((
@@ -95,7 +95,7 @@ fn setup_cube(
         },
     ));
     commands.spawn((
-        Cube(Vec3::Z * 2.),
+        Cube(Vec3::Z * 2. + Vec3::Y),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(cube_color.into()),
