@@ -3,19 +3,20 @@ use bevy::{
     utils::Instant,
 };
 
-use crate::{
-    hot_internal::{
-        hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
-        DeserializeReloadables, ReloadableAppCleanupData, ReloadableAppContents,
-        ReloadableSchedule, ReloadableSetup, SerializeReloadables, SetupReload,
-    },
-    internal_shared::update_lib,
+use crate::internal_shared::update_lib::update_lib;
+
+use super::super::hot_internal::{
+    hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
+    DeserializeReloadables, ReloadableAppCleanupData, ReloadableAppContents, ReloadableSchedule,
+    SerializeReloadables, SetupReload,
 };
+
+use super::super::ReloadableSetup;
 
 pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
     internal.updated_this_frame = false;
 
-    if let Some(lib) = update_lib::update_lib(&internal.libs) {
+    if let Some(lib) = update_lib(&internal.libs) {
         println!("Got Update");
         internal.last_lib = internal.library.clone();
         internal.library = Some(lib);
@@ -99,7 +100,7 @@ fn setup_reloadable_app_inner(
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
     };
 
-    if let Err(e) = lib.call(name, reloadable.as_mut()) {
+    if let Err(_e) = lib.call(name, reloadable.as_mut()) {
         return Err(ReloadableSetupCallError::CallFailed);
     }
 

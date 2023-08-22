@@ -1,5 +1,5 @@
 mod command;
-use std::{collections::HashSet, sync::Once};
+use std::sync::Once;
 
 use command::*;
 
@@ -16,12 +16,12 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     });
 }
 
-pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
+fn run_reloadabe_app_inner(options: HotReloadOptions) {
     let library_paths = LibPathSet::new(&options).unwrap();
 
     let _ = std::fs::remove_file(library_paths.library_path());
 
-    let build_command = create_build_command(&library_paths, &options.features);
+    let _build_command = create_build_command(&library_paths, &options.features);
 
     match first_exec(&options.lib_name, &options.watch_folder, &options.features) {
         Ok(_) => {}
@@ -50,68 +50,3 @@ pub fn run_reloadabe_app_inner(options: HotReloadOptions) {
     }
     println!("Got to the end for some reason...");
 }
-#[cfg(feature = "bevy")]
-mod inner {
-    use crate::ReloadableElementsSetup;
-
-    pub struct ReloadableAppContents;
-
-    impl ReloadableElementsSetup for bevy::app::App {
-        fn setup_reloadable_elements<T: crate::ReloadableSetup>(&mut self) -> &mut Self {
-            self
-        }
-    }
-
-    impl crate::private::ReloadableAppSealed for ReloadableAppContents {}
-
-    impl crate::ReloadableApp for ReloadableAppContents {
-        fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
-            &mut self,
-            _schedule: L,
-            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
-        ) -> &mut Self {
-            todo!()
-        }
-
-        fn insert_replacable_resource<R: crate::ReplacableResource>(&mut self) -> &mut Self {
-            todo!()
-        }
-
-        fn reset_resource<R: bevy::prelude::Resource + Default>(&mut self) -> &mut Self {
-            todo!()
-        }
-
-        fn reset_resource_to_value<R: bevy::prelude::Resource + Clone>(
-            &mut self,
-            _value: R,
-        ) -> &mut Self {
-            todo!()
-        }
-
-        fn register_replacable_component<C: crate::ReplacableComponent>(&mut self) -> &mut Self {
-            todo!()
-        }
-
-        fn clear_marked_on_reload<C: bevy::prelude::Component>(&mut self) -> &mut Self {
-            todo!()
-        }
-
-        fn reset_setup<C: bevy::prelude::Component, M>(
-            &mut self,
-            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
-        ) -> &mut Self {
-            todo!()
-        }
-
-        fn reset_setup_in_state<C: bevy::prelude::Component, S: bevy::prelude::States, M>(
-            &mut self,
-            _state: S,
-            _systems: impl bevy::prelude::IntoSystemConfigs<M>,
-        ) -> &mut Self {
-            todo!()
-        }
-    }
-}
-
-#[cfg(feature = "bevy")]
-pub use inner::ReloadableAppContents;

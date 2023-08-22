@@ -1,9 +1,8 @@
 use bevy::prelude::World;
 
-use crate::{
-    hot_internal::{reload_systems::setup_reloadable_app, SetupReload},
-    ReloadableElementsSetup, ReloadableSetup,
-};
+use super::super::{ReloadableElementsSetup, ReloadableSetup};
+
+use super::{reload_systems::setup_reloadable_app, schedules::SetupReload};
 
 impl ReloadableElementsSetup for bevy::app::App {
     fn setup_reloadable_elements<T: ReloadableSetup>(&mut self) -> &mut Self {

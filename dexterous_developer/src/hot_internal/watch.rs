@@ -1,7 +1,5 @@
 use std::sync::RwLock;
 
-use crate::LibPathSet;
-
 pub struct InitializeWatchClosure(RwLock<Option<fn() -> ()>>);
 
 impl InitializeWatchClosure {
@@ -29,9 +27,3 @@ impl InitializeWatchClosure {
         println!("Initialize Watcher Call Completed");
     }
 }
-
-/// SAFETY: InitializeWatchClosure is only initialized when the hot reload plugin is initialized function, and it is static in relation to internally run app.
-unsafe impl Sync for InitializeWatchClosure {}
-
-/// SAFETY: InitializeWatchClosure is only initialized when the hot reload plugin is initialized function, and it is static in relation to internally run app.
-unsafe impl Send for InitializeWatchClosure {}

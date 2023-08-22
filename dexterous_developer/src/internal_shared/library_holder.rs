@@ -44,7 +44,7 @@ impl LibraryHolderInner {
         self.0.as_ref()
     }
 
-    pub fn call<T>(&self, name: &str, mut args: &mut T) -> anyhow::Result<()> {
+    pub fn call<T>(&self, name: &str, args: &mut T) -> anyhow::Result<()> {
         let Some(lib) = &self.0 else {
             bail!("Library Unavailable")
         };
@@ -57,7 +57,7 @@ impl LibraryHolderInner {
                 lib.get(name.as_bytes())
                     .context(format!("Couldn't load function {name}"))?;
             println!("Got symbol");
-            func(&mut args);
+            func(args);
             println!("Call complete");
         };
         Ok(())

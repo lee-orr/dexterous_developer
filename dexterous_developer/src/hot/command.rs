@@ -1,6 +1,5 @@
 use std::{
     collections::BTreeSet,
-    ffi::OsString,
     path::PathBuf,
     rc::Rc,
     sync::{mpsc, Once, OnceLock},
@@ -8,9 +7,9 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context};
 use cargo::{
-    core::{compiler::CompileKind, resolver::CliFeatures, FeatureValue},
+    core::{compiler::CompileKind, FeatureValue},
     ops::{CompileFilter, CompileOptions, FilterRule, Packages},
     util::command_prelude::CompileMode,
     Config,
@@ -20,7 +19,7 @@ use notify::{RecursiveMode, Watcher};
 
 use crate::internal_shared::lib_path_set::LibPathSet;
 
-pub fn create_build_command(library_paths: &LibPathSet, features: &[String]) -> String {
+pub(crate) fn create_build_command(library_paths: &LibPathSet, features: &[String]) -> String {
     let folder = library_paths.folder.clone();
     let package = library_paths.package.clone();
     let features = features
@@ -84,7 +83,7 @@ fn set_envs() {
     }
 }
 
-pub fn first_exec(
+pub(crate) fn first_exec(
     library: &Option<String>,
     watch: &Option<PathBuf>,
     features: &[String],
@@ -137,7 +136,7 @@ pub fn first_exec(
         bail!("Workspace contains multiple libraries - please set the one you want with the --package option");
     }
 
-    let Some((pkg, lib)) = libs.first() else {
+    let Some((pkg, _lib)) = libs.first() else {
         bail!("Workspace contains no matching libraries");
     };
 
@@ -159,13 +158,19 @@ pub fn first_exec(
         path
     };
 
-    BUILD_SETTINGS.set(BuildSettings {
-        manifest,
-        features: options.cli_features.features.as_ref().clone(),
-        spect: options.spec.clone(),
-        filter: options.filter.clone(),
-        watch_folder,
-    });
+    BUILD_SETTINGS
+        .set(BuildSettings {
+            manifest,
+            features: options.cli_features.features.as_ref().clone(),
+            spect: options.spec.clone(),
+            filter: options.filter.clone(),
+            watch_folder,
+        })
+        .map_err(|_| {
+            anyhow::Error::msg(
+                "Failed to set build settings - likely called first exec multiple times",
+            )
+        })?;
 
     options
         .build_config
@@ -188,7 +193,7 @@ pub fn first_exec(
 
 static WATCHER: Once = Once::new();
 
-pub fn run_watcher() {
+pub(crate) fn run_watcher() {
     WATCHER.call_once(|| {
         if let Err(e) = run_watcher_inner() {
             eprintln!("Couldn't set up watcher - {e:?}");
@@ -207,9 +212,9 @@ fn run_watcher_inner() -> anyhow::Result<()> {
         let (tx, rx) = mpsc::channel();
 
         println!("Spawned watch thread");
-        let debounced = EventDebouncer::new(delay.clone(), move |data: ()| {
+        let debounced = EventDebouncer::new(delay, move |_data: ()| {
             println!("Files Changed");
-            tx.send(());
+            let _ = tx.send(());
         });
         println!("Debouncer set up with delay {delay:?}");
 
@@ -222,13 +227,13 @@ fn run_watcher_inner() -> anyhow::Result<()> {
         };
         println!("Watcher response set up");
 
-        if let Err(e) = watcher.watch(&watch_folder, RecursiveMode::Recursive) {
+        if let Err(e) = watcher.watch(watch_folder, RecursiveMode::Recursive) {
             eprintln!("Error watching files: {e:?}");
             return;
         }
         println!("Watching...");
 
-        while let Ok(_) = rx.recv() {
+        while rx.recv().is_ok() {
             rebuild();
         }
     });
@@ -256,7 +261,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
     set_envs();
     let mut config = Config::default().context("Couldn't setup initial config")?;
     config.nightly_features_allowed = true;
-    let ws = cargo::core::Workspace::new(&manifest, &config).context("Couldn't open workspace")?;
+    let ws = cargo::core::Workspace::new(manifest, &config).context("Couldn't open workspace")?;
 
     let mut options = CompileOptions::new(&config, CompileMode::Build)
         .context("Couldn't create initial options")?;
@@ -270,7 +275,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         .single_requested_kind()
         .context("Couldn't request single compilation")?;
 
-    let compile = cargo::ops::compile(&ws, &options).context("Couldn't compile")?;
+    let _compile = cargo::ops::compile(&ws, &options).context("Couldn't compile")?;
 
     Ok(())
 }
