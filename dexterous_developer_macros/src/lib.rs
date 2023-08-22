@@ -50,18 +50,6 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name: &proc_macro2::Ident = &ast.sig.ident;
 
     let mut stream: Vec<TokenStream> = vec![];
-    #[cfg(feature = "hot")]
-    {
-        stream.push(
-            quote! {
-                #[allow(dead_code)]
-                pub fn #fn_name(options: dexterous_developer::HotReloadOptions) {
-                    dexterous_developer::run_reloadabe_app(options);
-                }
-            }
-            .into(),
-        );
-    }
     #[cfg(feature = "hot_internal")]
     {
         stream.push(quote!{
@@ -74,73 +62,16 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }.into());
     }
-    #[cfg(not(any(feature = "hot", feature = "hot_internal")))]
-    {
-        stream.push(
-            quote! {
-                pub fn #fn_name() {
-                    #ast
+    stream.push(
+        quote! {
+            pub fn #fn_name() {
+                #ast
 
-                    #fn_name(dexterous_developer::InitialPluginsEmpty);
-                }
+                #fn_name(dexterous_developer::InitialPluginsEmpty);
             }
-            .into(),
-        );
-    }
+        }
+        .into(),
+    );
+
     TokenStream::from_iter(stream)
-}
-
-struct Loader {
-    library: ExprPath,
-    options: Expr,
-}
-
-impl Parse for Loader {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let items = Punctuated::<Expr, Token![,]>::parse_separated_nonempty(input).unwrap();
-        let mut items = items.iter();
-        let Some(library) = items.next().and_then(|a| match a {
-            Expr::Path(p) => Some(p.clone()),
-            _ => None,
-        }) else {
-            return Err(syn::Error::new(
-                input.span(),
-                "First item must be the path to your bevy main function",
-            ));
-        };
-        let Some(options) = items.next().cloned() else {
-            return Err(syn::Error::new(
-                input.span(),
-                "Second item must be an expression",
-            ));
-        };
-
-        Ok(Self { library, options })
-    }
-}
-
-#[proc_macro]
-#[allow(clippy::needless_return, unused_variables, unreachable_code)]
-pub fn hot_bevy_loader(args: TokenStream) -> TokenStream {
-    let Loader { library, options } = parse_macro_input!(args as Loader);
-
-    #[cfg(not(any(feature = "hot", feature = "hot_internal")))]
-    {
-        return quote! {
-            #library();
-        }
-        .into();
-    }
-    #[cfg(feature = "hot")]
-    {
-        return quote! {
-            dexterous_developer::run_reloadabe_app(#options);
-        }
-        .into();
-    }
-
-    quote! {
-        println!("This is a loader that shouldn't be called");
-    }
-    .into()
 }

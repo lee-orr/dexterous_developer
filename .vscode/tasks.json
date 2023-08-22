@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "cargo run -p dexterous_developer_example --features dexterous_developer/hot",
+			"command": "cargo run --bin dexterous_developer_cli -- -p dexterous_developer_example",
 			"problemMatcher": [
 				"$rustc"
 			],
