@@ -9,15 +9,12 @@ async fn can_run_cold() {
     loop {
         match process.read_next_line().await {
             Ok(Line::Std(line)) => {
-                println!("> {line}");
                 if line.contains("Running") {
                     break;
                 }
             }
 
             Ok(Line::Err(line)) => {
-                println!("> {line:?}");
-
                 if line.contains("Running") {
                     break;
                 }
@@ -36,6 +33,20 @@ async fn can_run_cold() {
     };
 
     assert!(line.contains("Press Enter to Progress, or type 'exit' to exit"));
+    process.send("\n").expect("Failed to send empty line");
+    let Ok(Line::Std(line)) = process.read_next_line().await else {
+        panic!("Should have gotten a line");
+    };
+
+    assert!(line.contains("Ran Update"));
+
+    process.send("exit\n").expect("Failed to send line");
+
+    let Ok(Line::Std(line)) = process.read_next_line().await else {
+        panic!("Should have gotten a line");
+    };
+
+    assert!(line.contains("Exiting"));
 }
 
 pub async fn run_tests() {

@@ -7,6 +7,7 @@ fn terminal_runner(mut app: App) {
     for line in std::io::stdin().lines() {
         let typed: String = line.unwrap_or_default();
         if typed == "exit" {
+            println!("Exiting");
             return;
         }
         app.update();

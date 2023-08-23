@@ -100,6 +100,7 @@ impl TestProject {
                         val = out_reader.next_line() => {
                             match val {
                                 Ok(Some(v)) => {
+                                    println!("> {v}");
                                     read_tx.send(Line::Std(v));
                                 },
                                 _ => {
@@ -110,6 +111,7 @@ impl TestProject {
                         val = err_reader.next_line() => {
                             match val {
                                 Ok(Some(v)) => {
+                                    println!("!> {v:?}");
                                     read_tx.send(Line::Err(v));
                                 },
                                 _ => {
@@ -118,12 +120,14 @@ impl TestProject {
                             }
                         }
                         val =  child.wait() => {
+                            println!("child ended");
                             read_tx.send(Line::Ended(Arc::new(val)));
                             return;
                         }
                         val = write_rx.recv() => {
                             match val {
                                 Ok(v) => {
+                                    println!("~ {}", v.0);
                                     stdin.write_all(v.0.as_bytes()).await.expect("Couldn't write to std in");
                                 },
                                 Err(_) => {
