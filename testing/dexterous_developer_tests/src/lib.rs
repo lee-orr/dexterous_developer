@@ -1,7 +1,5 @@
 mod utils;
 
-use std::{io::Read, time::Duration};
-
 use crate::utils::*;
 
 async fn can_run_cold() {

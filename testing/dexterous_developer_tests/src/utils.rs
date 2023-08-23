@@ -137,7 +137,7 @@ impl TestProject {
         };
 
         Ok(RunningProcess {
-            handle: handle,
+            handle,
             read: read_rx,
             read_sender: read_tx,
             write: write_tx,

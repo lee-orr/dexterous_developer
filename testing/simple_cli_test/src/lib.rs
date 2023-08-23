@@ -1,12 +1,6 @@
 mod update;
-use bevy::{
-    prelude::{App, Update},
-    MinimalPlugins,
-};
-use dexterous_developer::{
-    dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
-    ReloadableElementsSetup,
-};
+use bevy::{prelude::App, MinimalPlugins};
+use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 
 fn terminal_runner(mut app: App) {
     println!("Press Enter to Progress, or type 'exit' to exit");
