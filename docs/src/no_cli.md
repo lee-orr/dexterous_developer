@@ -24,3 +24,5 @@ fn main() {
 ```
 
 The HotReloadOptions can also contain things like features, a custom library name, the watch folder, and the target folder - but it should infer most of that from the package.
+
+You would then run the game using `cargo run -p NAME_OF_THE_LAUNCHER`.
