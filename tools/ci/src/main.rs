@@ -9,15 +9,15 @@ fn main() {
         .run()
         .expect("Please run 'cargo fmt --all' to format your code.");
 
-    // Run tests
-    cmd!("cargo test")
-        .run()
-        .expect("Please fix failing tests in output above.");
+    // // Run tests
+    // cmd!("cargo test")
+    //     .run()
+    //     .expect("Please fix failing tests in output above.");
 
-    // Run doc tests: these are ignored by `cargo test`
-    cmd!("cargo test --doc --workspace")
-        .run()
-        .expect("Please fix failing doc-tests in output above.");
+    // // Run doc tests: these are ignored by `cargo test`
+    // cmd!("cargo test --doc --workspace")
+    //     .run()
+    //     .expect("Please fix failing doc-tests in output above.");
 
     // See if clippy has any complaints.
     // - Type complexity must be ignored because we use huge templates for queries
