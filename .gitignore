@@ -6,3 +6,5 @@ book
 /target
 
 Cargo.lock
+
+/testing/tmp*

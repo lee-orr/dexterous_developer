@@ -6,5 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dexterous_developer = { path = "../dexterous_developer" }
-bevy = { version = "0.11" }
+dexterous_developer = { path = "../../dexterous_developer" }
+cli-sandbox = "0.10"
+tokio = { version = "1", features = ["full"] }
+
+[[bin]]
+name = "run_tests"
+path = "src/main.rs"

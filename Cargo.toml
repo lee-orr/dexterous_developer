@@ -6,6 +6,6 @@ members = [
     "dexterous_developer_cli",
     "dexterous_developer_example",
     "no_cli_launcher",
-    "dexterous_developer_tests",
+    "testing/*",
     "tools/ci",
 ]
