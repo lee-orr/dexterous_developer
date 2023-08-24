@@ -66,6 +66,7 @@ fn main() {
         features,
         package: Some(package.name.clone()),
         set_env: true,
+        manifest_path: None,
     };
     dexterous_developer::run_reloadabe_app(options);
 }
@@ -74,6 +75,7 @@ fn get_metadata() -> cargo_metadata::Metadata {
     let mut args = std::env::args().skip_while(|val| !val.starts_with("--manifest-path"));
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.no_deps();
     match args.next() {
         Some(ref p) if p == "--manifest-path" => {
             cmd.manifest_path(args.next().unwrap());

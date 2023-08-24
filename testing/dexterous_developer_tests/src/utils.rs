@@ -91,7 +91,7 @@ impl TestProject {
                 .arg("build")
                 .arg("-p")
                 .arg("dexterous_developer_cli")
-                .output()?;
+                .status()?;
         }
 
         Ok(Self {

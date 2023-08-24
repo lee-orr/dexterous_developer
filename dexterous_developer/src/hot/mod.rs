@@ -17,16 +17,12 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
 }
 
 fn run_reloadabe_app_inner(options: HotReloadOptions) {
-    let library_paths = LibPathSet::new(&options).unwrap();
+    let library_paths =
+        setup_build_settings(&options).expect("Couldn't get initial build settings");
 
     let _ = std::fs::remove_file(library_paths.library_path());
 
-    match first_exec(
-        &options.package,
-        &options.lib_name,
-        &options.watch_folder,
-        &options.features,
-    ) {
+    match first_exec() {
         Ok(_) => {}
         Err(err) => {
             eprintln!("Initial Build Failed:");
