@@ -99,7 +99,9 @@ impl LibPathSet {
                 .join(&format!("lib{}", self.name))
                 .with_extension(&self.extension);
         }
-        #[allow(unreachable_code)]
-        return self.folder.join(&self.name).with_extension(&self.extension);
+        #[cfg(not(unix))]
+        {
+            return self.folder.join(&self.name).with_extension(&self.extension);
+        }
     }
 }

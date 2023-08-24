@@ -73,7 +73,7 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: Dependencies
-        run: sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev
+        run: sudo apt-get update && apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev
       - name: CI job
         run: cargo run -p ci
 
