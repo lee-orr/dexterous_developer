@@ -1,6 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
-
-use crate::HotReloadOptions;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct LibPathSet {

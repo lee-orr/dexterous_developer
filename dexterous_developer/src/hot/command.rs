@@ -1,15 +1,14 @@
 use std::{
     collections::BTreeSet,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
-    rc::Rc,
     sync::{mpsc, Once, OnceLock},
     thread,
     time::Duration,
 };
 
-use anyhow::{bail, Context, Error};
-use cargo_metadata::Package;
+use anyhow::{bail, Error};
+
 use debounce::EventDebouncer;
 use notify::{RecursiveMode, Watcher};
 
@@ -73,7 +72,7 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
         watch_folder,
         target_folder,
         features,
-        set_env,
+        set_env: _,
     } = options;
 
     if let Some(l) = manifest_path.as_ref() {
@@ -103,19 +102,16 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
     let features = features
         .iter()
         .cloned()
-        .chain(
-            [
-                "bevy/dynamic_linking".to_string(),
-                "dexterous_developer/hot_internal".to_string(),
-            ]
-            .into_iter(),
-        )
+        .chain([
+            "bevy/dynamic_linking".to_string(),
+            "dexterous_developer/hot_internal".to_string(),
+        ])
         .collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();
     if let Some(manifest) = manifest_path {
-        get_metadata.manifest_path(&manifest);
+        get_metadata.manifest_path(manifest);
     }
     get_metadata.features(cargo_metadata::CargoOpt::SomeFeatures(
         features.iter().cloned().collect(),
@@ -204,7 +200,7 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
         .chain(errout.lines())
         .filter(|v| !v.contains("Compiling ") && !v.contains("Finished "))
         .map(PathBuf::from)
-        .chain([target_path.clone(), target_deps_path].into_iter())
+        .chain([target_path.clone(), target_deps_path])
         .collect::<BTreeSet<_>>();
 
     println!("Paths found {paths:?}");
