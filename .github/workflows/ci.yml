@@ -26,6 +26,10 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
+      - name: Add Binutils
+        run: /
+          cargo install -f cargo-binutils
+          rustup component add llvm-tools-preview
       - name: CI job
         run: cargo run -p ci
       - name: Ensure docs compile
@@ -46,6 +50,8 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install LLVM
+        run: brew install llvm
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
