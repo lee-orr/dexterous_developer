@@ -96,7 +96,7 @@ impl LibPathSet {
         {
             return self
                 .folder
-                .join(&format!("lib{}", self.name))
+                .join(format!("lib{}", self.name))
                 .with_extension(&self.extension);
         }
         #[cfg(not(unix))]
