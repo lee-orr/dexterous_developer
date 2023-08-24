@@ -4,7 +4,7 @@ use std::{
     error::Error,
     path::{Path, PathBuf},
     process::ExitStatus,
-    sync::Arc,
+    sync::{Arc, OnceLock},
     time::Duration,
 };
 
@@ -25,7 +25,38 @@ use anyhow::{bail, Context, Result};
 pub struct TestProject {
     path: PathBuf,
     name: String,
-    cli_path: PathBuf,
+}
+
+static CLI_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
+
+fn rebuild_cli() -> &'static anyhow::Result<PathBuf> {
+    CLI_PATH.get_or_init(|| {
+        let mut cwd = std::env::current_dir()?;
+        cwd.pop();
+
+        let mut root = cwd.clone();
+        root.pop();
+
+        let mut cli_path = root.clone();
+
+        cli_path.push("target");
+        cli_path.push("debug");
+        cli_path.push("dexterous_developer_cli");
+
+        #[cfg(target_os = "windows")]
+        {
+            cli_path.set_extension("exe");
+        }
+
+        println!("Building Cli at {cli_path:?} from {root:?}");
+        std::process::Command::new("cargo")
+            .current_dir(root.as_path())
+            .arg("build")
+            .arg("-p")
+            .arg("dexterous_developer_cli")
+            .status()?;
+        Ok(cli_path)
+    })
 }
 
 impl TestProject {
@@ -68,37 +99,7 @@ impl TestProject {
         let cargo = main.replace(template, &name);
         std::fs::write(main_path.as_path(), cargo);
 
-        let mut root = cwd.clone();
-        root.pop();
-
-        let mut cli_path = root.clone();
-
-        cli_path.push("target");
-        cli_path.push("debug");
-        cli_path.push("dexterous_developer_cli");
-
-        #[cfg(target_os = "windows")]
-        {
-            cli_path.set_extension("exe");
-        }
-
-        // if cli_path.exists() {
-        //     println!("Cli at {cli_path:?}");
-        // } else {
-        //     println!("Building Cli at {cli_path:?} from {root:?}");
-        //     std::process::Command::new("cargo")
-        //         .current_dir(root.as_path())
-        //         .arg("build")
-        //         .arg("-p")
-        //         .arg("dexterous_developer_cli")
-        //         .status()?;
-        // }
-
-        Ok(Self {
-            path,
-            name,
-            cli_path,
-        })
+        Ok(Self { path, name })
     }
 
     pub fn write_file(&self, path: &Path, content: &str) -> anyhow::Result<()> {
@@ -127,14 +128,12 @@ impl TestProject {
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
         let mut wd = self.path.clone();
 
-        let mut cmd: Command = Command::new("cargo");
-        cmd.current_dir(&wd)
-            .arg("run")
-            .arg("-p")
-            .arg("dexterous_developer_cli")
-            .arg("--")
-            .arg("-p")
-            .arg(&self.name);
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd).arg("-p").arg(&self.name);
         self.run(cmd, true).await
     }
 
