@@ -1,5 +1,7 @@
 mod utils;
 
+use std::path::PathBuf;
+
 use crate::utils::*;
 
 async fn can_run_cold() {
@@ -62,6 +64,17 @@ async fn can_run_hot_and_edit() {
 
     process.wait_for_lines(&["Ran Update"]).await;
 
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./updated_file.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.wait_for_lines(&["Got some new text!"]).await;
+
     process.send("exit\n").expect("Failed to send line");
 
     process.exiting().await;
@@ -72,6 +85,8 @@ pub async fn run_tests() {
     can_run_cold().await;
     println!("Can run hot cli");
     can_run_hot().await;
+    println!("Can edit with hot reload");
+    can_run_hot_and_edit().await;
 }
 
 #[cfg(test)]

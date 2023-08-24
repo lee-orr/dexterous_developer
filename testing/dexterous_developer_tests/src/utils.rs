@@ -101,6 +101,15 @@ impl TestProject {
         })
     }
 
+    pub fn write_file(&self, path: &Path, content: &str) -> anyhow::Result<()> {
+        let mut file_path = self.path.clone();
+        file_path.push(path);
+        println!("Writing to {path:?}");
+        std::fs::write(file_path.as_path(), content)?;
+        println!("Written");
+        Ok(())
+    }
+
     pub async fn run_cold(&mut self) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
@@ -292,10 +301,28 @@ impl RunningProcess {
         }
     }
 
-    pub async fn is_ready_with_timeout(&mut self) {
-        timeout(Duration::from_secs_f32(120.), self.is_ready())
-            .await
-            .expect("Not Ready On Time");
+    pub async fn has_updated(&mut self) {
+        if self.is_hot {
+            self.send("\n").expect("Failed to send empty line");
+            loop {
+                match self.read_next_line().await.expect("No Next Line") {
+                    Line::Std(_) => {}
+
+                    Line::Err(line) => {
+                        if line.contains("Finished dev") {
+                            break;
+                        }
+                    }
+
+                    Line::Ended(v) => {
+                        panic!("Ended - {v:?}");
+                    }
+                };
+            }
+            self.send("\n").expect("Failed to send empty line");
+        } else {
+            panic!("Not a hot reloadable attempt")
+        }
     }
 
     pub async fn next_line_contains_with_error(
