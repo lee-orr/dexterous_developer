@@ -21,9 +21,12 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
 
     let _ = std::fs::remove_file(library_paths.library_path());
 
-    let _build_command = create_build_command(&library_paths, &options.features);
-
-    match first_exec(&options.lib_name, &options.watch_folder, &options.features) {
+    match first_exec(
+        &options.package,
+        &options.lib_name,
+        &options.watch_folder,
+        &options.features,
+    ) {
         Ok(_) => {}
         Err(err) => {
             eprintln!("Initial Build Failed:");

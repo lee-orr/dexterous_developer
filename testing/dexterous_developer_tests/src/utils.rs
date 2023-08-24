@@ -117,6 +117,13 @@ impl TestProject {
         self.run(cmd, false).await
     }
 
+    pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
+        let wd = self.path.as_path();
+        let mut cmd = Command::new("cargo");
+        cmd.current_dir(wd).arg("run");
+        self.run(cmd, true).await
+    }
+
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
         let mut wd = self.path.clone();
 
@@ -244,25 +251,8 @@ impl RunningProcess {
     }
 
     pub async fn is_ready(&mut self) {
+        println!("Checking Readiness");
         if self.is_hot {
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(line) => {
-                        if line.contains("Running with ") {
-                            break;
-                        }
-                    }
-
-                    Line::Err(line) => {
-                        panic!("Error occured {line:?}");
-                    }
-
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
-            }
-
             loop {
                 match self.read_next_line().await.expect("No Next Line") {
                     Line::Std(line) => {
@@ -299,9 +289,11 @@ impl RunningProcess {
                 };
             }
         }
+        println!("Ready");
     }
 
     pub async fn has_updated(&mut self) {
+        println!("Awaiting hot reload");
         if self.is_hot {
             self.send("\n").expect("Failed to send empty line");
             loop {
@@ -323,6 +315,7 @@ impl RunningProcess {
         } else {
             panic!("Not a hot reloadable attempt")
         }
+        println!("Successfully hot reloaded");
     }
 
     pub async fn next_line_contains_with_error(

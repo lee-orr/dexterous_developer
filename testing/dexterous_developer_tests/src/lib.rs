@@ -80,13 +80,49 @@ async fn can_run_hot_and_edit() {
     process.exiting().await;
 }
 
+async fn can_run_hot_and_edit_with_launcher() {
+    let lib_project = TestProject::new("simple_cli_test", "lib_no_cli").unwrap();
+    let mut project = TestProject::new("no_cli_test_launcher", "no_cli").unwrap();
+    let mut process = project.run_hot_launcher("lib_no_cli").await.unwrap();
+
+    process.is_ready().await;
+
+    process
+        .wait_for_lines(&[
+            "Press Enter to Progress, or type 'exit' to exit",
+            "Ran Update",
+        ])
+        .await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    lib_project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./updated_file.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.wait_for_lines(&["Got some new text!"]).await;
+
+    process.send("exit\n").expect("Failed to send line");
+
+    process.exiting().await;
+}
+
 pub async fn run_tests() {
     println!("Can run cold");
     can_run_cold().await;
     println!("Can run hot cli");
     can_run_hot().await;
-    println!("Can edit with hot reload");
+    println!("Can edit with hot reload cli");
     can_run_hot_and_edit().await;
+    println!("Can edit with hot reload launcher");
+    can_run_hot_and_edit_with_launcher().await;
 }
 
 #[cfg(test)]
@@ -98,5 +134,9 @@ mod test {
     #[tokio::test]
     async fn can_run_hot() {
         super::can_run_hot().await;
+    }
+    #[tokio::test]
+    async fn can_run_hot_and_edit_with_launcher() {
+        super::can_run_hot_and_edit_with_launcher().await;
     }
 }

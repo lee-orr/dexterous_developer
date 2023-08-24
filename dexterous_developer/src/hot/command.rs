@@ -17,22 +17,6 @@ use cargo::{
 use debounce::EventDebouncer;
 use notify::{RecursiveMode, Watcher};
 
-use crate::internal_shared::lib_path_set::LibPathSet;
-
-pub(crate) fn create_build_command(library_paths: &LibPathSet, features: &[String]) -> String {
-    let folder = library_paths.folder.clone();
-    let package = library_paths.package.clone();
-    let features = features
-        .iter()
-        .map(|v| format!("--features {v}"))
-        .collect::<Vec<String>>()
-        .join(" ");
-    format!(
-        "build -p {package} --lib --target-dir {} --features bevy/dynamic_linking --features dexterous_developer/hot_internal {features}",
-        folder.parent().unwrap().to_string_lossy(),
-    )
-}
-
 struct BuildSettings {
     watch_folder: PathBuf,
     manifest: PathBuf,
@@ -84,11 +68,20 @@ fn set_envs() {
 }
 
 pub(crate) fn first_exec(
+    package: &Option<String>,
     library: &Option<String>,
     watch: &Option<PathBuf>,
     features: &[String],
 ) -> anyhow::Result<()> {
+    if let Some(p) = package.as_ref() {
+        println!("Looking for package {p}");
+    }
+    if let Some(l) = library.as_ref() {
+        println!("Looking for library {l}");
+    }
+
     set_envs();
+
     let mut manifest = std::env::current_dir().context("Couldn't get current directory")?;
     manifest.push("Cargo.toml");
     let mut config = Config::default().context("Couldn't setup initial config")?;
@@ -116,6 +109,13 @@ pub(crate) fn first_exec(
     let packages = ws.members();
 
     let libs = packages.filter_map(|pkg| {
+        if let Some(package) = package.as_ref() {
+            let pkg = pkg.name();
+            println!("Checking package name: {package} - {pkg}");
+            if pkg != package.as_str() {
+                return None;
+            }
+        }
         pkg.targets()
             .iter()
             .find(|p| {
