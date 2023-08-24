@@ -5,8 +5,7 @@ mod reloadable_app_setup;
 mod replacable_types;
 mod schedules;
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::path::Path;
 
 use bevy::ecs::prelude::*;
 
@@ -21,8 +20,6 @@ use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 
-pub use crate::hot_internal::watch::*;
-
 pub use reloadable_app_setup::*;
 
 use reload_systems::{cleanup, reload, update_lib_system};
@@ -30,12 +27,12 @@ pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
-pub struct HotReloadPlugin(LibPathSet, Arc<InitializeWatchClosure>);
+pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 
 impl HotReloadPlugin {
-    pub fn new(libs: LibPathSet, closure: fn() -> ()) -> Self {
+    pub fn new(libs: &Path, closure: fn() -> ()) -> Self {
         println!("Building Hot Reload Plugin");
-        Self(libs, Arc::new(InitializeWatchClosure::new(closure)))
+        Self(LibPathSet::new(libs), closure)
     }
 }
 
@@ -51,30 +48,48 @@ impl Plugin for HotReloadPlugin {
         let deserialize_schedule = Schedule::new();
         let reload_complete = Schedule::new();
 
+        println!("Schedules ready");
+
+        let lib_path = self.0.library_path();
+
+        println!("Got lib path");
+
+        let hot_reload = InternalHotReload {
+            library: None,
+            last_lib: None,
+            updated_this_frame: true,
+            last_update_time: Instant::now(),
+            libs: LibPathSet::new(lib_path),
+        };
+
+        println!("Set up internal hot reload resources");
+
         let watcher = {
-            let watch = self.1.clone();
+            let watch = self.1;
             move || {
-                watch.run();
+                println!("Setting up watcher");
+                watch();
             }
         };
+
+        println!("Watcher set up triggered");
 
         app.add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
             .add_schedule(SerializeReloadables, serialize_schedule)
             .add_schedule(DeserializeReloadables, deserialize_schedule)
-            .add_schedule(OnReloadComplete, reload_complete)
-            .init_resource::<ReloadableAppContents>()
+            .add_schedule(OnReloadComplete, reload_complete);
+
+        println!("scheduled attached");
+
+        app.init_resource::<ReloadableAppContents>()
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
-            .insert_resource(InternalHotReload {
-                library: None,
-                last_lib: None,
-                updated_this_frame: true,
-                last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
-                libs: self.0.clone(),
-            })
-            .add_systems(PreStartup, (reload, watcher))
+            .insert_resource(hot_reload);
+        println!("Added resources to app");
+
+        app.add_systems(PreStartup, (reload, watcher))
             .add_systems(CleanupReloaded, cleanup)
             .add_systems(First, (update_lib_system, reload).chain());
         println!("Finished build");

@@ -115,14 +115,14 @@ async fn can_run_hot_and_edit_with_launcher() {
 }
 
 pub async fn run_tests() {
-    //     println!("Can run cold");
-    //     can_run_cold().await;
+    println!("Can run cold");
+    can_run_cold().await;
     println!("Can run hot cli");
     can_run_hot().await;
-    // println!("Can edit with hot reload cli");
-    // can_run_hot_and_edit().await;
-    // println!("Can edit with hot reload launcher");
-    // can_run_hot_and_edit_with_launcher().await;
+    println!("Can edit with hot reload cli");
+    can_run_hot_and_edit().await;
+    println!("Can edit with hot reload launcher");
+    can_run_hot_and_edit_with_launcher().await;
 }
 
 #[cfg(test)]

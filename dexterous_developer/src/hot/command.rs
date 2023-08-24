@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Error};
+use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
 use notify::{RecursiveMode, Watcher};
@@ -41,7 +41,7 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     (
         "RUSTFLAGS",
-        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.ll",
+        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
     ),
 ];
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -58,10 +58,21 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTFLAGS", "-Zshare-generics=y"),
 ];
 
-fn set_envs() {
+fn set_envs() -> anyhow::Result<()> {
     for (var, val) in RUSTC_ARGS.iter() {
+        if (var == &"RUSTC_LINKER") && which::which(val).is_err() {
+            bail!("Linker {val} is not installed");
+        } else if val.contains("-Clink-arg=-fuse-ld=") {
+            let mut split = val.split("-Clink-arg=-fuse-ld=");
+            let _ = split.next();
+            let after = split
+                .next()
+                .ok_or(Error::msg("No value for Clink-arg=-fuse-ld="))?;
+            which::which(after).context("Can't find lld")?;
+        }
         std::env::set_var(var, val);
     }
+    Ok(())
 }
 
 pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result<LibPathSet> {
@@ -97,7 +108,7 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
 
     println!("Compiling with features: {}", features.join(", "));
 
-    set_envs();
+    set_envs()?;
 
     let features = features
         .iter()
@@ -207,12 +218,11 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
 
     let lib_file_name = paths
         .iter()
-        .filter(|p| {
+        .find(|p| {
             p.extension()
                 .filter(|p| p.to_string_lossy() != "rlib")
                 .is_some()
         })
-        .next()
         .cloned()
         .ok_or(anyhow::Error::msg("No file name for lib"))?;
 
@@ -270,7 +280,9 @@ pub(crate) fn first_exec() -> anyhow::Result<()> {
 static WATCHER: Once = Once::new();
 
 pub(crate) fn run_watcher() {
+    println!("run watcher called");
     WATCHER.call_once(|| {
+        println!("Setting up watcher");
         if let Err(e) = run_watcher_inner() {
             eprintln!("Couldn't set up watcher - {e:?}");
         };
@@ -334,7 +346,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         bail!("Couldn't get settings...");
     };
 
-    set_envs();
+    set_envs()?;
 
     if let Some(target) = target_folder {
         std::env::set_var("CARGO_BUILD_TARGET_DIR", target.as_os_str());

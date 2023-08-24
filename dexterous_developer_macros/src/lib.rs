@@ -65,7 +65,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
         stream.push(quote!{
 
                 #[no_mangle]
-                pub fn dexterous_developer_internal_main(library_paths: dexterous_developer::internal_shared::LibPathSet, closure: fn() -> ()) {
+                pub fn dexterous_developer_internal_main(library_paths: &std::path::Path, closure: fn() -> ()) {
                     #ast
                     println!("Passing In Values");
                     #fn_name(dexterous_developer::bevy_support::HotReloadPlugin::new(library_paths, closure));

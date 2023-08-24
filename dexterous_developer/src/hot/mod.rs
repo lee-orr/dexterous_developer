@@ -1,12 +1,9 @@
 mod command;
-use std::sync::Once;
+use std::{path::Path, sync::Once};
 
 use command::*;
 
-use crate::{
-    internal_shared::{lib_path_set::LibPathSet, update_lib::get_initial_library},
-    HotReloadOptions,
-};
+use crate::{internal_shared::update_lib::get_initial_library, HotReloadOptions};
 
 static RUNNER: Once = Once::new();
 
@@ -38,11 +35,11 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(LibPathSet, fn() -> ())> = lib
+            let func: libloading::Symbol<unsafe extern "C" fn(&Path, fn() -> ())> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
 
-            func(library_paths.clone(), run_watcher);
+            func(library_paths.library_path().as_path(), run_watcher);
         };
     } else {
         eprint!("Library still somehow missing");
