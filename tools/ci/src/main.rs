@@ -18,7 +18,7 @@ fn main() {
     cwd.push("dexterous_developer_tests");
     std::env::set_current_dir(cwd).expect("Couldn't set current directory");
 
-    cmd!("cargo test -p dexterous_developer_tests")
+    cmd!("cargo test -p dexterous_developer_tests --lib")
         .run()
         .expect("Expect cargo test to work");
 }
