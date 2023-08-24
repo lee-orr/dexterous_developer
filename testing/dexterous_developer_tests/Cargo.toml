@@ -9,6 +9,7 @@ edition = "2021"
 dexterous_developer = { path = "../../dexterous_developer" }
 cli-sandbox = "0.10"
 tokio = { version = "1", features = ["full"] }
+anyhow = "1"
 
 [[bin]]
 name = "run_tests"

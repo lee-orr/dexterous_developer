@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
     process::ExitStatus,
     sync::Arc,
+    time::Duration,
 };
 
 use std::process::Stdio;
@@ -16,15 +17,19 @@ use tokio::{
         error::{RecvError, SendError},
     },
     task::JoinHandle,
+    time::timeout,
 };
+
+use anyhow::{bail, Context, Result};
 
 pub struct TestProject {
     path: PathBuf,
     name: String,
+    cli_path: PathBuf,
 }
 
 impl TestProject {
-    pub fn new(template: &'static str, test: &'static str) -> Result<Self, Box<dyn Error>> {
+    pub fn new(template: &'static str, test: &'static str) -> anyhow::Result<Self> {
         let mut cwd = std::env::current_dir()?;
         cwd.pop();
 
@@ -63,17 +68,55 @@ impl TestProject {
         let cargo = main.replace(template, &name);
         std::fs::write(main_path.as_path(), cargo);
 
-        Ok(Self { path, name })
+        let mut root = cwd.clone();
+        root.pop();
+
+        let mut cli_path = root.clone();
+
+        cli_path.push("target");
+        cli_path.push("debug");
+        cli_path.push("dexterous_developer_cli");
+
+        #[cfg(target_os = "windows")]
+        {
+            cli_path.set_extension("exe");
+        }
+
+        if cli_path.exists() {
+            println!("Cli at {cli_path:?}");
+        } else {
+            println!("Building Cli at {cli_path:?} from {root:?}");
+            std::process::Command::new("cargo")
+                .current_dir(root.as_path())
+                .arg("build")
+                .arg("-p")
+                .arg("dexterous_developer_cli")
+                .output()?;
+        }
+
+        Ok(Self {
+            path,
+            name,
+            cli_path,
+        })
     }
 
-    pub async fn run_cold(&mut self) -> Result<RunningProcess, Box<dyn Error>> {
+    pub async fn run_cold(&mut self) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
         cmd.current_dir(wd).arg("run");
-        self.run(cmd).await
+        self.run(cmd, false).await
     }
 
-    async fn run(&mut self, mut cmd: Command) -> Result<RunningProcess, Box<dyn Error>> {
+    pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
+        let mut wd = self.path.clone();
+
+        let mut cmd: Command = Command::new(self.cli_path.as_os_str());
+        cmd.current_dir(&wd).arg("-p").arg(&self.name);
+        self.run(cmd, true).await
+    }
+
+    async fn run(&mut self, mut cmd: Command, is_hot: bool) -> anyhow::Result<RunningProcess> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -85,9 +128,9 @@ impl TestProject {
 
         let handle = {
             let mut child = cmd.spawn()?;
-            let out = child.stdout.take().ok_or("Couldn't get std out")?;
-            let mut stdin = child.stdin.take().ok_or("Couldn't get std in")?;
-            let childerr = child.stderr.take().ok_or("Couldn't get std err")?;
+            let out = child.stdout.take().context("Couldn't get std out")?;
+            let mut stdin = child.stdin.take().context("Couldn't get std in")?;
+            let childerr = child.stderr.take().context("Couldn't get std err")?;
 
             let read_tx = read_tx.clone();
             let mut out_reader = BufReader::new(out).lines();
@@ -145,6 +188,7 @@ impl TestProject {
             read: read_rx,
             read_sender: read_tx,
             write: write_tx,
+            is_hot,
         })
     }
 }
@@ -170,6 +214,7 @@ pub struct RunningProcess {
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
     write: broadcast::Sender<LineIn>,
+    is_hot: bool,
 }
 
 impl RunningProcess {
@@ -179,5 +224,118 @@ impl RunningProcess {
 
     pub async fn read_next_line(&mut self) -> Result<Line, RecvError> {
         self.read.recv().await
+    }
+
+    pub async fn is_ready(&mut self) {
+        if self.is_hot {
+            loop {
+                match self.read_next_line().await.expect("No Next Line") {
+                    Line::Std(line) => {
+                        if line.contains("Running with ") {
+                            break;
+                        }
+                    }
+
+                    Line::Err(line) => {
+                        panic!("Error occured {line:?}");
+                    }
+
+                    Line::Ended(v) => {
+                        panic!("Ended - {v:?}");
+                    }
+                };
+            }
+
+            loop {
+                match self.read_next_line().await.expect("No Next Line") {
+                    Line::Std(line) => {
+                        if line.contains("reload complete") {
+                            break;
+                        }
+                    }
+
+                    Line::Err(_) => {}
+
+                    Line::Ended(v) => {
+                        panic!("Ended - {v:?}");
+                    }
+                };
+            }
+        } else {
+            loop {
+                match self.read_next_line().await.expect("no Next Line") {
+                    Line::Std(line) => {
+                        if line.contains("Running") {
+                            break;
+                        }
+                    }
+
+                    Line::Err(line) => {
+                        if line.contains("Running") {
+                            break;
+                        }
+                    }
+
+                    Line::Ended(v) => {
+                        panic!("Ended - {v:?}");
+                    }
+                };
+            }
+        }
+    }
+
+    pub async fn is_ready_with_timeout(&mut self) {
+        timeout(Duration::from_secs_f32(120.), self.is_ready())
+            .await
+            .expect("Not Ready On Time");
+    }
+
+    pub async fn next_line_contains_with_error(
+        &mut self,
+        value: impl ToString,
+        error: impl ToString,
+    ) {
+        let Ok(Line::Std(line)) = self.read_next_line().await else {
+            panic!("Should have gotten a line");
+        };
+
+        let value = value.to_string();
+
+        if !line.contains(&value) {
+            let error = error.to_string();
+            panic!("Line {line} does not contain {value}\n{error}")
+        }
+    }
+
+    pub async fn next_line_contains(&mut self, value: impl ToString) {
+        self.next_line_contains("Exiting");
+    }
+
+    pub async fn exiting(&mut self) {
+        self.next_line_contains("Exiting");
+    }
+
+    pub async fn wait_for_lines(&mut self, value: &[&str]) {
+        let mut iterator = value.iter();
+        let mut current = iterator.next();
+        while let Some(c) = current {
+            match self.read_next_line().await.expect("No Next Line") {
+                Line::Std(line) => {
+                    if line.contains(c) {
+                        println!("Got line {line} matching {c}");
+                        current = iterator.next();
+                    }
+                }
+
+                Line::Err(line) => {
+                    continue;
+                }
+
+                Line::Ended(v) => {
+                    panic!("Ended While Waiting For Line - {v:?}");
+                }
+            };
+        }
+        println!("Wait Complete");
     }
 }

@@ -3,7 +3,7 @@ use bevy::{prelude::App, MinimalPlugins};
 use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 
 fn terminal_runner(mut app: App) {
-    println!("Press Enter to Progress, or type 'exit' to exit");
+    app.update();
     for line in std::io::stdin().lines() {
         let typed: String = line.unwrap_or_default();
         if typed == "exit" {
