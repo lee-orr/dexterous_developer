@@ -27,12 +27,55 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: CI job
-        # See tools/ci/src/main.rs for the commands this runs
         run: cargo run -p ci
       - name: Ensure docs compile
         run: cargo doc --no-deps -p dexterous_developer
         env:
           RUSTDOCFLAGS: -Dwarnings
+
+  tests-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - name: CI job
+        run: cargo run -p ci
+
+  tests-ubuntu:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - name: Dependencies
+        run: apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev
+      - name: CI job
+        run: cargo run -p ci
 
   mdbook:
     runs-on: ubuntu-20.04
