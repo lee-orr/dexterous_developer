@@ -82,17 +82,17 @@ impl TestProject {
             cli_path.set_extension("exe");
         }
 
-        if cli_path.exists() {
-            println!("Cli at {cli_path:?}");
-        } else {
-            println!("Building Cli at {cli_path:?} from {root:?}");
-            std::process::Command::new("cargo")
-                .current_dir(root.as_path())
-                .arg("build")
-                .arg("-p")
-                .arg("dexterous_developer_cli")
-                .status()?;
-        }
+        // if cli_path.exists() {
+        //     println!("Cli at {cli_path:?}");
+        // } else {
+        //     println!("Building Cli at {cli_path:?} from {root:?}");
+        //     std::process::Command::new("cargo")
+        //         .current_dir(root.as_path())
+        //         .arg("build")
+        //         .arg("-p")
+        //         .arg("dexterous_developer_cli")
+        //         .status()?;
+        // }
 
         Ok(Self {
             path,
@@ -127,8 +127,14 @@ impl TestProject {
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
         let mut wd = self.path.clone();
 
-        let mut cmd: Command = Command::new(self.cli_path.as_os_str());
-        cmd.current_dir(&wd).arg("-p").arg(&self.name);
+        let mut cmd: Command = Command::new("cargo");
+        cmd.current_dir(&wd)
+            .arg("run")
+            .arg("-p")
+            .arg("dexterous_developer_cli")
+            .arg("--")
+            .arg("-p")
+            .arg(&self.name);
         self.run(cmd, true).await
     }
 
