@@ -1,7 +1,6 @@
 #![allow(unused)]
 
 use std::{
-    error::Error,
     path::{Path, PathBuf},
     process::ExitStatus,
     sync::{Arc, OnceLock},
@@ -20,7 +19,7 @@ use tokio::{
     time::timeout,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context, Error, Result};
 
 pub struct TestProject {
     path: PathBuf,
@@ -65,6 +64,7 @@ impl TestProject {
         cwd.pop();
 
         let mut template_path = cwd.clone();
+        template_path.push("templates");
         template_path.push(template);
 
         if !template_path.exists() {
@@ -73,6 +73,12 @@ impl TestProject {
 
         let name = format!("tmp_{test}");
         let mut path = cwd.clone();
+        path.push("tmp");
+
+        if !path.exists() {
+            std::fs::create_dir(path.as_path());
+        }
+
         path.push(&name);
 
         if path.exists() {
@@ -95,9 +101,11 @@ impl TestProject {
 
         let mut main_path = path.clone();
         main_path.push("src/main.rs");
-        let main = std::fs::read_to_string(main_path.as_path())?;
-        let cargo = main.replace(template, &name);
-        std::fs::write(main_path.as_path(), cargo);
+        if main_path.exists() {
+            let main = std::fs::read_to_string(main_path.as_path())?;
+            let cargo = main.replace(template, &name);
+            std::fs::write(main_path.as_path(), cargo);
+        }
 
         Ok(Self { path, name })
     }
@@ -121,7 +129,7 @@ impl TestProject {
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd).arg("run");
+        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
         self.run(cmd, true).await
     }
 
@@ -148,6 +156,7 @@ impl TestProject {
         let (write_tx, write_rx) = broadcast::channel::<LineIn>(5);
 
         let handle = {
+            let name = self.name.clone();
             let mut child = cmd.spawn()?;
             let out = child.stdout.take().context("Couldn't get std out")?;
             let mut stdin = child.stdin.take().context("Couldn't get std in")?;
@@ -164,34 +173,48 @@ impl TestProject {
                         val = out_reader.next_line() => {
                             match val {
                                 Ok(Some(v)) => {
-                                    println!("> {v}");
+                                    println!("{name} > {v}");
                                     read_tx.send(Line::Std(v));
                                 },
-                                _ => {
+                                Ok(None) => {
+                                    println!("{name} __ GOT EMPTY READ __");
+                                    read_tx.send(Line::Ended(Arc::new(Err(anyhow::Error::msg("Got Empty STD Read")))));
                                     return;
                                 },
+                                Err(e) => {
+                                    println!("{name} > Got Error in Reader");
+                                    read_tx.send(Line::Ended(Arc::new(Err(anyhow::Error::msg("Got Error in Reader")))));
+                                    return;
+                                }
                             }
                         }
                         val = err_reader.next_line() => {
                             match val {
                                 Ok(Some(v)) => {
-                                    println!("!> {v:?}");
+                                    println!("{name} !> {v:?}");
                                     read_tx.send(Line::Err(v));
                                 },
-                                _ => {
+                                Ok(None) => {
+                                    println!("{name} __ GOT EMPTY STD ERR READ __");
+                                    read_tx.send(Line::Ended(Arc::new(Err(anyhow::Error::msg("Got Empty STD ERR Read")))));
                                     return;
                                 },
+                                Err(e) => {
+                                    println!("{name} !> Got Error in Err Reader");
+                                    read_tx.send(Line::Ended(Arc::new(Err(anyhow::Error::msg("Got Error in Err Reader")))));
+                                    return;
+                                }
                             }
                         }
                         val =  child.wait() => {
-                            println!("child ended");
-                            read_tx.send(Line::Ended(Arc::new(val)));
+                            println!("{name} ended");
+                            read_tx.send(Line::Ended(Arc::new(val.context("Ended Process"))));
                             return;
                         }
                         val = write_rx.recv() => {
                             match val {
                                 Ok(v) => {
-                                    println!("~ {}", v.0);
+                                    println!("{name} ~ {}", v.0);
                                     stdin.write_all(v.0.as_bytes()).await.expect("Couldn't write to std in");
                                 },
                                 Err(_) => {
@@ -232,7 +255,7 @@ impl Drop for TestProject {
 pub enum Line {
     Std(String),
     Err(String),
-    Ended(Arc<std::io::Result<ExitStatus>>),
+    Ended(Arc<anyhow::Result<ExitStatus>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

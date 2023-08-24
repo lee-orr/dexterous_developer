@@ -8,3 +8,4 @@ book
 Cargo.lock
 
 /testing/tmp*
+**/target

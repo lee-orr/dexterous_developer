@@ -11,4 +11,6 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = { version = "0.11", default_features = false }
-dexterous_developer = { path = "../../dexterous_developer" }
+dexterous_developer = { path = "../../../dexterous_developer" }
+
+[workspace]

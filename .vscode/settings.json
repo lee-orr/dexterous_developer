@@ -1,5 +1,8 @@
 {
     "testExplorer.addToEditorContextMenu": true,
     "testExplorer.useNativeTesting": false,
-    "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml"
+    "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml",
+    "rust-analyzer.linkedProjects": [
+        "./testing/dexterous_developer_tests/Cargo.toml"
+    ]
 }

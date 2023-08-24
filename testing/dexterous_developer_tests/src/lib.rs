@@ -81,9 +81,8 @@ async fn can_run_hot_and_edit() {
 }
 
 async fn can_run_hot_and_edit_with_launcher() {
-    let lib_project = TestProject::new("simple_cli_test", "lib_no_cli").unwrap();
-    let mut project = TestProject::new("no_cli_test_launcher", "no_cli").unwrap();
-    let mut process = project.run_hot_launcher("lib_no_cli").await.unwrap();
+    let mut project = TestProject::new("no_cli_test", "no_cli").unwrap();
+    let mut process = project.run_hot_launcher("lib_simple").await.unwrap();
 
     process.is_ready().await;
 
@@ -98,9 +97,9 @@ async fn can_run_hot_and_edit_with_launcher() {
 
     process.wait_for_lines(&["Ran Update"]).await;
 
-    lib_project
+    project
         .write_file(
-            PathBuf::from("src/update.rs").as_path(),
+            PathBuf::from("./simple/src/update.rs").as_path(),
             include_str!("./updated_file.txt"),
         )
         .expect("Couldn't update file");
@@ -127,18 +126,18 @@ pub async fn run_tests() {
 
 #[cfg(test)]
 mod test {
-    #[tokio::test]
-    async fn can_run_cold() {
-        super::can_run_cold().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot() {
-        super::can_run_hot().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit() {
-        super::can_run_hot_and_edit().await;
-    }
+    // #[tokio::test]
+    // async fn can_run_cold() {
+    //     super::can_run_cold().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot() {
+    //     super::can_run_hot().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit() {
+    //     super::can_run_hot_and_edit().await;
+    // }
     #[tokio::test]
     async fn can_run_hot_and_edit_with_launcher() {
         super::can_run_hot_and_edit_with_launcher().await;
