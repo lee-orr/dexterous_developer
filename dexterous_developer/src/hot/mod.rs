@@ -29,7 +29,7 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
         }
     };
 
-    let lib = get_initial_library(&library_paths);
+    let lib = get_initial_library(&library_paths).expect("Failed to find library");
 
     if let Some(lib) = lib.library() {
         println!("Executing first run");

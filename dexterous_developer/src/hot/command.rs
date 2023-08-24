@@ -171,11 +171,15 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
         bail!("Workspace contains no matching libraries");
     };
 
-    let target_path = if let Some(target) = target_folder {
+    let mut target_path = if let Some(target) = target_folder {
         target.clone()
     } else {
         metadata.target_directory.into_std_path_buf()
     };
+
+    if !target_path.ends_with("debug") {
+        target_path.push("debug");
+    }
 
     let target_deps_path = target_path.join("deps");
 
@@ -245,7 +249,9 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
         package: pkg.name.clone(),
         features: features.into_iter().collect::<Vec<_>>().join(","),
         target_folder: target_folder.as_ref().cloned().map(|mut v| {
-            v.pop();
+            if v.ends_with("debug") {
+                v.pop();
+            }
             v
         }),
     };

@@ -136,6 +136,10 @@ mod test {
         super::can_run_hot().await;
     }
     #[tokio::test]
+    async fn can_run_hot_and_edit() {
+        super::can_run_hot_and_edit().await;
+    }
+    #[tokio::test]
     async fn can_run_hot_and_edit_with_launcher() {
         super::can_run_hot_and_edit_with_launcher().await;
     }

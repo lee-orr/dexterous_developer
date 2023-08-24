@@ -15,12 +15,8 @@ pub(crate) fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
 }
 
 #[allow(unused)]
-pub(crate) fn get_initial_library(library_paths: &LibPathSet) -> LibraryHolder {
+pub(crate) fn get_initial_library(library_paths: &LibPathSet) -> Result<LibraryHolder, String> {
     println!("Looking for lib at {library_paths:?}");
 
-    loop {
-        if let Some(library) = update_lib(library_paths) {
-            return library;
-        }
-    }
+    update_lib(library_paths).ok_or("Couldn't find library".to_string())
 }
