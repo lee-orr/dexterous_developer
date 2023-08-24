@@ -27,9 +27,9 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: Add Binutils
-        run: /
-          cargo install -f cargo-binutils
-          rustup component add llvm-tools-preview
+        run: cargo install -f cargo-binutils
+      - name: Add llvm
+        run: rustup component add llvm-tools-preview
       - name: CI job
         run: cargo run -p ci
       - name: Ensure docs compile
