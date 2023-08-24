@@ -13,7 +13,10 @@ fn main() {
     .run()
     .expect("Please fix clippy errors in output above.");
 
-    cmd!("cd ./testing/dexterous_developer_tests & cargo test")
-        .run()
-        .expect("Expect cargo test to work");
+    let mut cwd = std::env::current_dir().expect("Couldn't get current directory");
+    cwd.push("testing");
+    cwd.push("dexterous_developer_tests");
+    std::env::set_current_dir(cwd).expect("Couldn't set current directory");
+
+    cmd!("cargo test").run().expect("Expect cargo test to work");
 }
