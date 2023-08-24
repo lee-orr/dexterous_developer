@@ -184,7 +184,7 @@ impl TestProject {
         };
 
         Ok(RunningProcess {
-            handle,
+            handle: Some(handle),
             read: read_rx,
             read_sender: read_tx,
             write: write_tx,
@@ -195,7 +195,15 @@ impl TestProject {
 
 impl Drop for TestProject {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(self.path.as_path());
+        println!(
+            "Dropping {} - delete {}",
+            self.name,
+            self.path.to_string_lossy()
+        );
+
+        let e = std::fs::remove_dir_all(self.path.as_path());
+
+        println!("Dropped - {e:#?}");
     }
 }
 
@@ -210,7 +218,7 @@ pub enum Line {
 pub struct LineIn(String);
 
 pub struct RunningProcess {
-    handle: JoinHandle<()>,
+    handle: Option<JoinHandle<()>>,
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
     write: broadcast::Sender<LineIn>,
@@ -313,6 +321,10 @@ impl RunningProcess {
 
     pub async fn exiting(&mut self) {
         self.next_line_contains("Exiting");
+        println!("Exiting");
+        self.handle = None;
+        tokio::time::sleep(Duration::from_secs_f32(0.1)).await;
+        println!("Awaited exit");
     }
 
     pub async fn wait_for_lines(&mut self, value: &[&str]) {

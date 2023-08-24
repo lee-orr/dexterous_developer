@@ -45,6 +45,28 @@ async fn can_run_hot() {
     process.exiting().await;
 }
 
+async fn can_run_hot_and_edit() {
+    let mut project = TestProject::new("simple_cli_test", "can_run_hotand_edit").unwrap();
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process
+        .wait_for_lines(&[
+            "Press Enter to Progress, or type 'exit' to exit",
+            "Ran Update",
+        ])
+        .await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.send("exit\n").expect("Failed to send line");
+
+    process.exiting().await;
+}
+
 pub async fn run_tests() {
     println!("Can run cold");
     can_run_cold().await;
