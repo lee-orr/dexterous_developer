@@ -9,19 +9,11 @@ fn main() {
         .run()
         .expect("Please run 'cargo fmt --all' to format your code.");
 
-    // // Run tests
-    // cmd!("cargo test")
-    //     .run()
-    //     .expect("Please fix failing tests in output above.");
-
-    // // Run doc tests: these are ignored by `cargo test`
-    // cmd!("cargo test --doc --workspace")
-    //     .run()
-    //     .expect("Please fix failing doc-tests in output above.");
-
-    // See if clippy has any complaints.
-    // - Type complexity must be ignored because we use huge templates for queries
     cmd!("cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::type_complexity -W clippy::doc_markdown")
     .run()
     .expect("Please fix clippy errors in output above.");
+
+    cmd!("cd ./testing/dexterous_developer_tests & cargo test")
+        .run()
+        .expect("Expect cargo test to work");
 }
