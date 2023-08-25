@@ -3,6 +3,7 @@
     "testExplorer.useNativeTesting": false,
     "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml",
     "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
         "./testing/dexterous_developer_tests/Cargo.toml"
     ]
 }

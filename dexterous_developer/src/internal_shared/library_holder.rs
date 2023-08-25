@@ -3,6 +3,8 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{bail, Context};
 use libloading::Library;
 
+use crate::internal_shared::cargo_path_utils;
+
 struct LibraryHolderInner(Option<Library>, PathBuf);
 
 impl Drop for LibraryHolderInner {
@@ -27,6 +29,23 @@ impl LibraryHolderInner {
 
         await_file(3, &new_path);
 
+        let _folder = new_path.parent();
+
+        println!("Search Paths: ");
+        for path in cargo_path_utils::dylib_path() {
+            println!("{path:?}");
+            if let Ok(dir) = std::fs::read_dir(&path) {
+                for entry in dir.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.contains("libbevy_dylib") {
+                        println!("Found bevy dylib at {:?}", entry.path());
+                    }
+                }
+            } else {
+                eprintln!("THIS PATH DOES NOT EXIST - {path:?}");
+            }
+        }
+
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&new_path) } {
             Ok(lib) => {
@@ -35,6 +54,12 @@ impl LibraryHolderInner {
             }
             Err(err) => {
                 eprintln!("Error loading library: {err:?}");
+
+                eprintln!("Search Paths: ");
+                for path in cargo_path_utils::dylib_path() {
+                    println!("{path:?}");
+                }
+
                 None
             }
         }

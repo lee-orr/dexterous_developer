@@ -1,5 +1,5 @@
 mod command;
-use std::{path::Path, sync::Once};
+use std::{path::Path, process::Command, sync::Once};
 
 use command::*;
 
@@ -9,14 +9,35 @@ static RUNNER: Once = Once::new();
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
     RUNNER.call_once(|| {
-        run_reloadabe_app_inner(options);
+        if let Ok(settings) = std::env::var("DEXTEROUS_BUILD_SETTINGS") {
+            println!("Running based on DEXTEROUS_BUILD_SETTINGS env");
+            run_reloadable_from_env(settings);
+        } else {
+            println!("Running based on options");
+            run_reloadabe_app_inner(options);
+        }
     });
 }
 
 fn run_reloadabe_app_inner(options: HotReloadOptions) {
-    let library_paths =
-        setup_build_settings(&options).expect("Couldn't get initial build settings");
+    match setup_build_settings(&options).expect("Couldn't get initial build settings") {
+        BuildSettingsReady::LibraryPath(library_paths) => {
+            run_app_with_path(library_paths);
+        }
+        BuildSettingsReady::RequiredEnvChange(var, val) => {
+            println!("Requires env change");
+            let current = std::env::current_exe().expect("Can't get current executable");
+            println!("Setting {var} to {val}");
+            let result = Command::new(current)
+                .env(var, val)
+                .status()
+                .expect("Couldn't execute executable");
+            std::process::exit(result.code().unwrap_or_default());
+        }
+    }
+}
 
+fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
     let _ = std::fs::remove_file(library_paths.library_path());
 
     match first_exec() {
@@ -45,4 +66,16 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
         eprint!("Library still somehow missing");
     }
     println!("Got to the end for some reason...");
+}
+
+fn run_reloadable_from_env(settings: String) {
+    println!("__Envvironment Variables__");
+    for (key, val) in std::env::vars_os() {
+        println!("{key:?}={val:?}");
+    }
+    println!("Got Environment\n");
+
+    let library_paths =
+        load_build_settings(settings).expect("Couldn't load build settings from env");
+    run_app_with_path(library_paths);
 }

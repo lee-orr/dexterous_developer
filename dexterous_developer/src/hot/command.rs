@@ -12,14 +12,94 @@ use anyhow::{bail, Context, Error};
 use debounce::EventDebouncer;
 use notify::{RecursiveMode, Watcher};
 
-use crate::{internal_shared::LibPathSet, HotReloadOptions};
+use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
 
 struct BuildSettings {
     watch_folder: PathBuf,
     manifest: PathBuf,
+    lib_path: PathBuf,
     package: String,
     features: String,
     target_folder: Option<PathBuf>,
+    out_folders: Vec<PathBuf>,
+}
+
+impl ToString for BuildSettings {
+    fn to_string(&self) -> String {
+        let BuildSettings {
+            watch_folder,
+            manifest,
+            package,
+            features,
+            target_folder,
+            lib_path,
+            out_folders,
+        } = self;
+
+        let target = target_folder
+            .as_ref()
+            .map(|v| v.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        let out_folders = out_folders
+            .iter()
+            .map(|v| v.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join(";;");
+
+        let watch_folder = watch_folder.to_string_lossy();
+        let manifest = manifest.to_string_lossy();
+        let lib_path = lib_path.to_string_lossy();
+
+        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_folders}:!:{target}")
+    }
+}
+
+impl TryFrom<&str> for BuildSettings {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut split = value.split(":!:");
+        let lib_path = split
+            .next()
+            .map(PathBuf::from)
+            .ok_or(Error::msg("no library path"))?;
+        let watch_folder = split
+            .next()
+            .map(PathBuf::from)
+            .ok_or(Error::msg("no watch folder"))?;
+        let manifest = split
+            .next()
+            .map(PathBuf::from)
+            .ok_or(Error::msg("no manifest"))?;
+        let package = split
+            .next()
+            .map(|v| v.to_string())
+            .ok_or(Error::msg("no package"))?;
+        let features = split
+            .next()
+            .map(|v| v.to_string())
+            .ok_or(Error::msg("no features"))?;
+        let out_folders = split
+            .next()
+            .map(|v| v.to_string())
+            .ok_or(Error::msg("no out folders"))?;
+        let out_folders = out_folders.split(";;").map(PathBuf::from).collect();
+        let target_folder = split
+            .next()
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
+
+        Ok(BuildSettings {
+            lib_path,
+            watch_folder,
+            manifest,
+            package,
+            features,
+            target_folder,
+            out_folders,
+        })
+    }
 }
 
 static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
@@ -28,20 +108,23 @@ static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
 const RUSTC_ARGS: [(&str, &str); 3] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     ("RUSTC_LINKER", "rust-lld.exe"),
-    ("RUSTFLAGS", "-Zshare-generics=n"),
+    ("RUSTFLAGS", "-Zshare-generics=n -Crpath=true"),
 ];
 #[cfg(target_os = "linux")]
 const RUSTC_ARGS: [(&str, &str); 3] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     ("RUSTC_LINKER", "clang"),
-    ("RUSTFLAGS", "-Zshare-generics=y -Clink-arg=-fuse-ld=lld"),
+    (
+        "RUSTFLAGS",
+        "-Zshare-generics=y  -Crpath=true -Clink-arg=-fuse-ld=lld",
+    ),
 ];
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     (
         "RUSTFLAGS",
-        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
+        "-Zshare-generics=y -Crpath=true -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
     ),
 ];
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -49,25 +132,23 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     (
         "RUSTFLAGS",
-        "-Zshare-generics=y -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
+        "-Zshare-generics=y -Crpath=true -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
     ),
 ];
 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
-    ("RUSTFLAGS", "-Zshare-generics=y"),
+    ("RUSTFLAGS", "-Zshare-generics=y -Crpath=true"),
 ];
 
 fn set_envs() -> anyhow::Result<()> {
     for (var, val) in RUSTC_ARGS.iter() {
         if (var == &"RUSTC_LINKER") && which::which(val).is_err() {
             bail!("Linker {val} is not installed");
-        } else if val.contains("-Clink-arg=-fuse-ld=") {
-            let mut split = val.split("-Clink-arg=-fuse-ld=");
+        } else if val.contains("-fuse-ld=") {
+            let mut split = val.split("-fuse-ld=");
             let _ = split.next();
-            let after = split
-                .next()
-                .ok_or(Error::msg("No value for Clink-arg=-fuse-ld="))?;
+            let after = split.next().ok_or(Error::msg("No value for -fuse-ld="))?;
             which::which(after).context("Can't find lld")?;
         }
         std::env::set_var(var, val);
@@ -75,7 +156,14 @@ fn set_envs() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result<LibPathSet> {
+pub enum BuildSettingsReady {
+    LibraryPath(LibPathSet),
+    RequiredEnvChange(String, String),
+}
+
+pub(crate) fn setup_build_settings(
+    options: &HotReloadOptions,
+) -> anyhow::Result<BuildSettingsReady> {
     let HotReloadOptions {
         manifest_path,
         package,
@@ -185,6 +273,7 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
 
     let mut rustc = Command::new("rustc");
     rustc
+        .env_remove("LD_DEBUG")
         .arg(lib.src_path.as_os_str())
         .arg("--crate-type")
         .arg("dylib")
@@ -230,7 +319,85 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
         .cloned()
         .ok_or(anyhow::Error::msg("No file name for lib"))?;
 
+    let lib_path = target_path.join(lib_file_name);
+
+    // SET ENVIRONMENT VARS HERE!
+    let dylib_path_var = cargo_path_utils::dylib_path_envvar();
+    let mut env_paths = cargo_path_utils::dylib_path();
+    let paths = paths
+        .into_iter()
+        .filter(|v| v.extension().is_none() && v.is_absolute())
+        .collect::<Vec<_>>();
+
+    println!("Filtered paths {paths:?}");
+
+    if paths.iter().any(|v| !env_paths.contains(v)) {
+        for path in paths.iter() {
+            if !path.exists() {
+                std::fs::create_dir_all(path)?;
+            }
+        }
+
+        {
+            let mut collect = paths.clone();
+            env_paths.append(&mut collect);
+        }
+
+        let env_paths = env_paths
+            .into_iter()
+            .filter(|v| !v.as_os_str().is_empty())
+            .collect::<BTreeSet<_>>();
+
+        let os_paths = std::env::join_paths(env_paths)?;
+
+        std::env::set_var(dylib_path_var, os_paths.as_os_str());
+
+        println!(
+            "Environment Variables Set {:?}",
+            std::env::var(dylib_path_var)
+        );
+
+        let settings = BuildSettings {
+            lib_path,
+            watch_folder: watch_folder
+                .as_ref()
+                .cloned()
+                .or_else(|| {
+                    lib.src_path
+                        .clone()
+                        .into_std_path_buf()
+                        .parent()
+                        .map(|v| v.to_path_buf())
+                })
+                .ok_or(Error::msg("Couldn't find source directory to watch"))?,
+            manifest: metadata
+                .workspace_root
+                .into_std_path_buf()
+                .join("Cargo.toml"),
+            package: pkg.name.clone(),
+            features: features.into_iter().collect::<Vec<_>>().join(","),
+            target_folder: target_folder.as_ref().cloned().map(|mut v| {
+                if v.ends_with("debug") {
+                    v.pop();
+                }
+                v
+            }),
+            out_folders: paths,
+        };
+
+        let settings = settings.to_string();
+
+        println!("Setting DEXTEROUS_BUILD_SETTINGS env to {settings}");
+        std::env::set_var("DEXTEROUS_BUILD_SETTINGS", &settings);
+
+        return Ok(BuildSettingsReady::RequiredEnvChange(
+            dylib_path_var.to_string(),
+            os_paths.to_string_lossy().to_string(),
+        ));
+    }
+
     let settings = BuildSettings {
+        lib_path: lib_path.clone(),
         watch_folder: watch_folder
             .as_ref()
             .cloned()
@@ -254,28 +421,25 @@ pub(crate) fn setup_build_settings(options: &HotReloadOptions) -> anyhow::Result
             }
             v
         }),
+        out_folders: paths,
     };
 
     BUILD_SETTINGS
         .set(settings)
         .map_err(|_| Error::msg("Build settings already set"))?;
 
-    // SET ENVIRONMENT VARS HERE!
-    let dylib_path_var = cargo_path_utils::dylib_path_envvar();
-    let mut env_paths = cargo_path_utils::dylib_path();
-    let mut paths = paths
-        .into_iter()
-        .filter(|v| v.is_dir() && v.is_absolute())
-        .collect();
-    env_paths.append(&mut paths);
-
-    let paths = std::env::join_paths(env_paths)?;
-
-    std::env::set_var(dylib_path_var, paths);
-
     println!("Finished Setting Up");
 
-    Ok(LibPathSet::new(target_path.join(lib_file_name)))
+    Ok(BuildSettingsReady::LibraryPath(LibPathSet::new(lib_path)))
+}
+
+pub(crate) fn load_build_settings(settings: String) -> anyhow::Result<LibPathSet> {
+    let settings = BuildSettings::try_from(settings.as_str())?;
+    let lib_path = settings.lib_path.clone();
+    BUILD_SETTINGS
+        .set(settings)
+        .map_err(|_| Error::msg("Build settings already set"))?;
+    Ok(LibPathSet::new(lib_path))
 }
 
 pub(crate) fn first_exec() -> anyhow::Result<()> {
@@ -344,43 +508,64 @@ fn rebuild_internal() -> anyhow::Result<()> {
     let Some(BuildSettings {
         manifest,
         features,
-        watch_folder: _,
         package,
         target_folder,
+        out_folders,
+        ..
     }) = BUILD_SETTINGS.get()
     else {
         bail!("Couldn't get settings...");
     };
 
-    set_envs()?;
-
     if let Some(target) = target_folder {
         std::env::set_var("CARGO_BUILD_TARGET_DIR", target.as_os_str());
     }
 
-    let mut command = Command::new("cargo");
-    command
-        .arg("build")
+    let result = Command::new("cargo")
+        .env_remove("LD_DEBUG")
+        .arg("rustc")
         .arg("--manifest-path")
         .arg(manifest.as_os_str())
         .arg("-p")
         .arg(package.as_str())
         .arg("--lib")
         .arg("--features")
-        .arg(features);
+        .arg(features)
+        .args([
+            "--",
+            r#"-Clink-arg=-Wl,-rpath,$ORIGIN/deps/"#,
+            "--print=link-args",
+        ])
+        .args(
+            out_folders
+                .iter()
+                .map(|v| format!("-Clink-arg=-Wl,-rpath,{}/", v.to_string_lossy())),
+        )
+        .status()?;
+    // bail!("just want to see result");
 
-    println!("Executing cargo command: {}", print_command(&command));
+    // let mut command = Command::new("cargo");
+    // command
+    //     .arg("build")
+    //     .arg("--manifest-path")
+    //     .arg(manifest.as_os_str())
+    //     .arg("-p")
+    //     .arg(package.as_str())
+    //     .arg("--lib")
+    //     .arg("--features")
+    //     .arg(features);
 
-    let result = command.status()?;
+    // println!("Executing cargo command: {}", print_command(&command));
+
+    // let result = command.status()?;
 
     if result.success() {
         println!("Build completed");
     } else {
         bail!(
-            "Failed to build: {}
+            "Failed to build
         env:
         {}",
-            print_command(&command),
             std::env::vars()
                 .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
@@ -389,49 +574,6 @@ fn rebuild_internal() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-// Copied from cargo repo: https://github.com/rust-lang/cargo/blob/master/crates/cargo-util/src/paths.rs
-mod cargo_path_utils {
-    use std::{env, path::PathBuf};
-
-    pub(super) fn dylib_path_envvar() -> &'static str {
-        if cfg!(windows) {
-            "PATH"
-        } else if cfg!(target_os = "macos") {
-            // When loading and linking a dynamic library or bundle, dlopen
-            // searches in LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, PWD, and
-            // DYLD_FALLBACK_LIBRARY_PATH.
-            // In the Mach-O format, a dynamic library has an "install path."
-            // Clients linking against the library record this path, and the
-            // dynamic linker, dyld, uses it to locate the library.
-            // dyld searches DYLD_LIBRARY_PATH *before* the install path.
-            // dyld searches DYLD_FALLBACK_LIBRARY_PATH only if it cannot
-            // find the library in the install path.
-            // Setting DYLD_LIBRARY_PATH can easily have unintended
-            // consequences.
-            //
-            // Also, DYLD_LIBRARY_PATH appears to have significant performance
-            // penalty starting in 10.13. Cargo's testsuite ran more than twice as
-            // slow with it on CI.
-            "DYLD_FALLBACK_LIBRARY_PATH"
-        } else if cfg!(target_os = "aix") {
-            "LIBPATH"
-        } else {
-            "LD_LIBRARY_PATH"
-        }
-    }
-
-    /// Returns a list of directories that are searched for dynamic libraries.
-    ///
-    /// Note that some operating systems will have defaults if this is empty that
-    /// will need to be dealt with.
-    pub(super) fn dylib_path() -> Vec<PathBuf> {
-        match env::var_os(dylib_path_envvar()) {
-            Some(var) => env::split_paths(&var).collect(),
-            None => Vec::new(),
-        }
-    }
 }
 
 fn print_command(command: &Command) -> String {

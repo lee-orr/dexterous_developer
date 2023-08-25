@@ -24,6 +24,7 @@ use anyhow::{bail, Context, Error, Result};
 pub struct TestProject {
     path: PathBuf,
     name: String,
+    package: String,
 }
 
 static CLI_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
@@ -63,6 +64,8 @@ impl TestProject {
         let mut cwd = std::env::current_dir()?;
         cwd.pop();
 
+        let package = template.to_string();
+
         let mut template_path = cwd.clone();
         template_path.push("templates");
         template_path.push(template);
@@ -71,7 +74,7 @@ impl TestProject {
             panic!("{template_path:?} does not exist");
         }
 
-        let name = format!("tmp_{test}");
+        let name = test.to_string();
         let mut path = cwd.clone();
         path.push("tmp");
 
@@ -79,7 +82,7 @@ impl TestProject {
             std::fs::create_dir(path.as_path());
         }
 
-        path.push(&name);
+        path.push(&format!("tmp_{name}"));
 
         if path.exists() {
             std::fs::remove_dir_all(path.clone());
@@ -93,21 +96,11 @@ impl TestProject {
             .arg(path.as_os_str())
             .output()?;
 
-        let mut cargo_path = path.clone();
-        cargo_path.push("Cargo.toml");
-        let cargo = std::fs::read_to_string(cargo_path.as_path())?;
-        let cargo = cargo.replace(template, &name);
-        std::fs::write(cargo_path.as_path(), cargo);
-
-        let mut main_path = path.clone();
-        main_path.push("src/main.rs");
-        if main_path.exists() {
-            let main = std::fs::read_to_string(main_path.as_path())?;
-            let cargo = main.replace(template, &name);
-            std::fs::write(main_path.as_path(), cargo);
-        }
-
-        Ok(Self { path, name })
+        Ok(Self {
+            path,
+            name,
+            package,
+        })
     }
 
     pub fn write_file(&self, path: &Path, content: &str) -> anyhow::Result<()> {
@@ -134,14 +127,13 @@ impl TestProject {
     }
 
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
-        let mut wd = self.path.clone();
-
         let Ok(cli_path) = rebuild_cli() else {
             bail!("Couldn't get CLI");
         };
 
+        let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
-        cmd.current_dir(&wd).arg("-p").arg(&self.name);
+        cmd.current_dir(&wd).arg("-p").arg(&self.package);
         self.run(cmd, true).await
     }
 
@@ -237,19 +229,19 @@ impl TestProject {
     }
 }
 
-impl Drop for TestProject {
-    fn drop(&mut self) {
-        println!(
-            "Dropping {} - delete {}",
-            self.name,
-            self.path.to_string_lossy()
-        );
+// impl Drop for TestProject {
+//     fn drop(&mut self) {
+//         println!(
+//             "Dropping {} - delete {}",
+//             self.name,
+//             self.path.to_string_lossy()
+//         );
 
-        let e = std::fs::remove_dir_all(self.path.as_path());
+//         let e = std::fs::remove_dir_all(self.path.as_path());
 
-        println!("Dropped - {e:#?}");
-    }
-}
+//         println!("Dropped - {e:#?}");
+//     }
+// }
 
 #[derive(Clone, Debug)]
 pub enum Line {
