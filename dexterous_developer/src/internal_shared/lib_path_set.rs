@@ -7,6 +7,7 @@ pub struct LibPathSet {
 
 impl LibPathSet {
     pub fn new(path: impl Into<PathBuf>) -> Self {
+        println!("Creating path");
         Self { path: path.into() }
     }
 

@@ -5,8 +5,6 @@ mod reloadable_app_setup;
 mod replacable_types;
 mod schedules;
 
-use std::path::Path;
-
 use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup};
@@ -30,8 +28,10 @@ use schedules::*;
 pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 
 impl HotReloadPlugin {
-    pub fn new(libs: &Path, closure: fn() -> ()) -> Self {
+    pub fn new(libs: String, closure: fn() -> ()) -> Self {
         println!("Building Hot Reload Plugin");
+        let libs = libs.clone();
+        println!("Lib at path: {libs}");
         Self(LibPathSet::new(libs), closure)
     }
 }

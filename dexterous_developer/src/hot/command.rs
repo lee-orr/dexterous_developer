@@ -461,6 +461,7 @@ fn run_watcher_inner() -> anyhow::Result<()> {
     let Some(BuildSettings { watch_folder, .. }) = BUILD_SETTINGS.get() else {
         bail!("Couldn't get settings...");
     };
+    let (watching_tx, watching_rx) = mpsc::channel::<()>();
 
     println!("Setting up watcher with {watch_folder:?}");
     thread::spawn(move || {
@@ -486,12 +487,15 @@ fn run_watcher_inner() -> anyhow::Result<()> {
             eprintln!("Error watching files: {e:?}");
             return;
         }
-        println!("Watching...");
+
+        watching_tx.send(()).expect("Couldn't send watch");
 
         while rx.recv().is_ok() {
             rebuild();
         }
     });
+    watching_rx.recv()?;
+    println!("Watching...");
     Ok(())
 }
 

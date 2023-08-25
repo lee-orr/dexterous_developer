@@ -45,7 +45,7 @@ struct Cube(Vec3);
 
 impl Default for Cube {
     fn default() -> Self {
-        Self((Vec3::NEG_X + Vec3::Y) * 1.)
+        Self((Vec3::NEG_X + Vec3::Y) * 2.5)
     }
 }
 
