@@ -273,10 +273,18 @@ impl RunningProcess {
     pub async fn is_ready(&mut self) {
         println!("Checking Readiness");
         if self.is_hot {
+            let mut is_watching = false;
+            let mut reload_complete = false;
             loop {
                 match self.read_next_line().await.expect("No Next Line") {
                     Line::Std(line) => {
                         if line.contains("reload complete") {
+                            reload_complete = true;
+                        }
+                        if line.contains("Watching...") {
+                            is_watching = true;
+                        }
+                        if reload_complete && is_watching {
                             break;
                         }
                     }
