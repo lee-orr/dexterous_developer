@@ -85,10 +85,7 @@ impl TryFrom<&str> for BuildSettings {
             .map(|v| v.to_string())
             .ok_or(Error::msg("no out folders"))?;
         let out_folders = out_folders.split(";;").map(PathBuf::from).collect();
-        let target_folder = split
-            .next()
-            .filter(|v| !v.is_empty())
-            .map(PathBuf::from);
+        let target_folder = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
 
         Ok(BuildSettings {
             lib_path,
