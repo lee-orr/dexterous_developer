@@ -45,7 +45,7 @@ struct Cube(Vec3);
 
 impl Default for Cube {
     fn default() -> Self {
-        Self((Vec3::NEG_X + Vec3::Y) * 2.5)
+        Self((Vec3::NEG_X + Vec3::Y) * 0.5)
     }
 }
 
@@ -82,7 +82,7 @@ fn setup_cube(
     let cube_color = Color::ORANGE;
 
     #[cfg(not(feature = "orange"))]
-    let cube_color = Color::TEAL;
+    let cube_color = Color::YELLOW;
 
     // cube
     commands.spawn((
