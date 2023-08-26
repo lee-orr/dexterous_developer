@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{Commands, Entity, Query, Res, ResMut, Resource},
+    prelude::{debug, Commands, Entity, Query, Res, ResMut, Resource},
     utils::HashMap,
 };
 
@@ -30,7 +30,7 @@ pub fn deserialize_replacable_resource<R: ReplacableResource>(
     mut commands: Commands,
 ) {
     let name = R::get_type_name();
-    println!("Deserializing {name}");
+    debug!("Deserializing {name}");
     let v: R = store
         .map
         .get(name)
@@ -66,7 +66,7 @@ pub fn deserialize_replacable_component<C: ReplacableComponent>(
     mut commands: Commands,
 ) {
     let name = C::get_type_name();
-    println!("Deserializing {name}");
+    debug!("Deserializing {name}");
 
     if let Some(storage) = store.map.remove(name) {
         for (entity, value) in storage.into_iter() {

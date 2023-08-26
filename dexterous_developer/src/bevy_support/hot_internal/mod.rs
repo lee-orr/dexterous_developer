@@ -13,6 +13,8 @@ use bevy::prelude::{App, First, Plugin, PreStartup};
 
 use bevy::utils::Instant;
 
+use bevy::log::{debug, info};
+
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
@@ -31,19 +33,19 @@ pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 
 impl HotReloadPlugin {
     pub fn new(libs: CString, closure: fn() -> ()) -> Self {
-        println!("Building Hot Reload Plugin");
+        info!("Building Hot Reload Plugin");
         let libs = libs
             .to_str()
             .expect("Couldn't get str from C String")
             .to_owned();
-        println!("Lib at path: {libs}");
+        debug!("Lib at path: {libs}");
         Self(LibPathSet::new(libs), closure)
     }
 }
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        println!(
+        debug!(
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
         );
@@ -53,11 +55,11 @@ impl Plugin for HotReloadPlugin {
         let deserialize_schedule = Schedule::new();
         let reload_complete = Schedule::new();
 
-        println!("Schedules ready");
+        debug!("Schedules ready");
 
         let lib_path = self.0.library_path();
 
-        println!("Got lib path");
+        debug!("Got lib path");
 
         let hot_reload = InternalHotReload {
             library: None,
@@ -67,17 +69,17 @@ impl Plugin for HotReloadPlugin {
             libs: LibPathSet::new(lib_path),
         };
 
-        println!("Set up internal hot reload resources");
+        debug!("Set up internal hot reload resources");
 
         let watcher = {
             let watch = self.1;
             move || {
-                println!("Setting up watcher");
+                debug!("Setting up watcher");
                 watch();
             }
         };
 
-        println!("Watcher set up triggered");
+        debug!("Watcher set up triggered");
 
         app.add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
@@ -85,18 +87,18 @@ impl Plugin for HotReloadPlugin {
             .add_schedule(DeserializeReloadables, deserialize_schedule)
             .add_schedule(OnReloadComplete, reload_complete);
 
-        println!("scheduled attached");
+        debug!("scheduled attached");
 
         app.init_resource::<ReloadableAppContents>()
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
             .insert_resource(hot_reload);
-        println!("Added resources to app");
+        debug!("Added resources to app");
 
         app.add_systems(PreStartup, (reload, watcher))
             .add_systems(CleanupReloaded, cleanup)
             .add_systems(First, (update_lib_system, reload).chain());
-        println!("Finished build");
+        debug!("Finished build");
     }
 }

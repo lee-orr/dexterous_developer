@@ -10,6 +10,7 @@ use std::{
 use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
+use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
@@ -169,26 +170,26 @@ pub(crate) fn setup_build_settings(
     } = options;
 
     if let Some(l) = manifest_path.as_ref() {
-        println!("Using manifest  {}", l.to_string_lossy());
+        info!("Using manifest  {}", l.to_string_lossy());
     }
 
     if let Some(p) = package.as_ref() {
-        println!("Using Package {p}");
+        info!("Using Package {p}");
     }
 
     if let Some(l) = lib_name.as_ref() {
-        println!("Using library {l}");
+        info!("Using library {l}");
     }
 
     if let Some(l) = target_folder.as_ref() {
-        println!("Target at target folder {}", l.to_string_lossy());
+        info!("Target at target folder {}", l.to_string_lossy());
     }
 
     if let Some(l) = target_folder.as_ref() {
-        println!("Watching source at  {}", l.to_string_lossy());
+        info!("Watching source at  {}", l.to_string_lossy());
     }
 
-    println!("Compiling with features: {}", features.join(", "));
+    info!("Compiling with features: {}", features.join(", "));
 
     set_envs()?;
 
@@ -221,7 +222,7 @@ pub(crate) fn setup_build_settings(
     let libs = packages.filter_map(|pkg| {
         if let Some(package) = package.as_ref() {
             let pkg = &pkg.name;
-            println!("Checking package name: {package} - {pkg}");
+            debug!("Checking package name: {package} - {pkg}");
             if pkg != package.as_str() {
                 return None;
             }
@@ -230,7 +231,7 @@ pub(crate) fn setup_build_settings(
             .iter()
             .find(|p| {
                 let result = p.crate_types.contains(&String::from("dylib"));
-                println!(
+                debug!(
                     "Checking {} @ {} - {:?} {result}",
                     p.name, pkg.name, p.crate_types
                 );
@@ -280,7 +281,7 @@ pub(crate) fn setup_build_settings(
 
     let cmd_string = print_command(&rustc);
 
-    println!("Run rustc {rustc:#?} - {cmd_string}");
+    debug!("Run rustc {rustc:#?} - {cmd_string}");
 
     let rustc_output = rustc.output()?;
     let output = std::str::from_utf8(&rustc_output.stdout)?;
@@ -290,8 +291,8 @@ pub(crate) fn setup_build_settings(
         bail!("rustc status {:#?}\n{errout}", rustc_output.status);
     }
 
-    println!("rustc output {output}");
-    println!("rustc err {errout}");
+    debug!("rustc output {output}");
+    debug!("rustc err {errout}");
 
     let paths = output
         .lines()
@@ -301,7 +302,7 @@ pub(crate) fn setup_build_settings(
         .chain([target_path.clone(), target_deps_path])
         .collect::<BTreeSet<_>>();
 
-    println!("Paths found {paths:?}");
+    debug!("Paths found {paths:?}");
 
     let lib_file_name = paths
         .iter()
@@ -323,7 +324,7 @@ pub(crate) fn setup_build_settings(
         .filter(|v| v.extension().is_none() && v.is_absolute())
         .collect::<Vec<_>>();
 
-    println!("Filtered paths {paths:?}");
+    debug!("Filtered paths {paths:?}");
 
     if paths.iter().any(|v| !env_paths.contains(v)) {
         for path in paths.iter() {
@@ -346,7 +347,7 @@ pub(crate) fn setup_build_settings(
 
         std::env::set_var(dylib_path_var, os_paths.as_os_str());
 
-        println!(
+        debug!(
             "Environment Variables Set {:?}",
             std::env::var(dylib_path_var)
         );
@@ -381,7 +382,7 @@ pub(crate) fn setup_build_settings(
 
         let settings = settings.to_string();
 
-        println!("Setting DEXTEROUS_BUILD_SETTINGS env to {settings}");
+        debug!("Setting DEXTEROUS_BUILD_SETTINGS env to {settings}");
         std::env::set_var("DEXTEROUS_BUILD_SETTINGS", &settings);
 
         return Ok(BuildSettingsReady::RequiredEnvChange(
@@ -422,7 +423,7 @@ pub(crate) fn setup_build_settings(
         .set(settings)
         .map_err(|_| Error::msg("Build settings already set"))?;
 
-    println!("Finished Setting Up");
+    info!("Finished Setting Up");
 
     Ok(BuildSettingsReady::LibraryPath(LibPathSet::new(lib_path)))
 }
@@ -437,18 +438,18 @@ pub(crate) fn load_build_settings(settings: String) -> anyhow::Result<LibPathSet
 }
 
 pub(crate) fn first_exec() -> anyhow::Result<()> {
-    println!("First Execution");
+    info!("First Execution");
     rebuild_internal()
 }
 
 static WATCHER: Once = Once::new();
 
 pub(crate) fn run_watcher() {
-    println!("run watcher called");
+    debug!("run watcher called");
     WATCHER.call_once(|| {
-        println!("Setting up watcher");
+        debug!("Setting up watcher");
         if let Err(e) = run_watcher_inner() {
-            eprintln!("Couldn't set up watcher - {e:?}");
+            error!("Couldn't set up watcher - {e:?}");
         };
     });
 }
@@ -460,28 +461,28 @@ fn run_watcher_inner() -> anyhow::Result<()> {
     };
     let (watching_tx, watching_rx) = mpsc::channel::<()>();
 
-    println!("Setting up watcher with {watch_folder:?}");
+    info!("Setting up watcher with {watch_folder:?}");
     thread::spawn(move || {
         let (tx, rx) = mpsc::channel();
 
-        println!("Spawned watch thread");
+        debug!("Spawned watch thread");
         let debounced = EventDebouncer::new(delay, move |_data: ()| {
-            println!("Files Changed");
+            debug!("Files Changed");
             let _ = tx.send(());
         });
-        println!("Debouncer set up with delay {delay:?}");
+        debug!("Debouncer set up with delay {delay:?}");
 
         let Ok(mut watcher) = notify::recommended_watcher(move |_| {
-            println!("Got Watch Event");
+            debug!("Got Watch Event");
             debounced.put(());
         }) else {
-            eprintln!("Couldn't setup watcher");
+            error!("Couldn't setup watcher");
             return;
         };
-        println!("Watcher response set up");
+        debug!("Watcher response set up");
 
         if let Err(e) = watcher.watch(watch_folder, RecursiveMode::Recursive) {
-            eprintln!("Error watching files: {e:?}");
+            error!("Error watching files: {e:?}");
             return;
         }
 
@@ -492,13 +493,13 @@ fn run_watcher_inner() -> anyhow::Result<()> {
         }
     });
     watching_rx.recv()?;
-    println!("Watching...");
+    info!("Watching...");
     Ok(())
 }
 
 fn rebuild() {
     if let Err(e) = rebuild_internal() {
-        eprintln!("Failed to rebuild: {e:?}");
+        error!("Failed to rebuild: {e:?}");
     }
 }
 
@@ -508,7 +509,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         features,
         package,
         target_folder,
-        out_folders,
+        out_folders: _,
         ..
     }) = BUILD_SETTINGS.get()
     else {
@@ -530,22 +531,6 @@ fn rebuild_internal() -> anyhow::Result<()> {
         .arg("--features")
         .arg(features)
         .status()?;
-    // bail!("just want to see result");
-
-    // let mut command = Command::new("cargo");
-    // command
-    //     .arg("build")
-    //     .arg("--manifest-path")
-    //     .arg(manifest.as_os_str())
-    //     .arg("-p")
-    //     .arg(package.as_str())
-    //     .arg("--lib")
-    //     .arg("--features")
-    //     .arg(features);
-
-    // println!("Executing cargo command: {}", print_command(&command));
-
-    // let result = command.status()?;
 
     if result.success() {
         println!("Build completed");

@@ -1,8 +1,8 @@
 use bevy::{
     ecs::schedule::ScheduleLabel,
     prelude::{
-        in_state, resource_changed, Commands, Component, Condition, IntoSystemConfigs, OnExit,
-        PreUpdate, Resource, Schedule, State, States,
+        debug, in_state, info, resource_changed, Commands, Component, Condition, IntoSystemConfigs,
+        OnExit, PreUpdate, Resource, Schedule, State, States,
     },
     utils::{HashMap, HashSet},
 };
@@ -41,10 +41,10 @@ impl crate::ReloadableApp for ReloadableAppContents {
         let schedule: Box<dyn ScheduleLabel> = Box::new(schedule);
 
         if let Some(schedule) = schedules.get_mut(&schedule) {
-            println!("Adding systems to schedule");
+            debug!("Adding systems to schedule");
             schedule.add_systems(systems);
         } else {
-            println!("Creating schedule with systems");
+            debug!("Creating schedule with systems");
             let mut new_schedule = Schedule::new();
             new_schedule.add_systems(systems);
             schedules.insert(schedule, new_schedule);
@@ -57,7 +57,7 @@ impl crate::ReloadableApp for ReloadableAppContents {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
             self.resources.insert(name.to_string());
-            println!("adding resource {name}");
+            info!("adding resource {name}");
             self.add_systems(SerializeReloadables, serialize_replacable_resource::<R>)
                 .add_systems(DeserializeReloadables, deserialize_replacable_resource::<R>);
         }
@@ -78,7 +78,7 @@ impl crate::ReloadableApp for ReloadableAppContents {
     }
 
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self {
-        println!("resetting resource");
+        debug!("resetting resource");
         self.add_systems(DeserializeReloadables, |mut commands: Commands| {
             commands.insert_resource(R::default());
         });
@@ -86,7 +86,7 @@ impl crate::ReloadableApp for ReloadableAppContents {
     }
 
     fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self {
-        println!("resetting resource");
+        debug!("resetting resource");
         self.add_systems(DeserializeReloadables, move |mut commands: Commands| {
             commands.insert_resource(value.clone());
         });

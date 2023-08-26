@@ -1,4 +1,5 @@
 use bevy::{
+    log::{debug, error, info},
     prelude::{Commands, Res, ResMut, Schedule, Schedules, World},
     utils::Instant,
 };
@@ -17,7 +18,7 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
     internal.updated_this_frame = false;
 
     if let Some(lib) = update_lib(&internal.libs) {
-        println!("Got Update");
+        info!("Got Update");
         internal.last_lib = internal.library.clone();
         internal.library = Some(lib);
         internal.updated_this_frame = true;
@@ -30,27 +31,27 @@ pub fn reload(world: &mut World) {
     if !internal_state.updated_this_frame {
         return;
     }
-    println!("Serializing...");
+    debug!("Serializing...");
     let _ = world.try_run_schedule(SerializeReloadables);
-    println!("Cleanup...");
+    debug!("Cleanup...");
     let _ = world.try_run_schedule(CleanupReloaded);
-    println!("Setup...");
+    debug!("Setup...");
     let _ = world.try_run_schedule(SetupReload);
-    println!("Set Schedules...");
+    debug!("Set Schedules...");
     register_schedules(world);
-    println!("Deserialize...");
+    debug!("Deserialize...");
     let _ = world.try_run_schedule(DeserializeReloadables);
-    println!("reload complete");
+    info!("reload complete");
     let _ = world.try_run_schedule(OnReloadComplete);
 }
 
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
     if let Err(e) = setup_reloadable_app_inner(name, world) {
-        eprintln!("Reloadable App Error: {e:?}");
+        error!("Reloadable App Error: {e:?}");
         let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
             return;
         };
-        println!("setup default");
+        info!("setup default");
 
         T::default_function(reloadable.as_mut());
     }
@@ -84,12 +85,12 @@ fn setup_reloadable_app_inner(
     name: &'static str,
     world: &mut World,
 ) -> Result<(), ReloadableSetupCallError> {
-    println!("Setting up reloadables at {name}");
+    info!("Setting up reloadables at {name}");
     let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
         return Err(ReloadableSetupCallError::InternalHotReloadStateMissing);
     };
 
-    println!("got internal reload state");
+    debug!("got internal reload state");
 
     let Some(lib) = &internal_state.library else {
         return Err(ReloadableSetupCallError::LibraryHolderNotSet);
@@ -104,28 +105,28 @@ fn setup_reloadable_app_inner(
         return Err(ReloadableSetupCallError::CallFailed);
     }
 
-    println!("setup for {name} complete");
+    info!("setup for {name} complete");
     Ok(())
 }
 
 pub fn register_schedules(world: &mut World) {
-    println!("Reloading schedules");
+    debug!("Reloading schedules");
     let Some(reloadable) = world.remove_resource::<ReloadableAppContents>() else {
         return;
     };
-    println!("Has reloadable app");
+    debug!("Has reloadable app");
 
     let Some(mut schedules) = world.get_resource_mut::<Schedules>() else {
         return;
     };
 
-    println!("Has schedules resource");
+    debug!("Has schedules resource");
 
     let mut inner = ReloadableAppCleanupData::default();
 
     for (original, schedule) in reloadable.schedule_iter() {
         let label = ReloadableSchedule::new(original.clone());
-        println!("Adding {label:?} to schedule");
+        debug!("Adding {label:?} to schedule");
         inner.labels.insert(Box::new(label.clone()));
         let exists = schedules.insert(label.clone(), schedule);
         if exists.is_none() {
@@ -154,17 +155,17 @@ pub fn cleanup(
     reloadable: Res<ReloadableAppCleanupData>,
 ) {
     for schedule in reloadable.labels.iter() {
-        println!("Attempting cleanup for {schedule:?}");
+        debug!("Attempting cleanup for {schedule:?}");
         let cleadn = schedules.insert(schedule.clone(), Schedule::default());
-        println!(
+        debug!(
             "Tried cleaning {schedule:?} was empty: {}",
             cleadn.is_none()
         );
     }
-    println!("Cleanup almost complete");
+    debug!("Cleanup almost complete");
 
     commands.insert_resource(ReloadableAppContents::default());
-    println!("Cleanup complete");
+    debug!("Cleanup complete");
 }
 
 pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
