@@ -1,5 +1,5 @@
 mod command;
-use std::{ffi::c_char, process::Command, sync::Once};
+use std::{process::Command, sync::Once};
 
 use crate::logger::{debug, error, info};
 

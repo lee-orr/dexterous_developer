@@ -5,7 +5,7 @@ mod reloadable_app_setup;
 mod replacable_types;
 mod schedules;
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::CStr;
 
 use bevy::ecs::prelude::*;
 
@@ -34,7 +34,7 @@ pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 impl HotReloadPlugin {
     pub fn new(libs: &CStr, closure: fn() -> ()) -> Self {
         info!("Building Hot Reload Plugin");
-        let libs = libs.to_str().expect("Couldn't get str from C String");
+        let libs = libs.to_string_lossy().to_string();
         debug!("Lib at path: {libs}");
         Self(LibPathSet::new(libs), closure)
     }
