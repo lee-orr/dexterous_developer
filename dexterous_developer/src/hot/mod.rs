@@ -56,14 +56,14 @@ fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
         println!("Executing first run");
         // SAFETY: The function we are calling has to respect rust ownership semantics, and takes ownership of the HotReloadPlugin. We can have high certainty thanks to our control over the compilation of that library - and knowing that it is in fact a rust library.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(String, fn() -> ())> = lib
+            let func: libloading::Symbol<unsafe extern "C" fn(std::ffi::CString, fn() -> ())> = lib
                 .get("dexterous_developer_internal_main".as_bytes())
                 .unwrap_or_else(|_| panic!("Can't find main function",));
+            let path =
+                std::ffi::CString::new(library_paths.library_path().to_string_lossy().to_string())
+                    .expect("Couldn't convert lib path into a C String");
 
-            func(
-                library_paths.library_path().to_string_lossy().to_string(),
-                run_watcher,
-            );
+            func(path, run_watcher);
         };
     } else {
         eprint!("Library still somehow missing");
