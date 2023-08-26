@@ -14,6 +14,7 @@ mod types;
 
 #[cfg(feature = "bevy")]
 pub mod bevy_support;
+mod logger;
 
 pub use dexterous_developer_macros::*;
 

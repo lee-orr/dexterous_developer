@@ -9,8 +9,8 @@ use std::{
 
 use anyhow::{bail, Context, Error};
 
+use crate::logger::{debug, error, info};
 use debounce::EventDebouncer;
-use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
@@ -533,7 +533,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         .status()?;
 
     if result.success() {
-        println!("Build completed");
+        info!("Build completed");
     } else {
         bail!(
             "Failed to build

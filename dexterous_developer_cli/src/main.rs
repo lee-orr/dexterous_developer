@@ -1,5 +1,5 @@
 use clap::Parser;
-use dexterous_developer::{internal_shared::cargo_path_utils::print_dylib_path, HotReloadOptions};
+use dexterous_developer::HotReloadOptions;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -14,9 +14,6 @@ struct Args {
 }
 
 fn main() {
-    println!("Search Paths");
-    print_dylib_path();
-
     let Args { package, features } = Args::parse();
 
     println!("Running {package:?} with {features:?}");

@@ -141,6 +141,7 @@ impl TestProject {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .env("RUST_LOG", "debug")
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
 
@@ -278,7 +279,7 @@ impl RunningProcess {
             loop {
                 match self.read_next_line().await.expect("No Next Line") {
                     Line::Std(line) => {
-                        if line.contains("reload complete") {
+                        if line.contains("Executing first run") {
                             reload_complete = true;
                         }
                         if line.contains("Watching...") {
@@ -289,7 +290,17 @@ impl RunningProcess {
                         }
                     }
 
-                    Line::Err(_) => {}
+                    Line::Err(line) => {
+                        if line.contains("Executing first run") {
+                            reload_complete = true;
+                        }
+                        if line.contains("Watching...") {
+                            is_watching = true;
+                        }
+                        if reload_complete && is_watching {
+                            break;
+                        }
+                    }
 
                     Line::Ended(v) => {
                         panic!("Ended - {v:?}");

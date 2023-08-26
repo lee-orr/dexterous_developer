@@ -1,7 +1,7 @@
 mod command;
 use std::{process::Command, sync::Once};
 
-use log::{debug, error, info};
+use crate::logger::{debug, error, info};
 
 use command::*;
 

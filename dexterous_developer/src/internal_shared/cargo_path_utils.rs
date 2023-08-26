@@ -40,8 +40,10 @@ pub fn dylib_path() -> Vec<PathBuf> {
     }
 }
 
-pub fn print_dylib_path() {
-    for path in dylib_path() {
-        println!("{path:?}");
-    }
+pub fn print_dylib_path() -> String {
+    dylib_path()
+        .iter()
+        .map(|v| format!("{v:?}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
