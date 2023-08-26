@@ -105,23 +105,20 @@ static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
 const RUSTC_ARGS: [(&str, &str); 3] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     ("RUSTC_LINKER", "rust-lld.exe"),
-    ("RUSTFLAGS", "-Zshare-generics=n -Crpath=true"),
+    ("RUSTFLAGS", "-Zshare-generics=n"),
 ];
 #[cfg(target_os = "linux")]
 const RUSTC_ARGS: [(&str, &str); 3] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     ("RUSTC_LINKER", "clang"),
-    (
-        "RUSTFLAGS",
-        "-Zshare-generics=y  -Crpath=true -Clink-arg=-fuse-ld=lld",
-    ),
+    ("RUSTFLAGS", "-Zshare-generics=y  -Clink-arg=-fuse-ld=lld"),
 ];
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     (
         "RUSTFLAGS",
-        "-Zshare-generics=y -Crpath=true -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
+        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
     ),
 ];
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
@@ -129,13 +126,13 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
     (
         "RUSTFLAGS",
-        "-Zshare-generics=y -Crpath=true -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
+        "-Zshare-generics=y -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
     ),
 ];
 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTUP_TOOLCHAIN", "nightly"),
-    ("RUSTFLAGS", "-Zshare-generics=y -Crpath=true"),
+    ("RUSTFLAGS", "-Zshare-generics=y"),
 ];
 
 fn set_envs() -> anyhow::Result<()> {
@@ -524,7 +521,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
 
     let result = Command::new("cargo")
         .env_remove("LD_DEBUG")
-        .arg("rustc")
+        .arg("build")
         .arg("--manifest-path")
         .arg(manifest.as_os_str())
         .arg("-p")
@@ -532,16 +529,6 @@ fn rebuild_internal() -> anyhow::Result<()> {
         .arg("--lib")
         .arg("--features")
         .arg(features)
-        .args([
-            "--",
-            r#"-Clink-arg=-Wl,-rpath,$ORIGIN/deps/"#,
-            "--print=link-args",
-        ])
-        .args(
-            out_folders
-                .iter()
-                .map(|v| format!("-Clink-arg=-Wl,-rpath,{}/", v.to_string_lossy())),
-        )
         .status()?;
     // bail!("just want to see result");
 
