@@ -4,9 +4,19 @@ members = [
     "dexterous_developer_macros",
     "dexterous_developer",
     "dexterous_developer_cli",
+]
+
+exclude = [
+    "testing/*",
     "dexterous_developer_example",
     "no_cli_launcher",
     "tools/ci",
 ]
 
-exclude = ["testing/*"]
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3

@@ -17,3 +17,5 @@ serde = "*"
 
 [features]
 orange = []
+
+[workspace]

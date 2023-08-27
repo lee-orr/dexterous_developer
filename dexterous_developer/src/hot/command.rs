@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeSet,
     path::PathBuf,
-    process::Command,
+    process::{Command, Stdio},
     sync::{mpsc, Once, OnceLock},
     thread,
     time::Duration,
@@ -17,12 +17,12 @@ use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotR
 
 struct BuildSettings {
     watch_folder: PathBuf,
-    manifest: PathBuf,
+    manifest: Option<PathBuf>,
     lib_path: PathBuf,
     package: String,
     features: String,
     target_folder: Option<PathBuf>,
-    out_folders: Vec<PathBuf>,
+    out_target: PathBuf,
 }
 
 impl ToString for BuildSettings {
@@ -34,7 +34,7 @@ impl ToString for BuildSettings {
             features,
             target_folder,
             lib_path,
-            out_folders,
+            out_target,
         } = self;
 
         let target = target_folder
@@ -42,17 +42,16 @@ impl ToString for BuildSettings {
             .map(|v| v.to_string_lossy().to_string())
             .unwrap_or_default();
 
-        let out_folders = out_folders
-            .iter()
-            .map(|v| v.to_string_lossy().to_string())
-            .collect::<Vec<_>>()
-            .join(";;");
+        let out_target = out_target.to_string_lossy().to_string();
 
         let watch_folder = watch_folder.to_string_lossy();
-        let manifest = manifest.to_string_lossy();
+        let manifest = manifest
+            .as_ref()
+            .map(|v| v.to_string_lossy())
+            .unwrap_or_default();
         let lib_path = lib_path.to_string_lossy();
 
-        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_folders}:!:{target}")
+        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}")
     }
 }
 
@@ -69,10 +68,7 @@ impl TryFrom<&str> for BuildSettings {
             .next()
             .map(PathBuf::from)
             .ok_or(Error::msg("no watch folder"))?;
-        let manifest = split
-            .next()
-            .map(PathBuf::from)
-            .ok_or(Error::msg("no manifest"))?;
+        let manifest = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
         let package = split
             .next()
             .map(|v| v.to_string())
@@ -81,11 +77,10 @@ impl TryFrom<&str> for BuildSettings {
             .next()
             .map(|v| v.to_string())
             .ok_or(Error::msg("no features"))?;
-        let out_folders = split
+        let out_target = split
             .next()
-            .map(|v| v.to_string())
-            .ok_or(Error::msg("no out folders"))?;
-        let out_folders = out_folders.split(";;").map(PathBuf::from).collect();
+            .map(PathBuf::from)
+            .ok_or(Error::msg("no out_target"))?;
         let target_folder = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
 
         Ok(BuildSettings {
@@ -95,7 +90,7 @@ impl TryFrom<&str> for BuildSettings {
             package,
             features,
             target_folder,
-            out_folders,
+            out_target,
         })
     }
 }
@@ -260,11 +255,12 @@ pub(crate) fn setup_build_settings(
         metadata.target_directory.into_std_path_buf()
     };
 
-    if !target_path.ends_with("debug") {
-        target_path.push("debug");
+    if target_path.ends_with("debug") {
+        target_path.pop();
     }
 
-    let target_deps_path = target_path.join("deps");
+    let out_target = target_path.join("hot");
+    target_path.push("debug");
 
     let mut rustc = Command::new("rustc");
     rustc
@@ -299,7 +295,7 @@ pub(crate) fn setup_build_settings(
         .chain(errout.lines())
         .filter(|v| !v.contains("Compiling ") && !v.contains("Finished "))
         .map(PathBuf::from)
-        .chain([target_path.clone(), target_deps_path])
+        .chain([out_target.clone()])
         .collect::<BTreeSet<_>>();
 
     debug!("Paths found {paths:?}");
@@ -314,7 +310,7 @@ pub(crate) fn setup_build_settings(
         .cloned()
         .ok_or(anyhow::Error::msg("No file name for lib"))?;
 
-    let lib_path = target_path.join(lib_file_name);
+    let lib_path = out_target.join(lib_file_name);
 
     // SET ENVIRONMENT VARS HERE!
     let dylib_path_var = cargo_path_utils::dylib_path_envvar();
@@ -365,11 +361,8 @@ pub(crate) fn setup_build_settings(
                         .map(|v| v.to_path_buf())
                 })
                 .ok_or(Error::msg("Couldn't find source directory to watch"))?,
-            manifest: metadata
-                .workspace_root
-                .into_std_path_buf()
-                .join("Cargo.toml"),
-            package: pkg.name.clone(),
+            manifest: manifest_path.clone(),
+            package: pkg.name.clone().clone(),
             features: features.into_iter().collect::<Vec<_>>().join(","),
             target_folder: target_folder.as_ref().cloned().map(|mut v| {
                 if v.ends_with("debug") {
@@ -377,7 +370,7 @@ pub(crate) fn setup_build_settings(
                 }
                 v
             }),
-            out_folders: paths,
+            out_target,
         };
 
         let settings = settings.to_string();
@@ -404,10 +397,7 @@ pub(crate) fn setup_build_settings(
                     .map(|v| v.to_path_buf())
             })
             .ok_or(Error::msg("Couldn't find source directory to watch"))?,
-        manifest: metadata
-            .workspace_root
-            .into_std_path_buf()
-            .join("Cargo.toml"),
+        manifest: manifest_path.clone(),
         package: pkg.name.clone(),
         features: features.into_iter().collect::<Vec<_>>().join(","),
         target_folder: target_folder.as_ref().cloned().map(|mut v| {
@@ -416,7 +406,7 @@ pub(crate) fn setup_build_settings(
             }
             v
         }),
-        out_folders: paths,
+        out_target,
     };
 
     BUILD_SETTINGS
@@ -508,31 +498,125 @@ fn rebuild_internal() -> anyhow::Result<()> {
         manifest,
         features,
         package,
-        target_folder,
-        out_folders: _,
+        out_target,
         ..
     }) = BUILD_SETTINGS.get()
     else {
         bail!("Couldn't get settings...");
     };
 
-    if let Some(target) = target_folder {
-        std::env::set_var("CARGO_BUILD_TARGET_DIR", target.as_os_str());
-    }
-
-    let result = Command::new("cargo")
-        .env_remove("LD_DEBUG")
+    let mut command = Command::new("cargo");
+    command
         .arg("build")
-        .arg("--manifest-path")
-        .arg(manifest.as_os_str())
+        .arg("--profile")
+        .arg("dev")
         .arg("-p")
         .arg(package.as_str())
         .arg("--lib")
         .arg("--features")
         .arg(features)
-        .status()?;
+        .arg("--message-format=json");
 
-    if result.success() {
+    if let Some(manifest) = manifest {
+        command.arg("--manifest-path").arg(manifest.as_os_str());
+    }
+
+    info!("Command: {}", print_command(&command));
+
+    let mut child = command
+        .env_remove("LD_DEBUG")
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let reader = std::io::BufReader::new(
+        child
+            .stdout
+            .take()
+            .ok_or(anyhow::Error::msg("Couldn't get stdout"))?,
+    );
+
+    let mut succeeded = false;
+
+    let mut artifacts = Vec::with_capacity(20);
+
+    for msg in cargo_metadata::Message::parse_stream(reader) {
+        let message = msg?;
+        match &message {
+            cargo_metadata::Message::CompilerArtifact(artifact) => {
+                if artifact.target.crate_types.iter().any(|v| v == "dylib") {
+                    for path in artifact.filenames.iter() {
+                        artifacts.push(path.clone().into_std_path_buf());
+                    }
+                }
+            }
+            cargo_metadata::Message::BuildFinished(finished) => {
+                debug!("Build finished: {finished:?}");
+                succeeded = finished.success;
+            }
+            _ => {
+                debug!("Compilation Message: {message:?}");
+            }
+        }
+    }
+
+    let result = child.wait()?;
+
+    if result.success() && succeeded {
+        for path in artifacts {
+            let Some(parent) = path.parent() else {
+                continue;
+            };
+            let Some(filename) = path.file_name() else {
+                continue;
+            };
+            let Some(stem) = path.file_stem() else {
+                continue;
+            };
+            let stem = stem.to_string_lossy().to_string();
+            let Some(extension) = path.extension() else {
+                continue;
+            };
+            let extension = extension.to_string_lossy().to_string();
+            if parent.to_string_lossy() != "deps" {
+                let deps = parent.join("deps");
+                let deps_path = deps.join(filename);
+                if deps_path.exists() {
+                    let out_path = out_target.join(filename);
+                    if !out_path.exists() {
+                        std::fs::copy(deps_path, out_path)?;
+                    } else {
+                        let _ = std::fs::copy(deps_path, out_path);
+                    }
+                } else {
+                    let mut found_file = None;
+                    for file in deps.read_dir()? {
+                        let file = file?;
+                        let filename = file.file_name().to_string_lossy().to_string();
+                        if filename.starts_with(&stem) && filename.ends_with(&extension) {
+                            if let Some((_, old_time)) = &found_file {
+                                let time = file.metadata()?.modified()?;
+                                if time > *old_time {
+                                    found_file = Some((file.path(), time));
+                                }
+                            } else {
+                                found_file = Some((file.path(), file.metadata()?.modified()?));
+                            }
+                        }
+                    }
+                    if let Some((found_file, _)) = found_file {
+                        let Some(filename) = found_file.file_name() else {
+                            continue;
+                        };
+                        let out_path = out_target.join(filename);
+                        if !out_path.exists() {
+                            std::fs::copy(found_file, out_path)?;
+                        } else {
+                            let _ = std::fs::copy(found_file, out_path);
+                        }
+                    }
+                }
+            }
+        }
         info!("Build completed");
     } else {
         bail!(

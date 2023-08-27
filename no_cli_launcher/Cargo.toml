@@ -10,3 +10,5 @@ dexterous_developer = { path = "../dexterous_developer", default-features = fals
     "hot",
     "cli",
 ] }
+
+[workspace]

@@ -7,3 +7,5 @@ edition = "2018"
 
 [dependencies]
 xshell = "0.1"
+
+[workspace]
