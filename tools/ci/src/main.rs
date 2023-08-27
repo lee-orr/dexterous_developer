@@ -12,13 +12,4 @@ fn main() {
     cmd!("cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::type_complexity -W clippy::doc_markdown")
     .run()
     .expect("Please fix clippy errors in output above.");
-
-    let mut cwd = std::env::current_dir().expect("Couldn't get current directory");
-    cwd.push("testing");
-    cwd.push("dexterous_developer_tests");
-    std::env::set_current_dir(cwd).expect("Couldn't set current directory");
-
-    cmd!("cargo test -p dexterous_developer_tests --lib -- --nocapture")
-        .run()
-        .expect("Expect cargo test to work");
 }

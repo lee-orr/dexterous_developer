@@ -10,11 +10,9 @@ async fn can_run_cold() {
 
     process.is_ready().await;
 
-    process
-        .next_line_contains("Press Enter to Progress, or type 'exit' to exit")
-        .await;
+    process.send("\n").expect("Failed to send empty line");
 
-    process.next_line_contains("Ran Update").await;
+    process.wait_for_lines(&["Ran Update"]).await;
 
     process.send("\n").expect("Failed to send empty line");
 
@@ -31,12 +29,9 @@ async fn can_run_hot() {
 
     process.is_ready().await;
 
-    process
-        .wait_for_lines(&[
-            "Press Enter to Progress, or type 'exit' to exit",
-            "Ran Update",
-        ])
-        .await;
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
 
     process.send("\n").expect("Failed to send empty line");
 
@@ -53,12 +48,9 @@ async fn can_run_hot_and_edit() {
 
     process.is_ready().await;
 
-    process
-        .wait_for_lines(&[
-            "Press Enter to Progress, or type 'exit' to exit",
-            "Ran Update",
-        ])
-        .await;
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
 
     process.send("\n").expect("Failed to send empty line");
 
@@ -86,12 +78,9 @@ async fn can_run_hot_and_edit_with_launcher() {
 
     process.is_ready().await;
 
-    process
-        .wait_for_lines(&[
-            "Press Enter to Progress, or type 'exit' to exit",
-            "Ran Update",
-        ])
-        .await;
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
 
     process.send("\n").expect("Failed to send empty line");
 

@@ -230,20 +230,6 @@ impl TestProject {
     }
 }
 
-// impl Drop for TestProject {
-//     fn drop(&mut self) {
-//         println!(
-//             "Dropping {} - delete {}",
-//             self.name,
-//             self.path.to_string_lossy()
-//         );
-
-//         let e = std::fs::remove_dir_all(self.path.as_path());
-
-//         println!("Dropped - {e:#?}");
-//     }
-// }
-
 #[derive(Clone, Debug)]
 pub enum Line {
     Std(String),

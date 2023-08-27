@@ -30,10 +30,6 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - name: Add Binutils
-        run: cargo install -f cargo-binutils
-      - name: Add llvm
-        run: rustup component add llvm-tools-preview
       - name: CI job
         run: cargo run -p ci
         working-directory: ./tools/ci
@@ -41,6 +37,32 @@ jobs:
         run: cargo doc --no-deps -p dexterous_developer
         env:
           RUSTDOCFLAGS: -Dwarnings
+
+  tests-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - name: Add Binutils
+        run: cargo install -f cargo-binutils
+      - name: Add llvm
+        run: rustup component add llvm-tools-preview
+      - name: Run Tests
+        run: cargo test -- --nocapture
+        working-directory: ./testing/dexterous_developer_tests
 
   tests-mac:
     runs-on: macos-latest
@@ -54,7 +76,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
       - name: Install LLVM
         run: brew install llvm
       - uses: actions-rs/toolchain@v1
@@ -78,7 +100,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly

@@ -1,7 +1,8 @@
 {
-    "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml",
-    "rust-analyzer.linkedProjects": [
-        "./Cargo.toml",
-        "./testing/dexterous_developer_tests/Cargo.toml"
-    ]
+  "rustTestExplorer.rootCargoManifestFilePath": "./Cargo.toml",
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml",
+    "./testing/dexterous_developer_tests/Cargo.toml",
+    ".\\dexterous_developer_example\\Cargo.toml"
+  ]
 }
