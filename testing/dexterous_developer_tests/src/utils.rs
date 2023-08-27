@@ -340,7 +340,7 @@ impl RunningProcess {
                     Line::Std(_) => {}
 
                     Line::Err(line) => {
-                        if line.contains("Finished dev") {
+                        if line.contains("Build completed") {
                             break;
                         }
                     }
