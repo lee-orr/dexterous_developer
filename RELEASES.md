@@ -1,5 +1,5 @@
 # Release Notes
 
-## Version 0.0
+## Version 0.0.8
 
-- Template release, plz ignore
+- Many underlying changes - ultimately designed to increase consistency and ensure it works correctly across all supported platforms (max, windows, linux).
