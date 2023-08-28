@@ -1,6 +1,6 @@
 mod utils;
 
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use crate::utils::*;
 
@@ -103,14 +103,35 @@ async fn can_run_hot_and_edit_with_launcher() {
 }
 
 pub async fn run_tests() {
-    println!("Can run cold");
-    can_run_cold().await;
-    println!("Can run hot cli");
-    can_run_hot().await;
-    println!("Can edit with hot reload cli");
-    can_run_hot_and_edit().await;
-    println!("Can edit with hot reload launcher");
-    can_run_hot_and_edit_with_launcher().await;
+    let mut args = env::args();
+    args.next();
+    let Some(argument) = args.next() else {
+        eprintln!("No argument");
+        std::process::exit(1);
+    };
+
+    match argument.as_str() {
+        "cold" => {
+            println!("Can run cold");
+            can_run_cold().await;
+        }
+        "hot" => {
+            println!("Can run hot cli");
+            can_run_hot().await;
+        }
+        "edit" => {
+            println!("Can edit with hot reload cli");
+            can_run_hot_and_edit().await;
+        }
+        "launcher" => {
+            println!("Can edit with hot reload launcher");
+            can_run_hot_and_edit_with_launcher().await;
+        }
+        _ => {
+            eprintln!("{argument} is an invalid test");
+            std::process::exit(1)
+        }
+    }
 }
 
 #[cfg(test)]

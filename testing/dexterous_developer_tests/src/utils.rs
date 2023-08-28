@@ -141,7 +141,7 @@ impl TestProject {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env("RUST_LOG", "debug")
+            .env("RUST_LOG", "trace")
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
 
@@ -337,6 +337,24 @@ impl RunningProcess {
                 };
             }
             self.send("\n").expect("Failed to send empty line");
+            loop {
+                match self.read_next_line().await.expect("No Next Line") {
+                    Line::Std(v) => {
+                        println!("Got a line while waiting {v}");
+                    }
+
+                    Line::Err(line) => {
+                        if line.contains("reload complete") {
+                            break;
+                        }
+                        println!("got an err while waiting {line}");
+                    }
+
+                    Line::Ended(v) => {
+                        panic!("Ended - {v:?}");
+                    }
+                };
+            }
         } else {
             panic!("Not a hot reloadable attempt")
         }

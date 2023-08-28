@@ -585,7 +585,10 @@ fn rebuild_internal() -> anyhow::Result<()> {
                     if !out_path.exists() {
                         std::fs::copy(deps_path, out_path)?;
                     } else {
-                        let _ = std::fs::copy(deps_path, out_path);
+                        match std::fs::copy(deps_path, out_path.as_path()) {
+                            Ok(_) => println!("{out_path:?} replaced"),
+                            Err(_e) => eprintln!("Couldn't replace {out_path:?} - using original"),
+                        }
                     }
                 } else {
                     let mut found_file = None;
@@ -611,7 +614,16 @@ fn rebuild_internal() -> anyhow::Result<()> {
                         if !out_path.exists() {
                             std::fs::copy(found_file, out_path)?;
                         } else {
-                            let _ = std::fs::copy(found_file, out_path);
+                            if filename.to_string_lossy().starts_with(&format!("{stem}-")) {
+                                println!("Hashed filename - not replacing");
+                                continue;
+                            }
+                            match std::fs::copy(found_file, out_path.as_path()) {
+                                Ok(_) => println!("{out_path:?} replaced"),
+                                Err(_e) => {
+                                    eprintln!("Couldn't replace {out_path:?} - using original")
+                                }
+                            }
                         }
                     }
                 }
