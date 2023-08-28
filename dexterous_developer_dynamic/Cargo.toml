@@ -1,5 +1,5 @@
 [package]
-name = "dexterous_developer"
+name = "dexterous_developer_dynamic"
 version = "0.0.8"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -15,16 +15,10 @@ description = "a hot-reload library for bevy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["bevy"]
-hot = ["dexterous_developer_internal/hot"]
-hot_internal = [
-    "dexterous_developer_internal/hot_internal",
-    "dexterous_developer_dynamic",
-]
-bevy = ["dexterous_developer_internal/bevy"]
-cli = ["dexterous_developer_internal/cli"]
+
+[lib]
+crate-type = ["dylib"]
 
 
 [dependencies]
-dexterous_developer_internal = { version = "0.0.8", path = "../dexterous_developer_internal" }
-dexterous_developer_dynamic = { version = "0.0.8", path = "../dexterous_developer_dynamic", optional = true }
+dexterous_developer_internal = { version = "0.0.8", path = "../dexterous_developer_internal", default-features = false }
