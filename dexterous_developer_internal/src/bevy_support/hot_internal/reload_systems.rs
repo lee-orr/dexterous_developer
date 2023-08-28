@@ -156,11 +156,8 @@ pub fn cleanup(
 ) {
     for schedule in reloadable.labels.iter() {
         debug!("Attempting cleanup for {schedule:?}");
-        let cleadn = schedules.insert(schedule.clone(), Schedule::default());
-        debug!(
-            "Tried cleaning {schedule:?} was empty: {}",
-            cleadn.is_none()
-        );
+        let clean = schedules.insert(schedule.clone(), Schedule::default());
+        debug!("Tried cleaning {schedule:?} was empty: {}", clean.is_none());
     }
     debug!("Cleanup almost complete");
 

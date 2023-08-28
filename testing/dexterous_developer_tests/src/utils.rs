@@ -221,6 +221,7 @@ impl TestProject {
         };
 
         Ok(RunningProcess {
+            name: self.name.clone(),
             handle: Some(handle),
             read: read_rx,
             read_sender: read_tx,
@@ -241,6 +242,7 @@ pub enum Line {
 pub struct LineIn(String);
 
 pub struct RunningProcess {
+    name: String,
     handle: Option<JoinHandle<()>>,
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
@@ -394,6 +396,7 @@ impl RunningProcess {
         let mut iterator = value.iter();
         let mut current = iterator.next();
         while let Some(c) = current {
+            println!("{} - Waiting for {c}", self.name);
             match self.read_next_line().await.expect("No Next Line") {
                 Line::Std(line) => {
                     if line.contains(c) {

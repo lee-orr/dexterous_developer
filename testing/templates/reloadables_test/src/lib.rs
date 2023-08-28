@@ -15,7 +15,10 @@ fn terminal_runner(mut app: App) {
             return;
         }
         app.insert_resource(shared::StdInput(typed));
+
+        println!("Running Update");
         app.update();
+        println!("Update Ended");
     }
 }
 
