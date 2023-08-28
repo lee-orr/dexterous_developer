@@ -65,6 +65,8 @@ async fn can_run_hot_and_edit() {
 
     process.has_updated().await;
 
+    process.send("\n").expect("Failed to send empty line");
+
     process.wait_for_lines(&["Got some new text!"]).await;
 
     process.send("exit\n").expect("Failed to send line");
@@ -94,6 +96,8 @@ async fn can_run_hot_and_edit_with_launcher() {
         .expect("Couldn't update file");
 
     process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
 
     process.wait_for_lines(&["Got some new text!"]).await;
 
