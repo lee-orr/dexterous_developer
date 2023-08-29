@@ -122,7 +122,11 @@ impl TestProject {
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
+        cmd.current_dir(wd)
+            .arg("run")
+            .arg("-p")
+            .arg("launcher")
+            .env("RUST_LOG", "trace");
         self.run(cmd, true).await
     }
 

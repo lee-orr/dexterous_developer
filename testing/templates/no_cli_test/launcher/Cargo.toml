@@ -10,3 +10,5 @@ dexterous_developer = { path = "../../../../dexterous_developer", default-featur
     "hot",
     "cli",
 ] }
+env_logger = "*"
+log = "*"

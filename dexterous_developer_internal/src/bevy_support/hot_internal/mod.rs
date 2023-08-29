@@ -73,7 +73,7 @@ impl Plugin for HotReloadPlugin {
         let watcher = {
             let watch = self.1;
             move || {
-                debug!("Setting up watcher");
+                debug!("Calling Watch Function");
                 watch();
             }
         };

@@ -261,6 +261,13 @@ pub async fn run_tests() {
             println!("Can handle reloadables");
             can_run_with_reloadables().await;
         }
+        "ls" => {
+            println!("cold");
+            println!("hot");
+            println!("edit");
+            println!("launcher");
+            println!("reloadables");
+        }
         _ => {
             eprintln!("{argument} is an invalid test");
             std::process::exit(1)

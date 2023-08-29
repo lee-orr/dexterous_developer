@@ -1,7 +1,7 @@
 mod command;
 use std::{process::Command, sync::Once};
 
-use crate::logger::{debug, error, info};
+use log::{debug, error, info};
 
 use command::*;
 
@@ -11,7 +11,8 @@ static RUNNER: Once = Once::new();
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
     RUNNER.call_once(|| {
-        env_logger::init();
+        println!("Called Run Init");
+        let _ = env_logger::try_init();
         if let Ok(settings) = std::env::var("DEXTEROUS_BUILD_SETTINGS") {
             info!("Running based on DEXTEROUS_BUILD_SETTINGS env");
             run_reloadable_from_env(settings);

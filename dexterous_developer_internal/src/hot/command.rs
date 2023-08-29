@@ -9,8 +9,8 @@ use std::{
 
 use anyhow::{bail, Context, Error};
 
-use crate::logger::{debug, error, info};
 use debounce::EventDebouncer;
+use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
@@ -445,6 +445,7 @@ pub(crate) fn run_watcher() {
 }
 
 fn run_watcher_inner() -> anyhow::Result<()> {
+    info!("Getting watch settings");
     let delay = Duration::from_secs(2);
     let Some(BuildSettings { watch_folder, .. }) = BUILD_SETTINGS.get() else {
         bail!("Couldn't get settings...");
@@ -482,6 +483,7 @@ fn run_watcher_inner() -> anyhow::Result<()> {
             rebuild();
         }
     });
+    info!("Starting watch receiver");
     watching_rx.recv()?;
     info!("Watching...");
     Ok(())
