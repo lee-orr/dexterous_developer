@@ -38,8 +38,25 @@ async fn can_run_hot() {
     process.exit().await;
 }
 
+async fn can_run_hot_with_mold() {
+    let mut project = TestProject::new("simple_cli_test", "can_run_hot_mold").unwrap();
+    let mut process = project.run_hot_mold().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.exit().await;
+}
+
 async fn can_run_hot_and_edit() {
-    let mut project = TestProject::new("simple_cli_test", "can_run_hotand_edit").unwrap();
+    let mut project = TestProject::new("simple_cli_test", "can_run_hot_and_edit").unwrap();
     let mut process = project.run_hot_cli().await.unwrap();
 
     process.is_ready().await;
@@ -251,12 +268,17 @@ pub async fn run_tests() {
             println!("Can handle reloadables");
             can_run_with_reloadables().await;
         }
+        "mold" => {
+            println!("Can run hot with mold (on linux)");
+            can_run_hot_with_mold().await;
+        }
         "ls" => {
             println!("cold");
             println!("hot");
             println!("edit");
             println!("launcher");
             println!("reloadables");
+            println!("mold");
         }
         _ => {
             eprintln!("{argument} is an invalid test");

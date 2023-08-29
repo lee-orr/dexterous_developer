@@ -107,7 +107,7 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mold
       - name: Run Tests
         run: cargo test -- --nocapture
         working-directory: ./testing/dexterous_developer_tests

@@ -141,6 +141,20 @@ impl TestProject {
         self.run(cmd, true).await
     }
 
+    pub async fn run_hot_mold(&mut self) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd)
+            .arg("-p")
+            .arg(&self.package)
+            .arg("--prefer-mold");
+        self.run(cmd, true).await
+    }
+
     async fn run(&mut self, mut cmd: Command, is_hot: bool) -> anyhow::Result<RunningProcess> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
