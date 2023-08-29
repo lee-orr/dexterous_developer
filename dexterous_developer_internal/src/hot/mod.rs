@@ -1,11 +1,18 @@
+mod build_settings;
 mod command;
+mod env;
+mod singleton;
 use std::{process::Command, sync::Once};
 
 use log::{debug, error, info};
 
 use command::*;
 
-use crate::{internal_shared::update_lib::get_initial_library, HotReloadOptions};
+use crate::{
+    hot::singleton::{load_build_settings, BUILD_SETTINGS},
+    internal_shared::update_lib::get_initial_library,
+    HotReloadOptions,
+};
 
 static RUNNER: Once = Once::new();
 
@@ -24,7 +31,12 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
 }
 
 fn run_reloadabe_app_inner(options: HotReloadOptions) {
-    match setup_build_settings(&options).expect("Couldn't get initial build settings") {
+    let (settings, paths) =
+        setup_build_settings(&options).expect("Couldn't get initial build settings");
+
+    match setup_build_setting_environment(settings, paths)
+        .expect("Couldn't set up build settings in environment")
+    {
         BuildSettingsReady::LibraryPath(library_paths) => {
             run_app_with_path(library_paths);
         }
@@ -43,8 +55,11 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
 
 fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
     let _ = std::fs::remove_file(library_paths.library_path());
+    let settings = BUILD_SETTINGS
+        .get()
+        .expect("Couldn't get existing build settings");
 
-    match first_exec() {
+    match first_exec(settings) {
         Ok(_) => {}
         Err(err) => {
             error!("Initial Build Failed:");
