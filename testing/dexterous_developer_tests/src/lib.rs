@@ -18,9 +18,7 @@ async fn can_run_cold() {
 
     process.next_line_contains("Ran Update").await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot() {
@@ -37,9 +35,7 @@ async fn can_run_hot() {
 
     process.wait_for_lines(&["Ran Update"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot_and_edit() {
@@ -69,9 +65,7 @@ async fn can_run_hot_and_edit() {
 
     process.wait_for_lines(&["Got some new text!"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot_and_edit_with_launcher() {
@@ -101,9 +95,7 @@ async fn can_run_hot_and_edit_with_launcher() {
 
     process.wait_for_lines(&["Got some new text!"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_with_reloadables() {
@@ -227,9 +219,7 @@ async fn can_run_with_reloadables() {
 
     process.wait_for_lines(&["second"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 pub async fn run_tests() {

@@ -388,7 +388,8 @@ impl RunningProcess {
         self.next_line_contains("Exiting");
     }
 
-    pub async fn exiting(&mut self) {
+    pub async fn exit(mut self) {
+        self.send("exit\n").expect("Failed to send line");
         self.next_line_contains("Exiting");
         println!("Exiting");
         self.handle = None;
