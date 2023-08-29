@@ -131,9 +131,15 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTFLAGS", "-Zshare-generics=y"),
 ];
 
-fn set_envs() -> anyhow::Result<()> {
+fn set_envs(prefer_mold: bool) -> anyhow::Result<()> {
     for (var, val) in RUSTC_ARGS.iter() {
-        if (var == &"RUSTC_LINKER") && which::which(val).is_err() {
+        let val = if cfg!(target_os = "linux") && prefer_mold {
+            val.replace("lld", "mold")
+        } else {
+            val.to_string()
+        };
+
+        if (var == &"RUSTC_LINKER") && which::which(&val).is_err() {
             bail!("Linker {val} is not installed");
         } else if val.contains("-fuse-ld=") {
             let mut split = val.split("-fuse-ld=");
@@ -161,7 +167,8 @@ pub(crate) fn setup_build_settings(
         watch_folder,
         target_folder,
         features,
-        set_env: _,
+        prefer_mold,
+        ..
     } = options;
 
     if let Some(l) = manifest_path.as_ref() {
@@ -186,7 +193,7 @@ pub(crate) fn setup_build_settings(
 
     info!("Compiling with features: {}", features.join(", "));
 
-    set_envs()?;
+    set_envs(*prefer_mold)?;
 
     let features = features
         .iter()
