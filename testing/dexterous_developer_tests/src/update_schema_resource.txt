@@ -1,0 +1,45 @@
+use bevy::prelude::{Component, Res, Resource, Startup, Update};
+use dexterous_developer::*;
+use serde::{Deserialize, Serialize};
+
+fn update(text: Res<TextResource>) {
+    let t = text.0.as_str();
+    let t1 = text.1.as_str();
+    println!("Debug Here: {text:?}");
+    println!("Got: {t} - {t1}");
+}
+
+fn startup() {
+    println!("Press Enter to Progress, or type 'exit' to exit");
+}
+
+#[dexterous_developer_setup]
+pub fn reloadable(app: &mut ReloadableAppContents) {
+    app.add_systems(Startup, startup)
+        .add_systems(Update, update)
+        .insert_replacable_resource::<TextResource>();
+}
+
+#[derive(Component, Serialize, Deserialize, Default)]
+struct TextComponent(String);
+
+impl ReplacableComponent for TextComponent {
+    fn get_type_name() -> &'static str {
+        "text_component"
+    }
+}
+
+#[derive(Resource, Serialize, Deserialize, Debug)]
+struct TextResource(String, #[serde(default)] String);
+
+impl Default for TextResource {
+    fn default() -> Self {
+        Self("Resource Replaced".to_string(), "Added Field".to_string())
+    }
+}
+
+impl ReplacableResource for TextResource {
+    fn get_type_name() -> &'static str {
+        "text_resource"
+    }
+}

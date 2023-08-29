@@ -122,7 +122,11 @@ impl TestProject {
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
+        cmd.current_dir(wd)
+            .arg("run")
+            .arg("-p")
+            .arg("launcher")
+            .env("RUST_LOG", "trace");
         self.run(cmd, true).await
     }
 
@@ -221,6 +225,7 @@ impl TestProject {
         };
 
         Ok(RunningProcess {
+            name: self.name.clone(),
             handle: Some(handle),
             read: read_rx,
             read_sender: read_tx,
@@ -241,6 +246,7 @@ pub enum Line {
 pub struct LineIn(String);
 
 pub struct RunningProcess {
+    name: String,
     handle: Option<JoinHandle<()>>,
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
@@ -382,7 +388,8 @@ impl RunningProcess {
         self.next_line_contains("Exiting");
     }
 
-    pub async fn exiting(&mut self) {
+    pub async fn exit(mut self) {
+        self.send("exit\n").expect("Failed to send line");
         self.next_line_contains("Exiting");
         println!("Exiting");
         self.handle = None;
@@ -394,6 +401,7 @@ impl RunningProcess {
         let mut iterator = value.iter();
         let mut current = iterator.next();
         while let Some(c) = current {
+            println!("{} - Waiting for {c}", self.name);
             match self.read_next_line().await.expect("No Next Line") {
                 Line::Std(line) => {
                     if line.contains(c) {

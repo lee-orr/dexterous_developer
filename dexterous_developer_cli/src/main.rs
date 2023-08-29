@@ -1,5 +1,5 @@
 use clap::Parser;
-use dexterous_developer::HotReloadOptions;
+use dexterous_developer_internal::HotReloadOptions;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -23,5 +23,5 @@ fn main() {
         package,
         ..Default::default()
     };
-    dexterous_developer::run_reloadabe_app(options);
+    dexterous_developer_internal::run_reloadabe_app(options);
 }

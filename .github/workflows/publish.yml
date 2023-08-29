@@ -28,6 +28,10 @@ jobs:
           override: true
       - name: publish macros
         run: cargo publish -p dexterous_developer_macros
+      - name: publish internal
+        run: cargo publish -p dexterous_developer_internal
+      - name: publish dynamic
+        run: cargo publish -p dexterous_developer_dynamic
       - name: publish main crate
         run: cargo publish -p dexterous_developer
       - name: publish cli

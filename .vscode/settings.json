@@ -3,6 +3,9 @@
   "rust-analyzer.linkedProjects": [
     "./Cargo.toml",
     "./testing/dexterous_developer_tests/Cargo.toml",
-    "./dexterous_developer_example/Cargo.toml"
+    "./dexterous_developer_example/Cargo.toml",
+    "./testing/templates/reloadables_test/Cargo.toml",
+    "./testing/templates/no_cli_test/Cargo.toml",
+    "./testing/templates/simple_cli_test/Cargo.toml",
   ]
 }

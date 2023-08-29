@@ -9,8 +9,8 @@ use std::{
 
 use anyhow::{bail, Context, Error};
 
-use crate::logger::{debug, error, info};
 use debounce::EventDebouncer;
+use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
@@ -445,6 +445,7 @@ pub(crate) fn run_watcher() {
 }
 
 fn run_watcher_inner() -> anyhow::Result<()> {
+    info!("Getting watch settings");
     let delay = Duration::from_secs(2);
     let Some(BuildSettings { watch_folder, .. }) = BUILD_SETTINGS.get() else {
         bail!("Couldn't get settings...");
@@ -482,6 +483,7 @@ fn run_watcher_inner() -> anyhow::Result<()> {
             rebuild();
         }
     });
+    info!("Starting watch receiver");
     watching_rx.recv()?;
     info!("Watching...");
     Ok(())
@@ -499,6 +501,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
         features,
         package,
         out_target,
+        lib_path,
         ..
     }) = BUILD_SETTINGS.get()
     else {
@@ -583,16 +586,25 @@ fn rebuild_internal() -> anyhow::Result<()> {
                 if deps_path.exists() {
                     let out_path = out_target.join(filename);
                     if !out_path.exists() {
+                        debug!("Copying from {deps_path:?} to {out_path:?}");
                         std::fs::copy(deps_path, out_path)?;
                     } else {
+                        if out_path.as_path() != lib_path.as_path() {
+                            debug!("Should only override the hot reloaded library - not any dynamic dependencies");
+                            continue;
+                        }
                         match std::fs::copy(deps_path, out_path.as_path()) {
-                            Ok(_) => println!("{out_path:?} replaced"),
-                            Err(_e) => eprintln!("Couldn't replace {out_path:?} - using original"),
+                            Ok(_) => debug!("{out_path:?} replaced"),
+                            Err(_e) => error!("Couldn't replace {out_path:?} - using original"),
                         }
                     }
                 } else {
                     let mut found_file = None;
-                    for file in deps.read_dir()? {
+                    let Ok(read_dir) = deps.read_dir() else {
+                        error!("Couldn't read directory {deps:?}");
+                        continue;
+                    };
+                    for file in read_dir {
                         let file = file?;
                         let filename = file.file_name().to_string_lossy().to_string();
                         if filename.starts_with(&stem) && filename.ends_with(&extension) {
@@ -612,16 +624,17 @@ fn rebuild_internal() -> anyhow::Result<()> {
                         };
                         let out_path = out_target.join(filename);
                         if !out_path.exists() {
+                            debug!("Copying from {deps_path:?} to {out_path:?}");
                             std::fs::copy(found_file, out_path)?;
                         } else {
                             if filename.to_string_lossy().starts_with(&format!("{stem}-")) {
-                                println!("Hashed filename - not replacing");
+                                debug!("Hashed filename - not replacing");
                                 continue;
                             }
                             match std::fs::copy(found_file, out_path.as_path()) {
-                                Ok(_) => println!("{out_path:?} replaced"),
+                                Ok(_) => debug!("{out_path:?} replaced"),
                                 Err(_e) => {
-                                    eprintln!("Couldn't replace {out_path:?} - using original")
+                                    error!("Couldn't replace {out_path:?} - using original")
                                 }
                             }
                         }

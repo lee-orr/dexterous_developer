@@ -18,9 +18,7 @@ async fn can_run_cold() {
 
     process.next_line_contains("Ran Update").await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot() {
@@ -37,9 +35,7 @@ async fn can_run_hot() {
 
     process.wait_for_lines(&["Ran Update"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot_and_edit() {
@@ -69,9 +65,7 @@ async fn can_run_hot_and_edit() {
 
     process.wait_for_lines(&["Got some new text!"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
-
-    process.exiting().await;
+    process.exit().await;
 }
 
 async fn can_run_hot_and_edit_with_launcher() {
@@ -101,9 +95,131 @@ async fn can_run_hot_and_edit_with_launcher() {
 
     process.wait_for_lines(&["Got some new text!"]).await;
 
-    process.send("exit\n").expect("Failed to send line");
+    process.exit().await;
+}
 
-    process.exiting().await;
+async fn can_run_with_reloadables() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "can_run_with_reloadables").unwrap();
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    println!("INSERT REPLACABLE RESOURCE");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./insert_replacable_resource.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: Resource Added"]).await;
+
+    println!("RESET REPLACABLE RESOURCE");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./reset_replacable_resource.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: Resource Replaced"]).await;
+
+    process
+        .send("And Updated\n")
+        .expect("Failed to send empty line");
+
+    process
+        .wait_for_lines(&["Updated: Resource Replaced And Updated"])
+        .await;
+
+    println!("UPDATE RESOURCE WITHOUT RESET");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./update_replaceable_resource.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process
+        .wait_for_lines(&["Retained: Resource Replaced And Updated"])
+        .await;
+
+    println!("UPDATE SCHEMA RESOURCE");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./update_schema_resource.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process
+        .wait_for_lines(&["Got: Resource Replaced - Added Field"])
+        .await;
+
+    println!("INSERT REPLACABLE COMPONENTS");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./insert_replacable_components.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("first\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["first"]).await;
+
+    process.send("second\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["second"]).await;
+
+    println!("UPDATE COMPONENT SCHEMA");
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./update_schema_component.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["first"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["second"]).await;
+
+    process.exit().await;
 }
 
 pub async fn run_tests() {
@@ -131,6 +247,17 @@ pub async fn run_tests() {
             println!("Can edit with hot reload launcher");
             can_run_hot_and_edit_with_launcher().await;
         }
+        "reloadables" => {
+            println!("Can handle reloadables");
+            can_run_with_reloadables().await;
+        }
+        "ls" => {
+            println!("cold");
+            println!("hot");
+            println!("edit");
+            println!("launcher");
+            println!("reloadables");
+        }
         _ => {
             eprintln!("{argument} is an invalid test");
             std::process::exit(1)
@@ -155,5 +282,9 @@ mod test {
     #[tokio::test]
     async fn can_run_hot_and_edit_with_launcher() {
         super::can_run_hot_and_edit_with_launcher().await;
+    }
+    #[tokio::test]
+    async fn can_run_with_reloadables() {
+        super::can_run_with_reloadables().await;
     }
 }

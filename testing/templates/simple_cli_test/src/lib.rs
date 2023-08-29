@@ -11,7 +11,9 @@ fn terminal_runner(mut app: App) {
             println!("Exiting");
             return;
         }
+        println!("Running Update");
         app.update();
+        println!("Update Ended");
     }
 }
 
