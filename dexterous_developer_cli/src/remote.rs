@@ -1,7 +1,6 @@
 use std::{
     collections::BTreeSet,
     env::consts::{ARCH, OS},
-    io::copy,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -12,7 +11,7 @@ use dexterous_developer_internal::{
     HotReloadMessage,
 };
 use futures_util::StreamExt;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 use url::Url;
 

@@ -1,9 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    net::SocketAddr,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{
     body::Body,
@@ -21,7 +16,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::{
     process::Command,
     sync::{
-        broadcast::{self, Receiver, Sender},
+        broadcast::{self, Receiver},
         RwLock,
     },
 };
