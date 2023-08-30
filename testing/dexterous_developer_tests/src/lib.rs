@@ -279,10 +279,7 @@ async fn can_run_remote() {
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
-    let Some(argument) = args.next() else {
-        eprintln!("No argument");
-        std::process::exit(1);
-    };
+    let argument = args.next().unwrap_or_default();
 
     match argument.as_str() {
         "cold" => {

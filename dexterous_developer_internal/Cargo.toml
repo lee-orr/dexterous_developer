@@ -32,7 +32,7 @@ hot_internal = [
     "dep:uuid",
 ]
 bevy = ["dep:bevy", "dep:serde", "dep:rmp-serde"]
-cli = ["hot", "dep:tokio", "dep:serde"]
+cli = ["hot", "dep:tokio", "dep:serde", "blake3"]
 
 
 [dependencies]
@@ -52,3 +52,4 @@ which = { version = "4.4.0", optional = true }
 log = { version = "0.4", optional = true }
 env_logger = { version = "0.10", optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
+blake3 = { version = "1", optional = true }

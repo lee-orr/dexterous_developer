@@ -34,3 +34,4 @@ futures-util = { version = "0.3", default-features = false, features = [
     "std",
 ] }
 crossbeam = "0.8"
+blake3 = "1"

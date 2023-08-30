@@ -88,7 +88,13 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
         if let Ok(dir_content) = lib_dir.read_dir() {
             let paths = dir_content
                 .filter_map(|v| v.ok())
-                .map(|v| v.file_name().to_string_lossy().to_string())
+                .map(|v| (v.file_name().to_string_lossy().to_string(), v.path()))
+                .filter_map(|(v, f)| std::fs::read(f).ok().map(|f| (v, f)))
+                .map(|(name, f)| {
+                    let hash = blake3::hash(&f);
+
+                    (name, hash.as_bytes().to_owned())
+                })
                 .collect::<Vec<_>>();
             let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedPaths(paths)) else {
                 eprintln!("Couldn't serialize current updated paths - closing connection");

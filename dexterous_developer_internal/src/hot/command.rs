@@ -524,8 +524,14 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 let _ = sender.send(crate::HotReloadMessage::UpdatedPaths(
                     moved
                         .iter()
-                        .filter_map(|v| v.file_name())
-                        .map(|v| v.to_string_lossy().to_string())
+                        .filter_map(|v| (v.file_name().map(|f| (v, f))))
+                        .filter_map(|(path, name)| std::fs::read(path).ok().map(|f| (f, name)))
+                        .map(|(f, name)| {
+                            let hash = blake3::hash(&f);
+
+                            (name, hash.as_bytes().to_owned())
+                        })
+                        .map(|(v, h)| (v.to_string_lossy().to_string(), h))
                         .collect(),
                 ));
             }

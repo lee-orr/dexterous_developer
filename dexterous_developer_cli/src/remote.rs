@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
+use blake3::Hash;
 use dexterous_developer_internal::{
     internal_shared::cargo_path_utils::{dylib_path, dylib_path_envvar},
     HotReloadMessage,
@@ -157,15 +158,13 @@ async fn connect_to_build(
                     let _ = lib_path_ref.send((root_lib, root_path)).await;
                 }
                 HotReloadMessage::UpdatedPaths(updated_paths) => {
-                    for file in updated_paths.iter() {
-                        println!("Downloading {file}");
-                        if download_to_folder(root_url, target, file, target_folder)
+                    for (file, hash) in updated_paths.iter() {
+                        println!("Downloading {file} - with {hash:?}");
+                        if download_to_folder(root_url, target, file, hash, target_folder)
                             .await
                             .is_err()
                         {
                             eprintln!("Couldn't download {file:?}");
-                        } else {
-                            println!("Downloaded {file:?}");
                         }
                     }
                     println!("Updated Files Downloaded");
@@ -182,8 +181,21 @@ async fn download_to_folder(
     url: &url::Url,
     target: &str,
     file: &str,
+    hash: &[u8; 32],
     target_folder: &Path,
 ) -> anyhow::Result<()> {
+    let file_path = target_folder.join(file);
+    if file_path.exists() {
+        println!("comparing hashes");
+        if let Ok(f) = std::fs::read(file_path.as_path()) {
+            let hash_2 = blake3::hash(&f);
+            let hash = Hash::from_bytes(hash.to_owned());
+            if hash_2 == hash {
+                println!("{file_path:?} already up to date");
+                return Ok(());
+            }
+        }
+    }
     let path = format!("{url}libs/{target}/{file}");
     println!("Downloading {path}");
     let response = reqwest::get(path).await?;
@@ -191,10 +203,10 @@ async fn download_to_folder(
         bail!("Download failed - {response:?}");
     }
     let content = response.bytes().await?;
-    let target = target_folder.join(file);
     println!("Downloading to {target:?}");
-    tokio::fs::write(target, content)
+    tokio::fs::write(file_path, content)
         .await
         .context("Write to {target:?} failed")?;
+    println!("Downloaded {file:?}");
     Ok(())
 }
