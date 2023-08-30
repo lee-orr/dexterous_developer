@@ -49,6 +49,7 @@ pub async fn run_server(
     });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    println!("Serving on {port}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;
