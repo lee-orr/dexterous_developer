@@ -10,7 +10,7 @@ use std::{
 use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{
@@ -410,6 +410,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
 
     for msg in cargo_metadata::Message::parse_stream(reader) {
         let message = msg?;
+        trace!("Cargo: {message:#?}");
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
                 if artifact.target.crate_types.iter().any(|v| v == "dylib") {
@@ -521,9 +522,12 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         #[cfg(feature = "cli")]
         {
             if let Some(sender) = settings.updated_file_channel.as_ref() {
-                let _ = sender.send(crate::HotReloadMessage::UpdatedPaths(moved));
-                let _ = sender.send(crate::HotReloadMessage::RootLibPath(
-                    settings.lib_path.clone(),
+                let _ = sender.send(crate::HotReloadMessage::UpdatedPaths(
+                    moved
+                        .iter()
+                        .filter_map(|v| v.file_name())
+                        .map(|v| v.to_string_lossy().to_string())
+                        .collect(),
                 ));
             }
         }

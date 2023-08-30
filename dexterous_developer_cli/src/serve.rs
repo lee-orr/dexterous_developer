@@ -6,10 +6,12 @@ use std::{
 };
 
 use axum::{
+    body::Body,
     extract::{
         ws::{Message, WebSocket},
         Path, State, WebSocketUpgrade,
     },
+    http::Request,
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
@@ -19,11 +21,12 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::{
     process::Command,
     sync::{
-        broadcast::{self, Receiver},
+        broadcast::{self, Receiver, Sender},
         RwLock,
     },
 };
-use tower_http::services::ServeDir;
+use tower::ServiceExt;
+use tower_http::services::{ServeDir, ServeFile};
 
 pub async fn run_server(
     port: u16,
@@ -33,6 +36,7 @@ pub async fn run_server(
 ) -> Result<()> {
     let app = Router::new()
         .route("/targets", get(list_targets))
+        .route("/libs/:target/:file", get(target_file_loader))
         .route("/connect/:target", get(websocket_connect));
 
     let asset_directory = std::env::current_dir()?.join("assets");
@@ -83,20 +87,24 @@ async fn websocket_connect(
 async fn websocket_connection(socket: WebSocket, target: String, state: State<ServerState>) {
     let (mut sender, _) = socket.split();
     let mut updates_rx = {
-        let (updates_rx, lib_path, current_files) = state.get_target_connection(&target).await;
-        if let Some(lib_path) = lib_path {
-            let Ok(content) = serde_json::to_string(&HotReloadMessage::RootLibPath(lib_path))
-            else {
-                eprintln!("Couldn't serialize current path - closing connection");
+        let (updates_rx, lib_path, lib_dir) = state.get_target_connection(&target).await;
+
+        if let Ok(dir_content) = lib_dir.read_dir() {
+            let paths = dir_content
+                .filter_map(|v| v.ok())
+                .map(|v| v.file_name().to_string_lossy().to_string())
+                .collect::<Vec<_>>();
+            let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedPaths(paths)) else {
+                eprintln!("Couldn't serialize current updated paths - closing connection");
                 return;
             };
             let _ = sender.send(Message::Text(content)).await;
         }
-        if !current_files.is_empty() {
-            let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedPaths(
-                current_files.into_iter().collect(),
-            )) else {
-                eprintln!("Couldn't serialize current updated paths - closing connection");
+
+        {
+            let Ok(content) = serde_json::to_string(&HotReloadMessage::RootLibPath(lib_path))
+            else {
+                eprintln!("Couldn't serialize current path - closing connection");
                 return;
             };
             let _ = sender.send(Message::Text(content)).await;
@@ -112,6 +120,27 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
     }
 }
 
+async fn target_file_loader(
+    Path((target, file)): Path<(String, String)>,
+    state: State<ServerState>,
+    request: Request<Body>,
+) -> Result<Response> {
+    println!("Requested file {file} from {target}");
+    let dir = {
+        let map = state.map.read().await;
+        let target = map
+            .get(target.as_str())
+            .ok_or(anyhow::Error::msg("Couldn't get target"))?;
+        target.lib_dir.clone()
+    };
+    let file = dir.join(file);
+    println!("File path {file:?}");
+    let serve = ServeFile::new(file);
+    let result = serve.oneshot(request).await?;
+    println!("Result has status {:?}", result.status());
+    Ok(result.into_response())
+}
+
 #[derive(Clone)]
 pub struct ServerState {
     map: Arc<RwLock<HashMap<String, TargetWatchInfo>>>,
@@ -124,39 +153,25 @@ impl ServerState {
     async fn get_target_connection(
         &self,
         target: &str,
-    ) -> (
-        Receiver<HotReloadMessage>,
-        Option<PathBuf>,
-        HashSet<PathBuf>,
-    ) {
+    ) -> (Receiver<HotReloadMessage>, String, PathBuf) {
         {
             if let Some(map) = self.map.read().await.get(target) {
                 return (
                     map.sender.subscribe(),
-                    map.lib_path.read().await.clone(),
-                    map.lib_files.read().await.clone(),
+                    map.lib_path.clone(),
+                    map.lib_dir.clone(),
                 );
             }
         }
         let (sender, receiver) = broadcast::channel(100);
-        let lib_path: Arc<RwLock<Option<PathBuf>>> = Default::default();
-        let lib_files: Arc<RwLock<HashSet<PathBuf>>> = Default::default();
-        let target_watch_info = TargetWatchInfo {
-            sender: sender.clone(),
-            lib_path: lib_path.clone(),
-            lib_files: lib_files.clone(),
-        };
 
-        {
-            let mut map = self.map.write().await;
-            if let Some(map) = map.get(target) {
-                return (
-                    map.sender.subscribe(),
-                    map.lib_path.read().await.clone(),
-                    map.lib_files.read().await.clone(),
-                );
-            }
-            map.insert(target.to_string(), target_watch_info);
+        let mut map = self.map.write().await;
+        if let Some(map) = map.get(target) {
+            return (
+                map.sender.subscribe(),
+                map.lib_path.clone(),
+                map.lib_dir.clone(),
+            );
         }
 
         let options = HotReloadOptions {
@@ -166,39 +181,30 @@ impl ServerState {
             build_target: Some(target.to_string()),
             ..Default::default()
         };
-        {
-            let lib_path = lib_path.clone();
-            let lib_files = lib_files.clone();
-            tokio::spawn(async move {
-                let mut rx = sender.subscribe();
-                watch_reloadable(options, sender)
-                    .await
-                    .expect("Couldn't set up watcher");
-                while let Ok(recv) = rx.recv().await {
-                    match recv {
-                        HotReloadMessage::RootLibPath(path) => {
-                            let mut writer = lib_path.write().await;
-                            let _ = writer.insert(path);
-                        }
-                        HotReloadMessage::UpdatedPaths(paths) => {
-                            let mut current = lib_files.write().await;
-                            for path in paths.into_iter() {
-                                current.insert(path);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        (receiver, None, Default::default())
+        let (lib_path, lib_dir) =
+            watch_reloadable(options, sender.clone()).expect("Couldn't setup reloadable");
+
+        let lib_path = lib_path
+            .file_name()
+            .unwrap_or(lib_path.as_os_str())
+            .to_string_lossy()
+            .to_string();
+
+        let target_watch_info = TargetWatchInfo {
+            sender: sender.clone(),
+            lib_path: lib_path.clone(),
+            lib_dir: lib_dir.clone(),
+        };
+        map.insert(target.to_string(), target_watch_info);
+        (receiver, lib_path, lib_dir)
     }
 }
 
 #[derive(Clone)]
 struct TargetWatchInfo {
     sender: broadcast::Sender<HotReloadMessage>,
-    lib_path: Arc<RwLock<Option<PathBuf>>>,
-    lib_files: Arc<RwLock<HashSet<PathBuf>>>,
+    lib_path: String,
+    lib_dir: PathBuf,
 }
 
 // Make our own error that wraps `anyhow::Error`.

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::Error;
 
-
 #[cfg(feature = "cli")]
 #[derive(Clone, Debug, Default)]
 pub(crate) struct BuildSettings {
@@ -103,15 +102,18 @@ impl TryFrom<&str> for BuildSettings {
 }
 
 #[cfg(feature = "cli")]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "cli")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum HotReloadMessage {
-    RootLibPath(PathBuf),
-    UpdatedPaths(Vec<PathBuf>),
+    RootLibPath(String),
+    UpdatedPaths(Vec<String>),
 }
 
 #[cfg(not(feature = "cli"))]
 #[derive(Debug, Clone)]
 pub enum HotReloadMessage {
-    RootLibPath(PathBuf),
-    UpdatedPaths(Vec<PathBuf>),
+    RootLibPath(String),
+    UpdatedPaths(Vec<String>),
 }

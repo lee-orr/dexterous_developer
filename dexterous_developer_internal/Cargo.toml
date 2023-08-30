@@ -15,7 +15,7 @@ description = "a hot-reload library for bevy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["bevy"]
+default = ["bevy", "cli"]
 hot = [
     "dep:libloading",
     "dep:uuid",
@@ -43,7 +43,7 @@ bevy = { version = "0.11", default-features = false, features = [
 ], optional = true }
 libloading = { version = "0.8", optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }
-serde = { version = "1", optional = true }
+serde = { version = "1", optional = true, features = ["derive"] }
 rmp-serde = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
 notify = { version = "6", optional = true }
