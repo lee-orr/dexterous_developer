@@ -10,7 +10,7 @@ use std::{
 use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{
@@ -410,7 +410,6 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
 
     for msg in cargo_metadata::Message::parse_stream(reader) {
         let message = msg?;
-        trace!("Cargo: {message:#?}");
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
                 if artifact.target.crate_types.iter().any(|v| v == "dylib") {

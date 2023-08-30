@@ -239,6 +239,43 @@ async fn can_run_with_reloadables() {
     process.exit().await;
 }
 
+async fn can_run_remote() {
+    let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
+    let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
+
+    let mut host_process = project.run_host_cli().await.unwrap();
+
+    host_process.wait_for_lines(&["Serving on 1234"]).await;
+
+    let mut process = client.run_client_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./updated_file.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got some new text!"]).await;
+
+    process.exit().await;
+    host_process.exit().await;
+}
+
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
@@ -272,16 +309,20 @@ pub async fn run_tests() {
             println!("Can run hot with mold (on linux)");
             can_run_hot_with_mold().await;
         }
-        "ls" => {
+        "remote" => {
+            println!("Can run remote");
+            can_run_remote().await;
+        }
+        _ => {
+            eprintln!("{argument} is an invalid test");
+            println!("Valid tests are:");
             println!("cold");
             println!("hot");
             println!("edit");
             println!("launcher");
             println!("reloadables");
             println!("mold");
-        }
-        _ => {
-            eprintln!("{argument} is an invalid test");
+            println!("remote");
             std::process::exit(1)
         }
     }

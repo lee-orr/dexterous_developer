@@ -87,20 +87,24 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
                 .expect("Couldn't connect to build");
             });
         }
-        let path = lib_name_rx
+        let (_lib, path) = lib_name_rx
             .recv()
             .await
             .ok_or(anyhow::Error::msg("Couldn't get root lib path"))?;
-        println!("Starting App - got {path:?}");
-        if path.exists() {
-            println!("{path:?} exists");
-        } else {
-            bail!("{path:?} doesn't exist");
+        println!("Looking for root lib at {path:?}");
+        loop {
+            paths_ready_rx
+                .recv()
+                .await
+                .ok_or(anyhow::Error::msg("Couldn't download all paths"))?;
+            if path.exists() {
+                println!("{path:?} exists");
+                break;
+            } else {
+                eprintln!("root: {path:?} doesn't exist - waiting for another build...");
+            }
         }
-        paths_ready_rx
-            .recv()
-            .await
-            .ok_or(anyhow::Error::msg("Couldn't download all paths"))?;
+        println!("Starting App - got {path:?}");
         dexterous_developer_internal::run_served_file(path).await?;
     }
     Ok(())
@@ -123,7 +127,7 @@ async fn connect_to_build(
     root_url: &url::Url,
     target: &str,
     target_folder: &Path,
-    lib_path_tx: mpsc::Sender<PathBuf>,
+    lib_path_tx: mpsc::Sender<(String, PathBuf)>,
     paths_ready: mpsc::Sender<()>,
 ) -> anyhow::Result<()> {
     let mut url = root_url.join(&format!("connect/{target}"))?;
@@ -146,24 +150,16 @@ async fn connect_to_build(
                 return;
             };
             match msg {
-                HotReloadMessage::RootLibPath(root_path) => {
-                    println!("Downloading root lib to {root_path}");
-                    if download_to_folder(root_url, target, &root_path, target_folder)
-                        .await
-                        .is_err()
-                    {
-                        eprintln!("Couldn't download {root_path:?}");
-                    } else {
-                        let root_path = target_folder.join(root_path);
+                HotReloadMessage::RootLibPath(root_lib) => {
+                    let root_path = target_folder.join(root_lib.as_str());
 
-                        println!("Got root lib - at path {root_path:?}");
-                        let _ = lib_path_ref.send(root_path).await;
-                    }
+                    println!("Got root lib - at path {root_path:?}");
+                    let _ = lib_path_ref.send((root_lib, root_path)).await;
                 }
                 HotReloadMessage::UpdatedPaths(updated_paths) => {
-                    for file in updated_paths {
+                    for file in updated_paths.iter() {
                         println!("Downloading {file}");
-                        if download_to_folder(root_url, target, &file, target_folder)
+                        if download_to_folder(root_url, target, file, target_folder)
                             .await
                             .is_err()
                         {
@@ -172,6 +168,7 @@ async fn connect_to_build(
                             println!("Downloaded {file:?}");
                         }
                     }
+                    println!("Updated Files Downloaded");
                     let _ = paths_ready.send(()).await;
                 }
             }

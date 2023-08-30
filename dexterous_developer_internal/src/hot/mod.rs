@@ -2,9 +2,9 @@ mod build_settings;
 mod command;
 mod env;
 mod singleton;
-use std::{path::PathBuf, process::Command, sync::Once};
+use std::{process::Command, sync::Once};
 
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 
 use command::*;
 
@@ -99,12 +99,12 @@ pub fn watch_reloadable(
     let lib_dir = settings.out_target.clone();
 
     if !lib_dir.exists() {
-        std::fs::create_dir_all(lib_dir.as_path());
+        let _ = std::fs::create_dir_all(lib_dir.as_path());
     }
 
     for dir in paths.iter() {
         if dir.as_path() != lib_dir.as_path() && dir.exists() {
-            trace!("Checking lib path {dir:?}");
+            log::trace!("Checking lib path {dir:?}");
             for file in (dir.read_dir()?).flatten() {
                 let path = file.path();
                 let extension = path
@@ -116,7 +116,7 @@ pub fn watch_reloadable(
                     && (extension == "dll" || extension == "dylib" || extension == "so")
                 {
                     let new_file = lib_dir.join(file.file_name());
-                    trace!("Moving {path:?} to {new_file:?}");
+                    log::trace!("Moving {path:?} to {new_file:?}");
                     std::fs::copy(path, new_file)?;
                 }
             }
@@ -160,7 +160,7 @@ fn run_from_file(
 }
 
 #[cfg(feature = "cli")]
-pub async fn run_served_file(library_path: PathBuf) -> anyhow::Result<()> {
+pub async fn run_served_file(library_path: std::path::PathBuf) -> anyhow::Result<()> {
     let _ = env_logger::try_init();
 
     let library_paths = LibPathSet::new(library_path.as_path());
@@ -171,4 +171,5 @@ pub async fn run_served_file(library_path: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "cli")]
 fn null_watcher() {}

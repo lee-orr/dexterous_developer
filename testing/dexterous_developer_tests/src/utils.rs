@@ -116,7 +116,7 @@ impl TestProject {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
         cmd.current_dir(wd).arg("run");
-        self.run(cmd, false).await
+        self.run(cmd, ProcessHeat::Cold).await
     }
 
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
@@ -127,7 +127,7 @@ impl TestProject {
             .arg("-p")
             .arg("launcher")
             .env("RUST_LOG", "trace");
-        self.run(cmd, true).await
+        self.run(cmd, ProcessHeat::Hot).await
     }
 
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
@@ -138,7 +138,33 @@ impl TestProject {
         let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
         cmd.current_dir(&wd).arg("-p").arg(&self.package);
-        self.run(cmd, true).await
+        self.run(cmd, ProcessHeat::Hot).await
+    }
+
+    pub async fn run_host_cli(&mut self) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd)
+            .arg("-p")
+            .arg(&self.package)
+            .arg("-s")
+            .arg("1234");
+        self.run(cmd, ProcessHeat::Hot).await
+    }
+
+    pub async fn run_client_cli(&mut self) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd).arg("-r").arg("http://localhost:1234");
+        self.run(cmd, ProcessHeat::Remote).await
     }
 
     pub async fn run_hot_mold(&mut self) -> anyhow::Result<RunningProcess> {
@@ -152,14 +178,18 @@ impl TestProject {
             .arg("-p")
             .arg(&self.package)
             .arg("--prefer-mold");
-        self.run(cmd, true).await
+        self.run(cmd, ProcessHeat::Hot).await
     }
 
-    async fn run(&mut self, mut cmd: Command, is_hot: bool) -> anyhow::Result<RunningProcess> {
+    async fn run(
+        &mut self,
+        mut cmd: Command,
+        is_hot: ProcessHeat,
+    ) -> anyhow::Result<RunningProcess> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env("RUST_LOG", "trace")
+            .env("RUST_LOG", "debug")
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
 
@@ -265,7 +295,13 @@ pub struct RunningProcess {
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
     write: broadcast::Sender<LineIn>,
-    is_hot: bool,
+    is_hot: ProcessHeat,
+}
+
+pub enum ProcessHeat {
+    Cold,
+    Hot,
+    Remote,
 }
 
 impl RunningProcess {
@@ -279,42 +315,43 @@ impl RunningProcess {
 
     pub async fn is_ready(&mut self) {
         println!("Checking Readiness");
-        if self.is_hot {
-            let mut is_watching = false;
-            let mut reload_complete = false;
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(line) => {
-                        if line.contains("Executing first run") {
-                            reload_complete = true;
+        match self.is_hot {
+            ProcessHeat::Hot => {
+                let mut is_watching = false;
+                let mut reload_complete = false;
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Watching...") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
                         }
-                        if line.contains("Watching...") {
-                            is_watching = true;
-                        }
-                        if reload_complete && is_watching {
-                            break;
-                        }
-                    }
 
-                    Line::Err(line) => {
-                        if line.contains("Executing first run") {
-                            reload_complete = true;
+                        Line::Err(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Watching...") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
                         }
-                        if line.contains("Watching...") {
-                            is_watching = true;
-                        }
-                        if reload_complete && is_watching {
-                            break;
-                        }
-                    }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
-        } else {
-            loop {
+            ProcessHeat::Cold => loop {
                 match self.read_next_line().await.expect("no Next Line") {
                     Line::Std(line) => {
                         if line.contains("Running") {
@@ -332,6 +369,41 @@ impl RunningProcess {
                         panic!("Ended - {v:?}");
                     }
                 };
+            },
+            ProcessHeat::Remote => {
+                let mut is_watching = false;
+                let mut reload_complete = false;
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Calling Watch Function") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Calling Watch Function") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
         }
         println!("Ready");
@@ -339,44 +411,86 @@ impl RunningProcess {
 
     pub async fn has_updated(&mut self) {
         println!("Awaiting hot reload");
-        if self.is_hot {
-            self.send("\n").expect("Failed to send empty line");
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(_) => {}
+        match self.is_hot {
+            ProcessHeat::Hot => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
 
-                    Line::Err(line) => {
-                        if line.contains("Build completed") {
-                            break;
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
                         }
-                    }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
-            }
-            self.send("\n").expect("Failed to send empty line");
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(v) => {
-                        println!("Got a line while waiting {v}");
-                    }
-
-                    Line::Err(line) => {
-                        if line.contains("reload complete") {
-                            break;
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
                         }
-                        println!("got an err while waiting {line}");
-                    }
+                    };
+                }
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(v) => {
+                            println!("Got a line while waiting {v}");
+                        }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
+                        Line::Err(line) => {
+                            if line.contains("reload complete") {
+                                break;
+                            }
+                            println!("got an err while waiting {line}");
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
-        } else {
-            panic!("Not a hot reloadable attempt")
+            ProcessHeat::Cold => panic!("Not a hot reloadable attempt"),
+            ProcessHeat::Remote => {
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Updated Files Downloaded") {
+                                break;
+                            }
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("Updated Files Downloaded") {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(v) => {
+                            println!("Got a line while waiting {v}");
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("reload complete") {
+                                break;
+                            }
+                            println!("got an err while waiting {line}");
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
         }
         println!("Successfully hot reloaded");
     }
