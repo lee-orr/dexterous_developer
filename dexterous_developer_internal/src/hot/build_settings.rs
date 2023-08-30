@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Error};
-use log::{debug, error, info};
+use anyhow::Error;
 
-#[derive(Clone, Debug)]
+
+#[cfg(feature = "cli")]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct BuildSettings {
     pub watch_folder: PathBuf,
     pub manifest: Option<PathBuf>,
@@ -12,7 +13,21 @@ pub(crate) struct BuildSettings {
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
-    pub updated_file_channel: Option<std::sync::mpsc::Sender<Vec<PathBuf>>>,
+    pub build_target: Option<String>,
+    pub updated_file_channel: Option<tokio::sync::broadcast::Sender<HotReloadMessage>>,
+}
+
+#[cfg(not(feature = "cli"))]
+#[derive(Clone, Debug, Default)]
+pub(crate) struct BuildSettings {
+    pub watch_folder: PathBuf,
+    pub manifest: Option<PathBuf>,
+    pub lib_path: PathBuf,
+    pub package: String,
+    pub features: String,
+    pub target_folder: Option<PathBuf>,
+    pub out_target: PathBuf,
+    pub build_target: Option<String>,
 }
 
 impl ToString for BuildSettings {
@@ -82,7 +97,21 @@ impl TryFrom<&str> for BuildSettings {
             features,
             target_folder,
             out_target,
-            updated_file_channel: None,
+            ..Default::default()
         })
     }
+}
+
+#[cfg(feature = "cli")]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum HotReloadMessage {
+    RootLibPath(PathBuf),
+    UpdatedPaths(Vec<PathBuf>),
+}
+
+#[cfg(not(feature = "cli"))]
+#[derive(Debug, Clone)]
+pub enum HotReloadMessage {
+    RootLibPath(PathBuf),
+    UpdatedPaths(Vec<PathBuf>),
 }

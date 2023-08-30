@@ -1,13 +1,13 @@
 use std::{
     collections::BTreeSet,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Command, Stdio},
-    sync::{mpsc, Once, OnceLock},
+    sync::mpsc,
     thread,
     time::Duration,
 };
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
 use log::{debug, error, info};
@@ -38,6 +38,7 @@ pub(crate) fn setup_build_settings(
         target_folder,
         features,
         prefer_mold,
+        build_target,
         ..
     } = options;
 
@@ -59,6 +60,10 @@ pub(crate) fn setup_build_settings(
 
     if let Some(l) = target_folder.as_ref() {
         info!("Watching source at  {}", l.to_string_lossy());
+    }
+
+    if let Some(l) = build_target.as_ref() {
+        info!("For platform {l}");
     }
 
     info!("Compiling with features: {}", features.join(", "));
@@ -152,6 +157,10 @@ pub(crate) fn setup_build_settings(
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
 
+    if let Some(build_target) = build_target {
+        rustc.arg("--target").arg(build_target.as_str());
+    }
+
     let cmd_string = print_command(&rustc);
 
     debug!("Run rustc {rustc:#?} - {cmd_string}");
@@ -214,7 +223,8 @@ pub(crate) fn setup_build_settings(
             v
         }),
         out_target,
-        updated_file_channel: None,
+        build_target: build_target.as_ref().cloned(),
+        ..Default::default()
     };
 
     Ok((settings, paths))
@@ -356,6 +366,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         package,
         out_target,
         lib_path,
+        build_target,
         ..
     } = settings;
 
@@ -373,6 +384,10 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
 
     if let Some(manifest) = manifest {
         command.arg("--manifest-path").arg(manifest.as_os_str());
+    }
+
+    if let Some(build_target) = build_target {
+        command.arg("--target").arg(build_target.as_str());
     }
 
     info!("Command: {}", print_command(&command));
@@ -502,8 +517,15 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 }
             }
         }
-        if let Some(sender) = settings.updated_file_channel.as_ref() {
-            let _ = sender.send(moved);
+
+        #[cfg(feature = "cli")]
+        {
+            if let Some(sender) = settings.updated_file_channel.as_ref() {
+                let _ = sender.send(crate::HotReloadMessage::UpdatedPaths(moved));
+                let _ = sender.send(crate::HotReloadMessage::RootLibPath(
+                    settings.lib_path.clone(),
+                ));
+            }
         }
         info!("Build completed");
     } else {

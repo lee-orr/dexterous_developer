@@ -10,4 +10,5 @@ pub struct HotReloadOptions {
     pub features: Vec<String>,
     pub set_env: bool,
     pub prefer_mold: bool,
+    pub build_target: Option<String>,
 }

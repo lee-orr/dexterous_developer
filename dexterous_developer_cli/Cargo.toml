@@ -33,3 +33,4 @@ futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
 ] }
+crossbeam = "0.8"

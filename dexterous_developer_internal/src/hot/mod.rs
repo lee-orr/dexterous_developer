@@ -14,6 +14,8 @@ use crate::{
     HotReloadOptions,
 };
 
+pub use self::build_settings::HotReloadMessage;
+
 static RUNNER: Once = Once::new();
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
@@ -103,4 +105,16 @@ fn run_reloadable_from_env(settings: String) {
     let library_paths =
         load_build_settings(settings).expect("Couldn't load build settings from env");
     run_app_with_path(library_paths);
+}
+
+#[cfg(feature = "cli")]
+pub async fn watch_reloadable(
+    options: HotReloadOptions,
+    update_channel: tokio::sync::broadcast::Sender<HotReloadMessage>,
+) -> anyhow::Result<()> {
+    let (mut settings, _) = setup_build_settings(&options)?;
+    settings.updated_file_channel = Some(update_channel);
+    first_exec(&settings)?;
+    run_watcher_with_settings(&settings)?;
+    Ok(())
 }

@@ -21,7 +21,10 @@ pub use dexterous_developer_macros::*;
 pub use types::HotReloadOptions;
 
 #[cfg(feature = "hot")]
-pub use hot::run_reloadabe_app;
+pub use hot::{run_reloadabe_app, HotReloadMessage};
+
+#[cfg(feature = "cli")]
+pub use hot::watch_reloadable;
 
 #[cfg(feature = "bevy")]
 pub use bevy_support::*;
