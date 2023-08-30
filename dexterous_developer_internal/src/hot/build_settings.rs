@@ -108,12 +108,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum HotReloadMessage {
     RootLibPath(String),
-    UpdatedPaths(Vec<(String, [u8; 32])>),
+    UpdatedLibs(Vec<(String, [u8; 32])>),
+    UpdatedAssets(Vec<(String, [u8; 32])>),
 }
 
 #[cfg(not(feature = "cli"))]
 #[derive(Debug, Clone)]
 pub enum HotReloadMessage {
     RootLibPath(String),
-    UpdatedPaths(Vec<(String, [u8; 32])>),
+    UpdatedLibs(Vec<(String, [u8; 32])>),
+    UpdatedAssets(Vec<(String, [u8; 32])>),
 }

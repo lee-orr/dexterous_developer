@@ -13,6 +13,7 @@ use axum::{
 };
 use dexterous_developer_internal::{watch_reloadable, HotReloadMessage, HotReloadOptions};
 use futures_util::{SinkExt, StreamExt};
+use notify::{RecursiveMode, Watcher};
 use tokio::{
     process::Command,
     sync::{
@@ -35,17 +36,75 @@ pub async fn run_server(
         .route("/connect/:target", get(websocket_connect));
 
     let asset_directory = std::env::current_dir()?.join("assets");
-    let app = if asset_directory.exists() {
-        app.nest_service("/assets", ServeDir::new(asset_directory))
-    } else {
-        app
-    };
+    if !asset_directory.exists() {
+        std::fs::create_dir_all(asset_directory.as_path())?;
+    }
+
+    let (asset_tx, asset_rx) = broadcast::channel(100);
+
+    {
+        let watch_folder = asset_directory.clone();
+        let tx = asset_tx.clone();
+        tokio::spawn(async move {
+            let mut asset_rx = asset_rx;
+            let asset_dir = watch_folder.to_string_lossy().to_string();
+            println!("Spawned asset watch thread - {asset_dir}");
+
+            let Ok(mut watcher) =
+                notify::recommended_watcher(move |e: notify::Result<notify::Event>| {
+                    if let Ok(e) = e {
+                        if matches!(
+                            e.kind,
+                            notify::EventKind::Create(_) | notify::EventKind::Modify(_)
+                        ) {
+                            let paths = e
+                                .paths
+                                .into_iter()
+                                .filter(|v| v.is_file())
+                                .map(|v| {
+                                    let path = v;
+                                    let result = (
+                                        path.to_string_lossy().to_string().replace(&asset_dir, ""),
+                                        path,
+                                    );
+                                    println!("Checking {result:?}");
+                                    result
+                                })
+                                .filter_map(|(v, f)| std::fs::read(f).ok().map(|f| (v, f)))
+                                .map(|(name, f)| {
+                                    let hash = blake3::hash(&f);
+
+                                    (name, hash.as_bytes().to_owned())
+                                })
+                                .collect::<Vec<_>>();
+                            let _ = tx.send(HotReloadMessage::UpdatedAssets(paths));
+                        }
+                    }
+                })
+            else {
+                eprintln!("Couldn't setup watcher");
+                return;
+            };
+
+            println!("Watching Assets - {watch_folder:?}");
+            if let Err(e) = watcher.watch(watch_folder.as_path(), RecursiveMode::Recursive) {
+                eprintln!("Error watching files: {e:?}");
+            }
+
+            while asset_rx.recv().await.is_ok() {}
+            println!("Watcher Exit");
+        });
+    }
+
+    let app = app.nest_service("/assets", ServeDir::new(asset_directory.as_path()));
 
     let app = app.with_state(ServerState {
         map: Default::default(),
         package,
         features,
         prefer_mold,
+        asset_directory,
+        asset_tx,
     });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -82,6 +141,7 @@ async fn websocket_connect(
 
 async fn websocket_connection(socket: WebSocket, target: String, state: State<ServerState>) {
     let (mut sender, _) = socket.split();
+    let mut asset_rx = state.asset_tx.subscribe();
     let mut updates_rx = {
         let (updates_rx, lib_path, lib_dir) = state.get_target_connection(&target).await;
 
@@ -96,10 +156,41 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
                     (name, hash.as_bytes().to_owned())
                 })
                 .collect::<Vec<_>>();
-            let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedPaths(paths)) else {
+            let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedLibs(paths)) else {
                 eprintln!("Couldn't serialize current updated paths - closing connection");
                 return;
             };
+            let _ = sender.send(Message::Text(content)).await;
+        }
+        {
+            let asset_dir = state.asset_directory.to_string_lossy().to_string();
+            let dir_content = walkdir::WalkDir::new(state.asset_directory.as_path());
+            println!("Looking for assets in {asset_dir}");
+            let paths = dir_content
+                .into_iter()
+                .filter_map(|v| v.ok())
+                .filter(|v| v.file_type().is_file())
+                .map(|v| {
+                    let path = v.path().to_path_buf();
+                    let result = (
+                        path.to_string_lossy().to_string().replace(&asset_dir, ""),
+                        path,
+                    );
+                    println!("Checking {result:?}");
+                    result
+                })
+                .filter_map(|(v, f)| std::fs::read(f).ok().map(|f| (v, f)))
+                .map(|(name, f)| {
+                    let hash = blake3::hash(&f);
+
+                    (name, hash.as_bytes().to_owned())
+                })
+                .collect::<Vec<_>>();
+            let Ok(content) = serde_json::to_string(&HotReloadMessage::UpdatedAssets(paths)) else {
+                eprintln!("Couldn't serialize current updated paths - closing connection");
+                return;
+            };
+            println!("Sending Asset List: {content}");
             let _ = sender.send(Message::Text(content)).await;
         }
 
@@ -113,7 +204,10 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
         }
         updates_rx
     };
-    while let Ok(msg) = updates_rx.recv().await {
+    while let Ok(msg) = tokio::select! {
+       val = updates_rx.recv() => val,
+       val = asset_rx.recv() => val
+    } {
         let Ok(content) = serde_json::to_string(&msg) else {
             eprintln!("Couldn't serialize current updated paths - closing connection");
             continue;
@@ -149,6 +243,8 @@ pub struct ServerState {
     package: Option<String>,
     features: Vec<String>,
     prefer_mold: bool,
+    asset_directory: PathBuf,
+    asset_tx: broadcast::Sender<HotReloadMessage>,
 }
 
 impl ServerState {

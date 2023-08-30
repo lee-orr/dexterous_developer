@@ -35,3 +35,7 @@ futures-util = { version = "0.3", default-features = false, features = [
 ] }
 crossbeam = "0.8"
 blake3 = "1"
+walkdir = "2"
+notify = { version = "6", default-features = false, features = [
+    "macos_kqueue",
+] }

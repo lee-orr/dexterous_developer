@@ -521,7 +521,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         #[cfg(feature = "cli")]
         {
             if let Some(sender) = settings.updated_file_channel.as_ref() {
-                let _ = sender.send(crate::HotReloadMessage::UpdatedPaths(
+                let _ = sender.send(crate::HotReloadMessage::UpdatedLibs(
                     moved
                         .iter()
                         .filter_map(|v| (v.file_name().map(|f| (v, f))))

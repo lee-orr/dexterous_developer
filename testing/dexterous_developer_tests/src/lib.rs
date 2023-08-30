@@ -276,6 +276,35 @@ async fn can_run_remote() {
     host_process.exit().await;
 }
 
+async fn can_update_assets() {
+    let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
+    let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
+
+    let mut host_process = project.run_host_cli().await.unwrap();
+
+    host_process.wait_for_lines(&["Serving on 1234"]).await;
+
+    let mut process = client.run_client_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("assets/nesting/another_placeholder.txt").as_path(),
+            "changed content",
+        )
+        .expect("Couldn't update file");
+
+    process.wait_for_lines(&["Downloaded Asset"]).await;
+
+    process.exit().await;
+    host_process.exit().await;
+}
+
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
@@ -310,6 +339,10 @@ pub async fn run_tests() {
             println!("Can run remote");
             can_run_remote().await;
         }
+        "asset" => {
+            println!("Can update asset");
+            can_update_assets().await;
+        }
         _ => {
             eprintln!("{argument} is an invalid test");
             println!("Valid tests are:");
@@ -320,6 +353,7 @@ pub async fn run_tests() {
             println!("reloadables");
             println!("mold");
             println!("remote");
+            println!("asset");
             std::process::exit(1)
         }
     }
@@ -346,5 +380,17 @@ mod test {
     #[tokio::test]
     async fn can_run_with_reloadables() {
         super::can_run_with_reloadables().await;
+    }
+    #[tokio::test]
+    async fn can_run_mold() {
+        super::can_run_hot_with_mold().await;
+    }
+    #[tokio::test]
+    async fn can_run_remote() {
+        super::can_run_remote().await;
+    }
+    #[tokio::test]
+    async fn can_update_assets() {
+        super::can_update_assets().await;
     }
 }

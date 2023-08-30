@@ -122,11 +122,7 @@ impl TestProject {
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd)
-            .arg("run")
-            .arg("-p")
-            .arg("launcher")
-            .env("RUST_LOG", "trace");
+        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
         self.run(cmd, ProcessHeat::Hot).await
     }
 
@@ -189,7 +185,10 @@ impl TestProject {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env("RUST_LOG", "debug")
+            .env(
+                "RUST_LOG",
+                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace",
+            )
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
 
