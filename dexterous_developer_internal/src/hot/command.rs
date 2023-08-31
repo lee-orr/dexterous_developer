@@ -153,7 +153,7 @@ pub(crate) fn setup_build_settings(
         .arg("--print=target-libdir")
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
-    super::env::set_envs(&mut rustc)?;
+    super::env::set_envs(&mut rustc, build_target.as_ref().map(|v| v.as_str()))?;
 
     if let Some(build_target) = build_target {
         rustc.arg("--target").arg(build_target.as_str());
@@ -369,8 +369,10 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     } = settings;
 
     let mut command = Command::new("cargo");
+    let build_command =
+        super::env::set_envs(&mut command, build_target.as_ref().map(|v| v.as_str()))?;
     command
-        .arg("build")
+        .arg(build_command)
         .arg("--profile")
         .arg("dev")
         .arg("-p")
@@ -387,8 +389,6 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     if let Some(build_target) = build_target {
         command.arg("--target").arg(build_target.as_str());
     }
-
-    super::env::set_envs(&mut command)?;
 
     info!("Command: {}", print_command(&command));
 
