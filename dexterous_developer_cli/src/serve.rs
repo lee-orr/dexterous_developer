@@ -24,12 +24,7 @@ use tokio::{
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
 
-pub async fn run_server(
-    port: u16,
-    package: Option<String>,
-    features: Vec<String>,
-    prefer_mold: bool,
-) -> Result<()> {
+pub async fn run_server(port: u16, package: Option<String>, features: Vec<String>) -> Result<()> {
     let app = Router::new()
         .route("/targets", get(list_targets))
         .route("/libs/:target/:file", get(target_file_loader))
@@ -102,7 +97,6 @@ pub async fn run_server(
         map: Default::default(),
         package,
         features,
-        prefer_mold,
         asset_directory,
         asset_tx,
     });
@@ -242,7 +236,6 @@ pub struct ServerState {
     map: Arc<RwLock<HashMap<String, TargetWatchInfo>>>,
     package: Option<String>,
     features: Vec<String>,
-    prefer_mold: bool,
     asset_directory: PathBuf,
     asset_tx: broadcast::Sender<HotReloadMessage>,
 }
@@ -275,7 +268,6 @@ impl ServerState {
         let options = HotReloadOptions {
             features: self.features.clone(),
             package: self.package.clone(),
-            prefer_mold: self.prefer_mold,
             build_target: Some(target.to_string()),
             ..Default::default()
         };

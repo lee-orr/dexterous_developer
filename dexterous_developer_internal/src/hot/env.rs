@@ -1,4 +1,8 @@
+use std::process::Command;
+
 use anyhow::{bail, Context, Error};
+
+use crate::logger::error;
 
 #[cfg(target_os = "windows")]
 const RUSTC_ARGS: [(&str, &str); 3] = [
@@ -34,14 +38,8 @@ const RUSTC_ARGS: [(&str, &str); 2] = [
     ("RUSTFLAGS", "-Zshare-generics=y"),
 ];
 
-pub(crate) fn set_envs(prefer_mold: bool) -> anyhow::Result<()> {
+pub(crate) fn set_envs(command: &mut Command) -> anyhow::Result<()> {
     for (var, val) in RUSTC_ARGS.iter() {
-        let val = if cfg!(target_os = "linux") && prefer_mold {
-            val.replace("lld", "mold")
-        } else {
-            val.to_string()
-        };
-
         if (var == &"RUSTC_LINKER") && which::which(&val).is_err() {
             bail!("Linker {val} is not installed");
         } else if val.contains("-fuse-ld=") {
@@ -50,7 +48,7 @@ pub(crate) fn set_envs(prefer_mold: bool) -> anyhow::Result<()> {
             let after = split.next().ok_or(Error::msg("No value for -fuse-ld="))?;
             which::which(after).context("Can't find lld")?;
         }
-        std::env::set_var(var, val);
+        command.env(var, val);
     }
     Ok(())
 }

@@ -19,10 +19,6 @@ struct Args {
     #[arg(short, long)]
     features: Vec<String>,
 
-    /// Prefer the Mold linker on Linux
-    #[arg(short = 'm', long, default_value_t = false)]
-    prefer_mold: bool,
-
     /// Run as a dev server
     #[arg(short, long)]
     serve: Option<u16>,
@@ -42,14 +38,13 @@ async fn main() {
     let Args {
         package,
         features,
-        prefer_mold,
         serve,
         remote,
         reload_dir,
     } = Args::parse();
 
     if let Some(port) = serve {
-        run_server(port, package, features, prefer_mold)
+        run_server(port, package, features)
             .await
             .expect("Couldn't run server");
     } else if let Some(remote) = remote {
@@ -62,7 +57,6 @@ async fn main() {
         let options = HotReloadOptions {
             features,
             package,
-            prefer_mold,
             ..Default::default()
         };
         dexterous_developer_internal::run_reloadabe_app(options);

@@ -38,23 +38,6 @@ async fn can_run_hot() {
     process.exit().await;
 }
 
-async fn can_run_hot_with_mold() {
-    let mut project = TestProject::new("simple_cli_test", "can_run_hot_mold").unwrap();
-    let mut process = project.run_hot_mold().await.unwrap();
-
-    process.is_ready().await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    process.exit().await;
-}
-
 async fn can_run_hot_and_edit() {
     let mut project = TestProject::new("simple_cli_test", "can_run_hot_and_edit").unwrap();
     let mut process = project.run_hot_cli().await.unwrap();
@@ -331,10 +314,6 @@ pub async fn run_tests() {
             println!("Can handle reloadables");
             can_run_with_reloadables().await;
         }
-        "mold" => {
-            println!("Can run hot with mold (on linux)");
-            can_run_hot_with_mold().await;
-        }
         "remote" => {
             println!("Can run remote");
             can_run_remote().await;
@@ -351,7 +330,6 @@ pub async fn run_tests() {
             println!("edit");
             println!("launcher");
             println!("reloadables");
-            println!("mold");
             println!("remote");
             println!("asset");
             std::process::exit(1)
@@ -380,10 +358,6 @@ mod test {
     #[tokio::test]
     async fn can_run_with_reloadables() {
         super::can_run_with_reloadables().await;
-    }
-    #[tokio::test]
-    async fn can_run_mold() {
-        super::can_run_hot_with_mold().await;
     }
     #[tokio::test]
     async fn can_run_remote() {

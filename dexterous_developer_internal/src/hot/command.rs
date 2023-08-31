@@ -37,7 +37,6 @@ pub(crate) fn setup_build_settings(
         watch_folder,
         target_folder,
         features,
-        prefer_mold,
         build_target,
         ..
     } = options;
@@ -67,8 +66,6 @@ pub(crate) fn setup_build_settings(
     }
 
     info!("Compiling with features: {}", features.join(", "));
-
-    super::env::set_envs(*prefer_mold)?;
 
     let features = features
         .iter()
@@ -156,6 +153,7 @@ pub(crate) fn setup_build_settings(
         .arg("--print=target-libdir")
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
+    super::env::set_envs(&mut rustc)?;
 
     if let Some(build_target) = build_target {
         rustc.arg("--target").arg(build_target.as_str());
@@ -389,6 +387,8 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     if let Some(build_target) = build_target {
         command.arg("--target").arg(build_target.as_str());
     }
+
+    super::env::set_envs(&mut command)?;
 
     info!("Command: {}", print_command(&command));
 
