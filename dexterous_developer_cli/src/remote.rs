@@ -17,10 +17,15 @@ use tokio_tungstenite::tungstenite::Message;
 use url::Url;
 
 pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> anyhow::Result<()> {
-    let mut reload_dir = std::env::current_dir()?;
+    let mut reload_dir = PathBuf::from(std::env::current_dir()?.to_string_lossy().to_string());
+
+    println!("Reload Directory: {reload_dir:?}");
+
     if let Some(reload_dir_rel) = reload_dir_rel {
         reload_dir.push(reload_dir_rel);
     }
+
+    let reload_dir = dunce::canonicalize(reload_dir)?;
 
     if !reload_dir.exists() {
         println!("Creating Reload Directory - {reload_dir:?}");
@@ -29,8 +34,8 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
 
     let reload_dir = reload_dir.canonicalize()?;
 
-    let lib_dir = reload_dir.join("libs");
-    let asset_dir = reload_dir.join("assets");
+    let lib_dir = dunce::canonicalize(reload_dir.join("libs"))?;
+    let asset_dir = dunce::canonicalize(reload_dir.join("assets"))?;
 
     if !lib_dir.exists() {
         println!("Creating Library Directory - {lib_dir:?}");
@@ -49,6 +54,7 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
             .into_iter()
             .filter(|v| !v.as_os_str().is_empty())
             .collect::<BTreeSet<_>>();
+
         env_paths.insert(lib_dir);
 
         let os_paths = std::env::join_paths(env_paths)?;

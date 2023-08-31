@@ -39,3 +39,4 @@ walkdir = "2"
 notify = { version = "6", default-features = false, features = [
     "macos_kqueue",
 ] }
+dunce = "1"
