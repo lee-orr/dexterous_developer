@@ -25,27 +25,37 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
         reload_dir.push(reload_dir_rel);
     }
 
-    let reload_dir = dunce::canonicalize(reload_dir)?;
-
     if !reload_dir.exists() {
         println!("Creating Reload Directory - {reload_dir:?}");
         std::fs::create_dir_all(reload_dir.as_path())?;
+    } else {
+        println!("Reload Directory Exists");
     }
 
-    let reload_dir = reload_dir.canonicalize()?;
-
-    let lib_dir = dunce::canonicalize(reload_dir.join("libs"))?;
-    let asset_dir = dunce::canonicalize(reload_dir.join("assets"))?;
+    let lib_dir = reload_dir.join("libs");
+    let asset_dir = reload_dir.join("assets");
 
     if !lib_dir.exists() {
         println!("Creating Library Directory - {lib_dir:?}");
         std::fs::create_dir_all(lib_dir.as_path())?;
+    } else {
+        println!("Lib Directory Exists");
     }
 
     if !asset_dir.exists() {
         println!("Creating Asset Directory - {asset_dir:?}");
         std::fs::create_dir_all(asset_dir.as_path())?;
+    } else {
+        println!("Asset Drectory Exists");
     }
+
+    println!("Canonicalizing paths");
+
+    let reload_dir = dunce::canonicalize(reload_dir)?;
+    let lib_dir = dunce::canonicalize(lib_dir)?;
+    let asset_dir = dunce::canonicalize(asset_dir)?;
+
+    println!("Gettin Dynamic Library Search Paths");
 
     let env_paths = dylib_path();
 

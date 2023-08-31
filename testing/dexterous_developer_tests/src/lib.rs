@@ -243,11 +243,11 @@ async fn can_run_remote() {
     let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
     let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
 
-    let mut host_process = project.run_host_cli().await.unwrap();
+    let mut host_process = project.run_host_cli("1234").await.unwrap();
 
     host_process.wait_for_lines(&["Serving on 1234"]).await;
 
-    let mut process = client.run_client_cli().await.unwrap();
+    let mut process = client.run_client_cli("1234").await.unwrap();
 
     process.is_ready().await;
 
@@ -277,14 +277,14 @@ async fn can_run_remote() {
 }
 
 async fn can_update_assets() {
-    let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
-    let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
+    let mut project = TestProject::new("simple_cli_test", "can_update_assets_host").unwrap();
+    let mut client = TestProject::new("remote_client", "can_update_assets_client").unwrap();
 
-    let mut host_process = project.run_host_cli().await.unwrap();
+    let mut host_process = project.run_host_cli("2345").await.unwrap();
 
-    host_process.wait_for_lines(&["Serving on 1234"]).await;
+    host_process.wait_for_lines(&["Serving on 2345"]).await;
 
-    let mut process = client.run_client_cli().await.unwrap();
+    let mut process = client.run_client_cli("2345").await.unwrap();
 
     process.is_ready().await;
 
@@ -361,30 +361,30 @@ pub async fn run_tests() {
 
 #[cfg(test)]
 mod test {
-    #[tokio::test]
-    async fn can_run_cold() {
-        super::can_run_cold().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot() {
-        super::can_run_hot().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit() {
-        super::can_run_hot_and_edit().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit_with_launcher() {
-        super::can_run_hot_and_edit_with_launcher().await;
-    }
-    #[tokio::test]
-    async fn can_run_with_reloadables() {
-        super::can_run_with_reloadables().await;
-    }
-    #[tokio::test]
-    async fn can_run_mold() {
-        super::can_run_hot_with_mold().await;
-    }
+    // #[tokio::test]
+    // async fn can_run_cold() {
+    //     super::can_run_cold().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot() {
+    //     super::can_run_hot().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit() {
+    //     super::can_run_hot_and_edit().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit_with_launcher() {
+    //     super::can_run_hot_and_edit_with_launcher().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_with_reloadables() {
+    //     super::can_run_with_reloadables().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_mold() {
+    //     super::can_run_hot_with_mold().await;
+    // }
     #[tokio::test]
     async fn can_run_remote() {
         super::can_run_remote().await;

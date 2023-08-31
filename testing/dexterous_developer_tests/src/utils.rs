@@ -137,7 +137,7 @@ impl TestProject {
         self.run(cmd, ProcessHeat::Hot).await
     }
 
-    pub async fn run_host_cli(&mut self) -> anyhow::Result<RunningProcess> {
+    pub async fn run_host_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
         let Ok(cli_path) = rebuild_cli() else {
             bail!("Couldn't get CLI");
         };
@@ -148,18 +148,20 @@ impl TestProject {
             .arg("-p")
             .arg(&self.package)
             .arg("-s")
-            .arg("1234");
+            .arg(port);
         self.run(cmd, ProcessHeat::Hot).await
     }
 
-    pub async fn run_client_cli(&mut self) -> anyhow::Result<RunningProcess> {
+    pub async fn run_client_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
         let Ok(cli_path) = rebuild_cli() else {
             bail!("Couldn't get CLI");
         };
 
         let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
-        cmd.current_dir(&wd).arg("-r").arg("http://localhost:1234");
+        cmd.current_dir(&wd)
+            .arg("-r")
+            .arg(&format!("http://localhost:{port}"));
         self.run(cmd, ProcessHeat::Remote).await
     }
 
