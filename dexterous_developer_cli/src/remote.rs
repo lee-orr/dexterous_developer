@@ -136,15 +136,22 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+const TARGET_OS: &str = "darwin";
+
+#[cfg(not(target_os = "macos"))]
+const TARGET_OS: &str = OS;
+
 async fn get_valid_targets(url: &url::Url) -> anyhow::Result<Vec<String>> {
     let result = reqwest::get(url.join("targets")?).await?;
     let json = result.json::<Vec<String>>().await?;
     let filtered: Vec<String> = json
-        .into_iter()
-        .filter(|v| v.contains(ARCH) && v.contains(OS))
+        .iter()
+        .filter(|v| v.contains(ARCH) && v.contains(TARGET_OS))
+        .map(|v| v.to_string())
         .collect();
     if filtered.is_empty() {
-        bail!("No valid targets available at {url:?}");
+        bail!("No valid targets available at {url:?}\nWe're on {ARCH} - {TARGET_OS}, and got {json:?}");
     }
     Ok(filtered)
 }
