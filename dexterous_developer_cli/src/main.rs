@@ -1,7 +1,9 @@
 mod remote;
 mod serve;
 
-use clap::Parser;
+use std::str::FromStr;
+
+use clap::{Parser, ValueEnum};
 
 use dexterous_developer_internal::HotReloadOptions;
 use remote::connect_to_remote;
