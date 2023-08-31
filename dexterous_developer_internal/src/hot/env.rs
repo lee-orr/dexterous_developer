@@ -24,7 +24,7 @@ pub(crate) fn set_envs(
     command: &mut Command,
     target: Option<&str>,
 ) -> anyhow::Result<&'static str> {
-    let provider = default_host::DefaultProvider::get_provider(target.clone())
+    let provider = default_host::DefaultProvider::get_provider(target)
         .ok_or(anyhow::Error::msg("No Build Arg Provider for {target:?}"))?;
 
     if let Some(linker) = provider.get_linker() {
