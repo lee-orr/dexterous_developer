@@ -53,6 +53,8 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
 
         let os_paths = std::env::join_paths(env_paths)?;
 
+        println!("Paths: {os_paths:?}");
+
         let current = std::env::current_exe()?;
         let result = Command::new(current)
             .current_dir(reload_dir.as_path())
