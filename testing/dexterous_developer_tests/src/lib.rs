@@ -339,32 +339,32 @@ pub async fn run_tests() {
 
 #[cfg(test)]
 mod test {
-    #[tokio::test]
-    async fn can_run_cold() {
-        super::can_run_cold().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot() {
-        super::can_run_hot().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit() {
-        super::can_run_hot_and_edit().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit_with_launcher() {
-        super::can_run_hot_and_edit_with_launcher().await;
-    }
-    #[tokio::test]
-    async fn can_run_with_reloadables() {
-        super::can_run_with_reloadables().await;
-    }
+    // #[tokio::test]
+    // async fn can_run_cold() {
+    //     super::can_run_cold().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot() {
+    //     super::can_run_hot().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit() {
+    //     super::can_run_hot_and_edit().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit_with_launcher() {
+    //     super::can_run_hot_and_edit_with_launcher().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_with_reloadables() {
+    //     super::can_run_with_reloadables().await;
+    // }
     #[tokio::test]
     async fn can_run_remote() {
         super::can_run_remote().await;
     }
-    #[tokio::test]
-    async fn can_update_assets() {
-        super::can_update_assets().await;
-    }
+    // #[tokio::test]
+    // async fn can_update_assets() {
+    //     super::can_update_assets().await;
+    // }
 }
