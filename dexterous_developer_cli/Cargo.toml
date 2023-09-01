@@ -40,3 +40,5 @@ notify = { version = "6", default-features = false, features = [
     "macos_kqueue",
 ] }
 dunce = "1"
+directories = "5"
+semver = "1"

@@ -1,3 +1,5 @@
+mod cross;
+mod paths;
 mod remote;
 mod serve;
 
@@ -103,7 +105,10 @@ async fn main() {
                 .expect("Remote Connection Failed");
         }
         Commands::InstallCross => {
-            println!("Setup cross compiler!");
+            println!("Setup cross compiling");
+            cross::install_cross()
+                .await
+                .expect("Failed to install cross");
         }
     }
 }

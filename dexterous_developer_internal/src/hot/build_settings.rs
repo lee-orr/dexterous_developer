@@ -14,6 +14,7 @@ pub(crate) struct BuildSettings {
     pub out_target: PathBuf,
     pub build_target: Option<String>,
     pub updated_file_channel: Option<tokio::sync::broadcast::Sender<HotReloadMessage>>,
+    pub cross_paths: Option<PathBuf>,
 }
 
 #[cfg(not(feature = "cli"))]
@@ -27,6 +28,7 @@ pub(crate) struct BuildSettings {
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
     pub build_target: Option<String>,
+    pub cross_paths: Option<PathBuf>,
 }
 
 impl ToString for BuildSettings {
@@ -39,6 +41,7 @@ impl ToString for BuildSettings {
             target_folder,
             lib_path,
             out_target,
+            cross_paths,
             ..
         } = self;
 
@@ -54,9 +57,13 @@ impl ToString for BuildSettings {
             .as_ref()
             .map(|v| v.to_string_lossy())
             .unwrap_or_default();
-        let lib_path = lib_path.to_string_lossy();
+        let lib_path: std::borrow::Cow<'_, str> = lib_path.to_string_lossy();
+        let cross_paths = cross_paths
+            .as_ref()
+            .map(|v| v.to_string_lossy().to_string())
+            .unwrap_or_default();
 
-        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}")
+        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}:!:{cross_paths}")
     }
 }
 
@@ -87,6 +94,7 @@ impl TryFrom<&str> for BuildSettings {
             .map(PathBuf::from)
             .ok_or(Error::msg("no out_target"))?;
         let target_folder = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
+        let cross_paths = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
 
         Ok(BuildSettings {
             lib_path,
@@ -96,6 +104,7 @@ impl TryFrom<&str> for BuildSettings {
             features,
             target_folder,
             out_target,
+            cross_paths,
             ..Default::default()
         })
     }

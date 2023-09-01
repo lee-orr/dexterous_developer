@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
 use anyhow::{bail, Context, Error};
 
@@ -23,8 +23,9 @@ trait GetBuildArgProvider {
 pub(crate) fn set_envs(
     command: &mut Command,
     target: Option<&str>,
+    cross_path: Option<&PathBuf>,
 ) -> anyhow::Result<&'static str> {
-    let provider = default_host::get_provider(target)?;
+    let provider = default_host::get_provider(target, cross_path)?;
 
     if let Some(linker) = provider.get_linker() {
         which::which(linker).context("Can't find lld")?;
@@ -35,8 +36,8 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
-    use super::{BuildArgsProvider, GetBuildArgProvider};
-    use std::process::Command;
+    use super::{cross_host, BuildArgsProvider, GetBuildArgProvider};
+    use std::{path::PathBuf, process::Command};
 
     use anyhow::{bail, Context};
 
@@ -49,7 +50,10 @@ mod default_host {
     #[cfg(target_os = "windows")]
     use super::windows_host::DefaultProvider;
 
-    pub fn get_provider(target: Option<&str>) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+    pub fn get_provider(
+        target: Option<&str>,
+        cross_path: Option<&PathBuf>,
+    ) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
         if let Some(target) = target {
             let targets = Command::new("rustup")
                 .arg("target")
@@ -59,7 +63,9 @@ mod default_host {
                 .context("Checking if {target} is installed")?;
             let output = std::str::from_utf8(&targets.stdout)?;
 
-            if output.lines().any(|v| v == target) {
+            if let Some(cross_path) = cross_path {
+                Ok(cross_host::CrossProvider::new(cross_path))
+            } else if output.lines().any(|v| v == target) {
                 DefaultProvider::get_provider(target)
             } else {
                 bail!("Target {target} is not installed");
@@ -109,12 +115,29 @@ mod linux_host {
 
     impl BuildArgsProvider for WindowsGNUProvider {
         fn set_env_vars(&self, command: &mut Command) {
+            command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
+        }
+    }
+}
+
+mod cross_host {
+    use super::*;
+
+    pub struct CrossProvider(PathBuf);
+
+    impl CrossProvider {
+        pub fn new(p: impl Into<PathBuf>) -> Box<Self> {
+            let path: PathBuf = p.into();
+            println!("Using cross provier at path {path:?}");
+            Box::new(Self(path))
+        }
+    }
+
+    impl BuildArgsProvider for CrossProvider {
+        fn set_env_vars(&self, command: &mut Command) {
             command
-                .env("CC", "/zig_win.sh")
-                .env("RUST_LINKER", "/zig_win.sh")
-                .env("RUSTFLAGS", "-Clink-arg=-fuse-ld=lld");
-            println!("Using Zig");
-            // command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
+                .env("CC", self.0.as_os_str())
+                .env("RUST_LINKER", self.0.as_os_str());
         }
     }
 }
