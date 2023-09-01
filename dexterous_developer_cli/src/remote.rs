@@ -156,6 +156,15 @@ async fn get_valid_targets(url: &url::Url) -> anyhow::Result<Vec<String>> {
     Ok(filtered)
 }
 
+#[cfg(target_os = "windows")]
+const DYNAMIC_LIB_EXTENSION: &str = "dll";
+#[cfg(target_os = "linux")]
+const DYNAMIC_LIB_EXTENSION: &str = "so";
+#[cfg(target_os = "macos")]
+const DYNAMIC_LIB_EXTENSION: &str = "dylib";
+#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+const DYNAMIC_LIB_EXTENSION: &str = "so";
+
 async fn connect_to_build(
     root_url: &url::Url,
     target: &str,
@@ -194,6 +203,9 @@ async fn connect_to_build(
                 }
                 HotReloadMessage::UpdatedLibs(updated_paths) => {
                     for (file, hash) in updated_paths.iter() {
+                        if !file.ends_with(DYNAMIC_LIB_EXTENSION) {
+                            println!("Ignoring {file} - wrong extension");
+                        }
                         println!("Downloading {file} - with {hash:?}");
                         if download_lib(root_url, target, file, hash, target_folder)
                             .await

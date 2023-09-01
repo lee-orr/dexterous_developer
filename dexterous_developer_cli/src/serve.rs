@@ -202,6 +202,7 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
        val = updates_rx.recv() => val,
        val = asset_rx.recv() => val
     } {
+        println!("Sending update {msg:?}");
         let Ok(content) = serde_json::to_string(&msg) else {
             eprintln!("Couldn't serialize current updated paths - closing connection");
             continue;
