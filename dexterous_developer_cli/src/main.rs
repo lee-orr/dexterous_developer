@@ -1,9 +1,9 @@
 mod remote;
 mod serve;
 
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use dexterous_developer_internal::HotReloadOptions;
 use remote::connect_to_remote;
@@ -13,54 +13,97 @@ use serve::run_server;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Package to build (required in a workspace)
-    #[arg(short, long)]
-    package: Option<String>,
+    #[command(subcommand)]
+    command: Commands,
+}
 
-    /// Features to include
-    #[arg(short, long)]
-    features: Vec<String>,
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Run and launch a hot reloaded application
+    Run {
+        /// Package to build (required in a workspace)
+        #[arg(short, long)]
+        package: Option<String>,
 
-    /// Run as a dev server
-    #[arg(short, long)]
-    serve: Option<u16>,
+        /// Features to include
+        #[arg(short, long)]
+        features: Vec<String>,
+    },
+    /// Start a dev server for remote, hot reloaded development
+    Serve {
+        /// Package to build (required in a workspace)
+        #[arg(short, long)]
+        package: Option<String>,
 
-    /// Reload from remote dev server
-    /// Will place all files within the current working directory, or in the reload directory
-    #[arg(short, long)]
-    remote: Option<url::Url>,
+        /// Features to include
+        #[arg(short, long)]
+        features: Vec<String>,
 
-    /// Reload Directory
-    #[arg(short = 'd', long)]
-    reload_dir: Option<std::path::PathBuf>,
+        /// Port to host on
+        #[arg(short = 's', long, default_value = "1234")]
+        port: u16,
+    },
+    /// Connect to a remote dev server and run it's application locally
+    Remote {
+        /// Reload from remote dev server
+        /// Will place all files within the current working directory, or in the reload directory
+        #[arg(short, long)]
+        remote: url::Url,
+
+        /// Reload directory
+        /// optional directory to use for the hot reload process
+        #[arg(short, long)]
+        dir: Option<PathBuf>,
+    },
+    ///Set up cross compilation support
+    InstallCross,
+}
+
+impl Default for Commands {
+    fn default() -> Self {
+        Self::Run {
+            package: None,
+            features: vec![],
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
-    let Args {
-        package,
-        features,
-        serve,
-        remote,
-        reload_dir,
-    } = Args::parse();
+    if std::env::var("DEXTEROUS_BUILD_SETTINGS").is_ok() {
+        dexterous_developer_internal::run_reloadabe_app(Default::default());
+    }
 
-    if let Some(port) = serve {
-        run_server(port, package, features)
-            .await
-            .expect("Couldn't run server");
-    } else if let Some(remote) = remote {
-        connect_to_remote(remote, reload_dir)
-            .await
-            .expect("Remote Connection Failed");
-    } else {
-        println!("Running {package:?} with {features:?}");
+    let Args { command } = Args::parse();
 
-        let options = HotReloadOptions {
-            features,
+    match command {
+        Commands::Run { package, features } => {
+            println!("Running {package:?} with {features:?}");
+
+            let options = HotReloadOptions {
+                features,
+                package,
+                ..Default::default()
+            };
+            dexterous_developer_internal::run_reloadabe_app(options);
+        }
+        Commands::Serve {
             package,
-            ..Default::default()
-        };
-        dexterous_developer_internal::run_reloadabe_app(options);
+            features,
+            port,
+        } => {
+            println!("Serving {package:?} on port {port}");
+            run_server(port, package, features)
+                .await
+                .expect("Couldn't run server");
+        }
+        Commands::Remote { remote, dir } => {
+            connect_to_remote(remote, dir)
+                .await
+                .expect("Remote Connection Failed");
+        }
+        Commands::InstallCross => {
+            println!("Setup cross compiler!");
+        }
     }
 }

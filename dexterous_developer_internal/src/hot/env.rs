@@ -109,7 +109,12 @@ mod linux_host {
 
     impl BuildArgsProvider for WindowsGNUProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
+            command
+                .env("CC", "/zig_win.sh")
+                .env("RUST_LINKER", "/zig_win.sh")
+                .env("RUSTFLAGS", "-Clink-arg=-fuse-ld=lld");
+            println!("Using Zig");
+            // command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
         }
     }
 }

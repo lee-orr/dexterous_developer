@@ -110,6 +110,7 @@ pub enum HotReloadMessage {
     RootLibPath(String),
     UpdatedLibs(Vec<(String, [u8; 32])>),
     UpdatedAssets(Vec<(String, [u8; 32])>),
+    KeepAlive,
 }
 
 #[cfg(not(feature = "cli"))]

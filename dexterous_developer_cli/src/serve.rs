@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use axum::{
     body::Body,
@@ -200,7 +200,8 @@ async fn websocket_connection(socket: WebSocket, target: String, state: State<Se
     };
     while let Ok(msg) = tokio::select! {
        val = updates_rx.recv() => val,
-       val = asset_rx.recv() => val
+       val = asset_rx.recv() => val,
+        _ = tokio::time::sleep(Duration::from_secs(5)) => Ok(HotReloadMessage::KeepAlive)
     } {
         println!("Sending update {msg:?}");
         let Ok(content) = serde_json::to_string(&msg) else {

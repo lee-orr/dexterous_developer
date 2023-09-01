@@ -75,6 +75,7 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
         let result = Command::new(current)
             .current_dir(reload_dir.as_path())
             .env(dylib_path_envvar(), os_paths.as_os_str())
+            .arg("remote")
             .arg("--remote")
             .arg(remote.as_str())
             .status()
@@ -231,6 +232,7 @@ async fn connect_to_build(
                     println!("Updated Assets Downloaded");
                     let _ = assets_ready.send(()).await;
                 }
+                HotReloadMessage::KeepAlive => println!("Received Keep Alive Message"),
             }
         }
     })
