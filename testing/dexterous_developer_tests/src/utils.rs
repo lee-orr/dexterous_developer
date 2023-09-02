@@ -28,41 +28,68 @@ pub struct TestProject {
 }
 
 static CLI_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
+static TEMPLATE_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
 
-fn rebuild_cli() -> &'static anyhow::Result<PathBuf> {
-    CLI_PATH.get_or_init(|| {
-        let mut cwd = std::env::current_dir()?;
-        cwd.pop();
+fn rebuild_cli() -> anyhow::Result<&'static PathBuf> {
+    CLI_PATH
+        .get_or_init(|| {
+            if let Ok(path) = std::env::var("DEXTEROUS_CLI_PATH") {
+                let mut path = PathBuf::from(&path);
 
-        let mut root = cwd.clone();
-        root.pop();
+                #[cfg(target_os = "windows")]
+                {
+                    path.set_extension("exe");
+                }
+                return Ok(path);
+            }
 
-        let mut cli_path = root.clone();
+            let mut cwd = std::env::current_dir()?;
+            cwd.pop();
 
-        cli_path.push("target");
-        cli_path.push("debug");
-        cli_path.push("dexterous_developer_cli");
+            let mut root = cwd.clone();
+            root.pop();
 
-        #[cfg(target_os = "windows")]
-        {
-            cli_path.set_extension("exe");
-        }
+            let mut cli_path = root.clone();
 
-        println!("Building Cli at {cli_path:?} from {root:?}");
-        std::process::Command::new("cargo")
-            .current_dir(root.as_path())
-            .arg("build")
-            .arg("-p")
-            .arg("dexterous_developer_cli")
-            .status()?;
-        Ok(cli_path)
-    })
+            cli_path.push("target");
+            cli_path.push("debug");
+            cli_path.push("dexterous_developer_cli");
+
+            #[cfg(target_os = "windows")]
+            {
+                cli_path.set_extension("exe");
+            }
+            println!("Building Cli at {cli_path:?} from {root:?}");
+            std::process::Command::new("cargo")
+                .current_dir(root.as_path())
+                .arg("build")
+                .arg("-p")
+                .arg("dexterous_developer_cli")
+                .status()?;
+            Ok(cli_path)
+        })
+        .as_ref()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
+}
+
+fn template_path() -> anyhow::Result<&'static PathBuf> {
+    TEMPLATE_PATH
+        .get_or_init(|| {
+            if let Ok(path) = std::env::var("DEXTEROUS_TESTER_PATH") {
+                return Ok(PathBuf::from(&path));
+            }
+
+            let mut cwd = std::env::current_dir()?;
+            cwd.pop();
+            Ok(cwd)
+        })
+        .as_ref()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
 }
 
 impl TestProject {
     pub fn new(template: &'static str, test: &'static str) -> anyhow::Result<Self> {
-        let mut cwd = std::env::current_dir()?;
-        cwd.pop();
+        let mut cwd = template_path()?;
 
         let package = template.to_string();
 

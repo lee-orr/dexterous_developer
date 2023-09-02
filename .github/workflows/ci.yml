@@ -39,7 +39,57 @@ jobs:
         env:
           RUSTDOCFLAGS: -Dwarnings
 
+  build-tester:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - if: ${{ matrix.os }} == "windows-latest"
+        name: Add Binutils
+        run: cargo install -f cargo-binutils
+      - if: ${{ matrix.os}} == "windows-latest"
+        name: Add llvm
+        run: rustup component add llvm-tools-preview
+      - if: ${{ matrix.os}} == "macos-latest"
+        name: Install LLVM
+        run: brew install llvm
+      - if: ${{ matrix.os }} == "ubuntu-latest"
+        name: Dependencies
+        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - name: Build CLI
+        run: cargo build -p dexterous_developer_cli
+      - name: Build Tester
+        run: cargo build --features prebuilt
+        working-directory: ./testing/dexterous_developer_tests
+      - name: Store CLI
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.os}}-cli
+          path: target/debug/dexterous_developer_cli${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+      - name: Store Tester
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.os}}-tester
+          path: testing/dexterous_developer_teststarget/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+
   tests:
+    depends-on: build-tester
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
@@ -73,9 +123,19 @@ jobs:
       - if: ${{ matrix.os }} == "ubuntu-latest"
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - name: Download CLI
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.os}}-cli
+      - name: Download Tester
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.os}}-tester
       - name: Run Test - {test}
-        run: cargo run {test}
-        working-directory: ./testing/dexterous_developer_tests
+        run: run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        env:
+          DEXTEROUS_CLI_PATH: ${{GITHUB_WORKSPACE}}/dexterous_developer_cli
+          DEXTEROUS_TESTER_PATH: ${PGITHUB_WORKSPACE}}/testing/templates
 
   mdbook:
     runs-on: ubuntu-20.04
