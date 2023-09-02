@@ -123,18 +123,21 @@ jobs:
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - run: mkdir bins
       - name: Download CLI
         uses: actions/download-artifact@v3
+        working-directory: bins
         with:
           name: ${{matrix.os}}-cli
       - name: Download Tester
         uses: actions/download-artifact@v3
+        working-directory: bins
         with:
           name: ${{matrix.os}}-tester
       - name: Run Test - {test}
-        run: run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         env:
-          DEXTEROUS_CLI_PATH: ${{env.GITHUB_WORKSPACE}}/dexterous_developer_cli
+          DEXTEROUS_CLI_PATH: ${{env.GITHUB_WORKSPACE}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${env.GITHUB_WORKSPACE}}/testing/templates
 
   mdbook:
