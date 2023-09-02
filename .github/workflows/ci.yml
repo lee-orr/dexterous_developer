@@ -126,14 +126,14 @@ jobs:
       - run: mkdir bins
       - name: Download CLI
         uses: actions/download-artifact@v3
-        working-directory: bins
         with:
           name: ${{matrix.os}}-cli
+          path: bins
       - name: Download Tester
         uses: actions/download-artifact@v3
-        working-directory: bins
         with:
           name: ${{matrix.os}}-tester
+          path: bins
       - name: Run Test - {test}
         run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         env:
