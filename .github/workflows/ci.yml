@@ -39,8 +39,12 @@ jobs:
         env:
           RUSTDOCFLAGS: -Dwarnings
 
-  tests-windows:
-    runs-on: windows-latest
+  tests:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        test: [cold, hot, edit, launcher, reloadables, remote, asset]
+    runst-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -57,63 +61,20 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - name: Add Binutils
+      - if: ${{ matrix.os == "windows-latest" }}
+        name: Add Binutils
         run: cargo install -f cargo-binutils
-      - name: Add llvm
+      - if: ${{ matrix.os == "windows-latest" }}
+        name: Add llvm
         run: rustup component add llvm-tools-preview
-      - name: Run Tests
-        run: cargo test -- --nocapture
-        working-directory: ./testing/dexterous_developer_tests
-
-  tests-mac:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
-      - name: Install LLVM
+      - if: ${{ matrix.os == "macos-latest" }}
+        name: Install LLVM
         run: brew install llvm
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-          override: true
-      - name: Run Tests
-        run: cargo test -- --nocapture
-        working-directory: ./testing/dexterous_developer_tests
-
-  tests-ubuntu:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-          override: true
-      - name: Dependencies
+      - if: ${{ matrix.os == "ubuntu-latest" }}
+        name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
-      - uses: rui314/setup-mold@v1
-        with:
-          make-default: false
-      - name: Run Tests
-        run: cargo test -- --nocapture
+      - name: Run Test - {test}
+        run: cargo run {test}
         working-directory: ./testing/dexterous_developer_tests
 
   mdbook:
