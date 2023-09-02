@@ -89,7 +89,7 @@ jobs:
           path: testing/dexterous_developer_teststarget/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
   tests:
-    depends-on: build-tester
+    needs: build-tester
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
