@@ -44,7 +44,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         test: [cold, hot, edit, launcher, reloadables, remote, asset]
-    runst-on: ${{matrix.os}}
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
