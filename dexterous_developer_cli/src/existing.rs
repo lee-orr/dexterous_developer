@@ -25,7 +25,7 @@ pub async fn load_existing_directory(libs: PathBuf) -> anyhow::Result<()> {
     }
 
     let libs = dunce::canonicalize(libs)?;
-    let assets = dunce::canonicalize(assets)?;
+    let _assets = dunce::canonicalize(assets)?;
 
     let current_lib = libs
         .read_dir()?
