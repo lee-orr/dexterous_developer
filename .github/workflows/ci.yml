@@ -134,8 +134,8 @@ jobs:
       - name: Run Test - {test}
         run: run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         env:
-          DEXTEROUS_CLI_PATH: ${{GITHUB_WORKSPACE}}/dexterous_developer_cli
-          DEXTEROUS_TESTER_PATH: ${PGITHUB_WORKSPACE}}/testing/templates
+          DEXTEROUS_CLI_PATH: ${{env.GITHUB_WORKSPACE}}/dexterous_developer_cli
+          DEXTEROUS_TESTER_PATH: ${env.GITHUB_WORKSPACE}}/testing/templates
 
   mdbook:
     runs-on: ubuntu-20.04
