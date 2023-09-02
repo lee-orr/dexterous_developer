@@ -34,7 +34,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
 
 fn run_reloadabe_app_inner(options: HotReloadOptions) {
     let (settings, paths) =
-        setup_build_settings(&options, None).expect("Couldn't get initial build settings");
+        setup_build_settings(&options).expect("Couldn't get initial build settings");
 
     match setup_build_setting_environment(settings, paths)
         .expect("Couldn't set up build settings in environment")
@@ -92,10 +92,9 @@ fn run_reloadable_from_env(settings: String) {
 pub fn watch_reloadable(
     options: HotReloadOptions,
     update_channel: tokio::sync::broadcast::Sender<HotReloadMessage>,
-    cross_path: Option<std::path::PathBuf>,
 ) -> anyhow::Result<(std::path::PathBuf, std::path::PathBuf)> {
     let _ = env_logger::try_init();
-    let (mut settings, paths) = setup_build_settings(&options, cross_path.as_ref())?;
+    let (mut settings, paths) = setup_build_settings(&options)?;
     let lib_path = settings.lib_path.clone();
     let lib_dir = settings.out_target.clone();
 

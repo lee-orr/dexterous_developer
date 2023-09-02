@@ -1,8 +1,6 @@
 use std::{path::PathBuf, process::Command};
 
-use anyhow::{bail, Context, Error};
-
-use crate::logger::error;
+use anyhow::Context;
 
 pub trait BuildArgsProvider {
     fn get_cargo_command(&self) -> &'static str {
@@ -23,9 +21,8 @@ trait GetBuildArgProvider {
 pub(crate) fn set_envs(
     command: &mut Command,
     target: Option<&str>,
-    cross_path: Option<&PathBuf>,
 ) -> anyhow::Result<&'static str> {
-    let provider = default_host::get_provider(target, cross_path)?;
+    let provider = default_host::get_provider(target)?;
 
     if let Some(linker) = provider.get_linker() {
         which::which(linker).context("Can't find lld")?;
@@ -36,8 +33,8 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
-    use super::{cross_host, BuildArgsProvider, GetBuildArgProvider};
-    use std::{path::PathBuf, process::Command};
+    use super::{BuildArgsProvider, GetBuildArgProvider};
+    use std::process::Command;
 
     use anyhow::{bail, Context};
 
@@ -50,10 +47,7 @@ mod default_host {
     #[cfg(target_os = "windows")]
     use super::windows_host::DefaultProvider;
 
-    pub fn get_provider(
-        target: Option<&str>,
-        cross_path: Option<&PathBuf>,
-    ) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+    pub fn get_provider(target: Option<&str>) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
         if let Some(target) = target {
             let targets = Command::new("rustup")
                 .arg("target")
@@ -63,9 +57,7 @@ mod default_host {
                 .context("Checking if {target} is installed")?;
             let output = std::str::from_utf8(&targets.stdout)?;
 
-            if let Some(cross_path) = cross_path {
-                Ok(cross_host::CrossProvider::new(cross_path))
-            } else if output.lines().any(|v| v == target) {
+            if output.lines().any(|v| v == target) {
                 DefaultProvider::get_provider(target)
             } else {
                 bail!("Target {target} is not installed");
@@ -85,7 +77,7 @@ mod unknown_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
@@ -155,7 +147,7 @@ mod windows_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
@@ -180,7 +172,7 @@ mod macos_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }

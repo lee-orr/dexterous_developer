@@ -29,7 +29,6 @@ pub enum BuildSettingsReady {
 
 pub(crate) fn setup_build_settings(
     options: &HotReloadOptions,
-    cross_paths: Option<&PathBuf>,
 ) -> anyhow::Result<(BuildSettings, BTreeSet<PathBuf>)> {
     let HotReloadOptions {
         manifest_path,
@@ -154,11 +153,7 @@ pub(crate) fn setup_build_settings(
         .arg("--print=target-libdir")
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
-    super::env::set_envs(
-        &mut rustc,
-        build_target.as_ref().map(|v| v.as_str()),
-        cross_paths,
-    )?;
+    super::env::set_envs(&mut rustc, build_target.as_ref().map(|v| v.as_str()))?;
 
     if let Some(build_target) = build_target {
         rustc.arg("--target").arg(build_target.as_str());
@@ -370,16 +365,12 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         out_target,
         lib_path,
         build_target,
-        cross_paths,
         ..
     } = settings;
 
     let mut command = Command::new("cargo");
-    let build_command = super::env::set_envs(
-        &mut command,
-        build_target.as_ref().map(|v| v.as_str()),
-        cross_paths.as_ref(),
-    )?;
+    let build_command =
+        super::env::set_envs(&mut command, build_target.as_ref().map(|v| v.as_str()))?;
     command
         .arg(build_command)
         .arg("--profile")

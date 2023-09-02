@@ -3,9 +3,9 @@ mod paths;
 mod remote;
 mod serve;
 
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 
 use dexterous_developer_internal::HotReloadOptions;
 use remote::connect_to_remote;

@@ -14,12 +14,9 @@ pub fn get_paths() -> anyhow::Result<CliPaths> {
         std::fs::create_dir_all(data.as_path())?;
     }
 
-    let ziglang = data.join("ziglang");
-
-    Ok(CliPaths { data, ziglang })
+    Ok(CliPaths { data })
 }
 
 pub struct CliPaths {
     pub data: PathBuf,
-    pub ziglang: PathBuf,
 }

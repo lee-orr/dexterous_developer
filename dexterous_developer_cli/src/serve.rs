@@ -24,8 +24,6 @@ use tokio::{
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::{cross, paths};
-
 pub async fn run_server(port: u16, package: Option<String>, features: Vec<String>) -> Result<()> {
     let app = Router::new()
         .route("/targets", get(list_targets))
@@ -276,13 +274,8 @@ impl ServerState {
             ..Default::default()
         };
 
-        let cross_path = paths::get_paths()
-            .ok()
-            .map(|f| cross::generate_zig_path_for_target(target, f.data.as_path()))
-            .filter(|v| v.exists());
-
-        let (lib_path, lib_dir) = watch_reloadable(options, sender.clone(), cross_path)
-            .expect("Couldn't setup reloadable");
+        let (lib_path, lib_dir) =
+            watch_reloadable(options, sender.clone()).expect("Couldn't setup reloadable");
 
         let lib_path = lib_path
             .file_name()
