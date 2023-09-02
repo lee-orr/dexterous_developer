@@ -1,4 +1,5 @@
 mod cross;
+mod existing;
 mod paths;
 mod remote;
 mod serve;
@@ -8,6 +9,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 use dexterous_developer_internal::HotReloadOptions;
+use existing::load_existing_directory;
 use remote::connect_to_remote;
 
 use serve::run_server;
@@ -59,6 +61,11 @@ enum Commands {
     },
     ///Set up cross compilation support
     InstallCross,
+    RunExisting {
+        /// The location of the existing libraries
+        #[arg(short, long, default_value = "./libs")]
+        libs: PathBuf,
+    },
 }
 
 impl Default for Commands {
@@ -109,6 +116,12 @@ async fn main() {
             cross::install_cross()
                 .await
                 .expect("Failed to install cross");
+        }
+        Commands::RunExisting { libs } => {
+            println!("Running existing libraries");
+            load_existing_directory(libs)
+                .await
+                .expect("Couldn't run existing libs");
         }
     }
 }

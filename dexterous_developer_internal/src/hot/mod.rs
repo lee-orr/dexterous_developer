@@ -173,3 +173,15 @@ pub async fn run_served_file(library_path: std::path::PathBuf) -> anyhow::Result
 
 #[cfg(feature = "cli")]
 fn null_watcher() {}
+
+#[cfg(feature = "cli")]
+pub async fn run_existing_library(library_path: std::path::PathBuf) -> anyhow::Result<()> {
+    let _ = env_logger::try_init();
+
+    let library_paths = LibPathSet::new(library_path.as_path());
+
+    let lib = get_initial_library(&library_paths).map_err(anyhow::Error::msg)?;
+
+    run_from_file(library_paths, lib, null_watcher)?;
+    Ok(())
+}
