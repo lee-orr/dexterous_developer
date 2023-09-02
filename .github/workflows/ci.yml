@@ -60,16 +60,16 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - if: ${{ matrix.os }} == "windows-latest"
+      - if: ${{ matrix.os == 'windows-latest' }}
         name: Add Binutils
         run: cargo install -f cargo-binutils
-      - if: ${{ matrix.os}} == "windows-latest"
+      - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os}} == "macos-latest"
+      - if: ${{ matrix.os == 'macos-latest' }}
         name: Install LLVM
         run: brew install llvm
-      - if: ${{ matrix.os }} == "ubuntu-latest"
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
       - name: Build CLI
@@ -111,16 +111,16 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - if: ${{ matrix.os }} == "windows-latest"
+      - if: ${{ matrix.os == 'windows-latest' }}
         name: Add Binutils
         run: cargo install -f cargo-binutils
-      - if: ${{ matrix.os}} == "windows-latest"
+      - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os}} == "macos-latest"
+      - if: ${{ matrix.os == 'macos-latest' }}
         name: Install LLVM
         run: brew install llvm
-      - if: ${{ matrix.os }} == "ubuntu-latest"
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
       - name: Download CLI
