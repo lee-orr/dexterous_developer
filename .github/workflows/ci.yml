@@ -75,7 +75,7 @@ jobs:
       - name: Build CLI
         run: cargo build -p dexterous_developer_cli
       - name: Build Tester
-        run: cargo build --features prebuilt
+        run: cargo build
         working-directory: ./testing/dexterous_developer_tests
       - name: Store CLI
         uses: actions/upload-artifact@v3
