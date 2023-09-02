@@ -86,7 +86,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.os}}-tester
-          path: testing/dexterous_developer_teststarget/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
   tests:
     needs: build-tester
