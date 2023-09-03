@@ -182,18 +182,22 @@ async fn connect_to_build(
 
     let (ws_stream, _) = tokio_tungstenite::connect_async(url).await?;
 
-    let (_write, read) = ws_stream.split();
+    let (_write, mut read) = ws_stream.split();
 
     let lib_path_ref = &lib_path_tx;
     let paths_ready = &paths_ready;
     let assets_ready = &assets_ready;
 
-    read.for_each(|msg| async move {
+    loop {
+        let Some(msg) = read.next().await else {
+            println!("Closed websocket channel");
+            break;
+        };
         println!("Got Message {msg:?}");
         if let Ok(Message::Text(msg)) = msg {
             let Ok(msg) = serde_json::from_str::<HotReloadMessage>(&msg) else {
                 eprintln!("Couldn't parse message");
-                return;
+                continue;
             };
             match msg {
                 HotReloadMessage::RootLibPath(root_lib) => {
@@ -235,8 +239,8 @@ async fn connect_to_build(
                 HotReloadMessage::KeepAlive => println!("Received Keep Alive Message"),
             }
         }
-    })
-    .await;
+    }
+    println!("Exited Remote");
     Ok(())
 }
 
