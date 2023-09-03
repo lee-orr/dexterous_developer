@@ -140,7 +140,7 @@ jobs:
         run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{matrix.test}}
         env:
           DEXTEROUS_CLI_PATH: ${{env.GITHUB_WORKSPACE}}/bins/dexterous_developer_cli
-          DEXTEROUS_TESTER_PATH: ${{env.GITHUB_WORKSPACE}}/testing/templates
+          DEXTEROUS_TESTER_PATH: ${{env.GITHUB_WORKSPACE}}/testing
 
   mdbook:
     runs-on: ubuntu-20.04
