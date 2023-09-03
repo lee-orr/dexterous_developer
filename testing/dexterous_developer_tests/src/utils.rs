@@ -177,7 +177,7 @@ impl TestProject {
             .arg(&self.package)
             .arg("-s")
             .arg(port);
-        self.run(cmd, ProcessHeat::Hot).await
+        self.run(cmd, ProcessHeat::Host).await
     }
 
     pub async fn run_client_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
@@ -318,6 +318,7 @@ pub enum ProcessHeat {
     Cold,
     Hot,
     Remote,
+    Host,
 }
 
 impl RunningProcess {
@@ -421,6 +422,24 @@ impl RunningProcess {
                     };
                 }
             }
+            ProcessHeat::Host => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
+
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
         }
         println!("Ready");
     }
@@ -499,6 +518,24 @@ impl RunningProcess {
                                 break;
                             }
                             println!("got an err while waiting {line}");
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
+            ProcessHeat::Host => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
+
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
                         }
 
                         Line::Ended(v) => {
