@@ -134,8 +134,10 @@ jobs:
         with:
           name: ${{matrix.os}}-tester
           path: bins
-      - name: Run Test - {test}
-        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+      - name: Set Executable
+        run: chmod +x ./bins/run_tests${{matrix.os == 'windows-latest' && '.exe' || ''}}
+      - name: Run Test - ${{test}}
+        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{test}}
         env:
           DEXTEROUS_CLI_PATH: ${{env.GITHUB_WORKSPACE}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${env.GITHUB_WORKSPACE}}/testing/templates
