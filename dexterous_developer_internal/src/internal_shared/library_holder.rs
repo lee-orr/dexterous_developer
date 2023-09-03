@@ -20,10 +20,12 @@ impl LibraryHolderInner {
         let uuid = uuid::Uuid::new_v4();
         let new_path = path.clone();
         let mut new_path = new_path.with_file_name(uuid.to_string());
+        let mut archival_path = path.clone();
         if let Some(extension) = extension {
             new_path.set_extension(extension);
+            archival_path.set_extension(format!("{}.backup", extension.to_string_lossy()));
         }
-        crate::logger::debug!("New path: {new_path:?}");
+        std::fs::copy(path, archival_path).ok()?;
         std::fs::rename(path, &new_path).ok()?;
         crate::logger::debug!("Copied file to new path");
 

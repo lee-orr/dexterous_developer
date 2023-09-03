@@ -38,23 +38,6 @@ async fn can_run_hot() {
     process.exit().await;
 }
 
-async fn can_run_hot_with_mold() {
-    let mut project = TestProject::new("simple_cli_test", "can_run_hot_mold").unwrap();
-    let mut process = project.run_hot_mold().await.unwrap();
-
-    process.is_ready().await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    process.exit().await;
-}
-
 async fn can_run_hot_and_edit() {
     let mut project = TestProject::new("simple_cli_test", "can_run_hot_and_edit").unwrap();
     let mut process = project.run_hot_cli().await.unwrap();
@@ -239,13 +222,90 @@ async fn can_run_with_reloadables() {
     process.exit().await;
 }
 
+async fn can_run_remote() {
+    let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
+    let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
+
+    let mut host_process = project.run_host_cli("1234").await.unwrap();
+
+    host_process.wait_for_lines(&["Serving on 1234"]).await;
+
+    let mut process = client.run_client_cli("1234").await.unwrap();
+
+    process.wait_for_lines(&["Got Message"]).await;
+    process.exit().await;
+
+    host_process.is_ready().await;
+
+    let mut process = client.run_client_cli("1234").await.unwrap();
+
+    process.is_ready();
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./updated_file.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got some new text!"]).await;
+
+    process.exit().await;
+    host_process.exit().await;
+}
+
+async fn can_update_assets() {
+    let mut project = TestProject::new("simple_cli_test", "can_update_assets_host").unwrap();
+    let mut client = TestProject::new("remote_client", "can_update_assets_client").unwrap();
+
+    let mut host_process = project.run_host_cli("2345").await.unwrap();
+
+    host_process.wait_for_lines(&["Serving on 2345"]).await;
+
+    let mut process = client.run_client_cli("2345").await.unwrap();
+
+    process.wait_for_lines(&["Got Message"]).await;
+    process.exit().await;
+
+    host_process.is_ready().await;
+
+    let mut process = client.run_client_cli("2345").await.unwrap();
+
+    process.is_ready();
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("assets/nesting/another_placeholder.txt").as_path(),
+            "changed content",
+        )
+        .expect("Couldn't update file");
+
+    process.wait_for_lines(&["Downloaded Asset"]).await;
+
+    process.exit().await;
+    host_process.exit().await;
+}
+
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
-    let Some(argument) = args.next() else {
-        eprintln!("No argument");
-        std::process::exit(1);
-    };
+    let argument = args.next().unwrap_or_default();
 
     match argument.as_str() {
         "cold" => {
@@ -268,20 +328,24 @@ pub async fn run_tests() {
             println!("Can handle reloadables");
             can_run_with_reloadables().await;
         }
-        "mold" => {
-            println!("Can run hot with mold (on linux)");
-            can_run_hot_with_mold().await;
+        "remote" => {
+            println!("Can run remote");
+            can_run_remote().await;
         }
-        "ls" => {
+        "asset" => {
+            println!("Can update asset");
+            can_update_assets().await;
+        }
+        _ => {
+            eprintln!("{argument} is an invalid test");
+            println!("Valid tests are:");
             println!("cold");
             println!("hot");
             println!("edit");
             println!("launcher");
             println!("reloadables");
-            println!("mold");
-        }
-        _ => {
-            eprintln!("{argument} is an invalid test");
+            println!("remote");
+            println!("asset");
             std::process::exit(1)
         }
     }
@@ -289,24 +353,32 @@ pub async fn run_tests() {
 
 #[cfg(test)]
 mod test {
+    // #[tokio::test]
+    // async fn can_run_cold() {
+    //     super::can_run_cold().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot() {
+    //     super::can_run_hot().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit() {
+    //     super::can_run_hot_and_edit().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_hot_and_edit_with_launcher() {
+    //     super::can_run_hot_and_edit_with_launcher().await;
+    // }
+    // #[tokio::test]
+    // async fn can_run_with_reloadables() {
+    //     super::can_run_with_reloadables().await;
+    // }
     #[tokio::test]
-    async fn can_run_cold() {
-        super::can_run_cold().await;
+    async fn can_run_remote() {
+        super::can_run_remote().await;
     }
-    #[tokio::test]
-    async fn can_run_hot() {
-        super::can_run_hot().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit() {
-        super::can_run_hot_and_edit().await;
-    }
-    #[tokio::test]
-    async fn can_run_hot_and_edit_with_launcher() {
-        super::can_run_hot_and_edit_with_launcher().await;
-    }
-    #[tokio::test]
-    async fn can_run_with_reloadables() {
-        super::can_run_with_reloadables().await;
-    }
+    // #[tokio::test]
+    // async fn can_update_assets() {
+    //     super::can_update_assets().await;
+    // }
 }

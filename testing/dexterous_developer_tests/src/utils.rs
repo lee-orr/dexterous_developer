@@ -28,41 +28,68 @@ pub struct TestProject {
 }
 
 static CLI_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
+static TEMPLATE_PATH: OnceLock<anyhow::Result<PathBuf>> = OnceLock::new();
 
-fn rebuild_cli() -> &'static anyhow::Result<PathBuf> {
-    CLI_PATH.get_or_init(|| {
-        let mut cwd = std::env::current_dir()?;
-        cwd.pop();
+fn rebuild_cli() -> anyhow::Result<&'static PathBuf> {
+    CLI_PATH
+        .get_or_init(|| {
+            if let Ok(path) = std::env::var("DEXTEROUS_CLI_PATH") {
+                let mut path = PathBuf::from(&path);
 
-        let mut root = cwd.clone();
-        root.pop();
+                #[cfg(target_os = "windows")]
+                {
+                    path.set_extension("exe");
+                }
+                return Ok(path);
+            }
 
-        let mut cli_path = root.clone();
+            let mut cwd = std::env::current_dir()?;
+            cwd.pop();
 
-        cli_path.push("target");
-        cli_path.push("debug");
-        cli_path.push("dexterous_developer_cli");
+            let mut root = cwd.clone();
+            root.pop();
 
-        #[cfg(target_os = "windows")]
-        {
-            cli_path.set_extension("exe");
-        }
+            let mut cli_path = root.clone();
 
-        println!("Building Cli at {cli_path:?} from {root:?}");
-        std::process::Command::new("cargo")
-            .current_dir(root.as_path())
-            .arg("build")
-            .arg("-p")
-            .arg("dexterous_developer_cli")
-            .status()?;
-        Ok(cli_path)
-    })
+            cli_path.push("target");
+            cli_path.push("debug");
+            cli_path.push("dexterous_developer_cli");
+
+            #[cfg(target_os = "windows")]
+            {
+                cli_path.set_extension("exe");
+            }
+            println!("Building Cli at {cli_path:?} from {root:?}");
+            std::process::Command::new("cargo")
+                .current_dir(root.as_path())
+                .arg("build")
+                .arg("-p")
+                .arg("dexterous_developer_cli")
+                .status()?;
+            Ok(cli_path)
+        })
+        .as_ref()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
+}
+
+fn template_path() -> anyhow::Result<&'static PathBuf> {
+    TEMPLATE_PATH
+        .get_or_init(|| {
+            if let Ok(path) = std::env::var("DEXTEROUS_TESTER_PATH") {
+                return Ok(PathBuf::from(&path));
+            }
+
+            let mut cwd = std::env::current_dir()?;
+            cwd.pop();
+            Ok(cwd)
+        })
+        .as_ref()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
 }
 
 impl TestProject {
     pub fn new(template: &'static str, test: &'static str) -> anyhow::Result<Self> {
-        let mut cwd = std::env::current_dir()?;
-        cwd.pop();
+        let mut cwd = template_path()?;
 
         let package = template.to_string();
 
@@ -116,18 +143,14 @@ impl TestProject {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
         cmd.current_dir(wd).arg("run");
-        self.run(cmd, false).await
+        self.run(cmd, ProcessHeat::Cold).await
     }
 
     pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
         let wd = self.path.as_path();
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd)
-            .arg("run")
-            .arg("-p")
-            .arg("launcher")
-            .env("RUST_LOG", "trace");
-        self.run(cmd, true).await
+        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
+        self.run(cmd, ProcessHeat::Hot).await
     }
 
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {
@@ -137,11 +160,11 @@ impl TestProject {
 
         let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
-        cmd.current_dir(&wd).arg("-p").arg(&self.package);
-        self.run(cmd, true).await
+        cmd.current_dir(&wd).arg("run").arg("-p").arg(&self.package);
+        self.run(cmd, ProcessHeat::Hot).await
     }
 
-    pub async fn run_hot_mold(&mut self) -> anyhow::Result<RunningProcess> {
+    pub async fn run_host_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
         let Ok(cli_path) = rebuild_cli() else {
             bail!("Couldn't get CLI");
         };
@@ -149,17 +172,40 @@ impl TestProject {
         let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
         cmd.current_dir(&wd)
+            .arg("serve")
             .arg("-p")
             .arg(&self.package)
-            .arg("--prefer-mold");
-        self.run(cmd, true).await
+            .arg("-s")
+            .arg(port);
+        self.run(cmd, ProcessHeat::Host).await
     }
 
-    async fn run(&mut self, mut cmd: Command, is_hot: bool) -> anyhow::Result<RunningProcess> {
+    pub async fn run_client_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd)
+            .arg("remote")
+            .arg("-r")
+            .arg(&format!("http://localhost:{port}"));
+        self.run(cmd, ProcessHeat::Remote).await
+    }
+
+    async fn run(
+        &mut self,
+        mut cmd: Command,
+        is_hot: ProcessHeat,
+    ) -> anyhow::Result<RunningProcess> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env("RUST_LOG", "trace")
+            .env(
+                "RUST_LOG",
+                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace",
+            )
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
 
@@ -265,7 +311,14 @@ pub struct RunningProcess {
     read: broadcast::Receiver<Line>,
     read_sender: broadcast::Sender<Line>,
     write: broadcast::Sender<LineIn>,
-    is_hot: bool,
+    is_hot: ProcessHeat,
+}
+
+pub enum ProcessHeat {
+    Cold,
+    Hot,
+    Remote,
+    Host,
 }
 
 impl RunningProcess {
@@ -279,42 +332,43 @@ impl RunningProcess {
 
     pub async fn is_ready(&mut self) {
         println!("Checking Readiness");
-        if self.is_hot {
-            let mut is_watching = false;
-            let mut reload_complete = false;
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(line) => {
-                        if line.contains("Executing first run") {
-                            reload_complete = true;
+        match self.is_hot {
+            ProcessHeat::Hot => {
+                let mut is_watching = false;
+                let mut reload_complete = false;
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Watching...") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
                         }
-                        if line.contains("Watching...") {
-                            is_watching = true;
-                        }
-                        if reload_complete && is_watching {
-                            break;
-                        }
-                    }
 
-                    Line::Err(line) => {
-                        if line.contains("Executing first run") {
-                            reload_complete = true;
+                        Line::Err(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Watching...") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
                         }
-                        if line.contains("Watching...") {
-                            is_watching = true;
-                        }
-                        if reload_complete && is_watching {
-                            break;
-                        }
-                    }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
-        } else {
-            loop {
+            ProcessHeat::Cold => loop {
                 match self.read_next_line().await.expect("no Next Line") {
                     Line::Std(line) => {
                         if line.contains("Running") {
@@ -332,6 +386,59 @@ impl RunningProcess {
                         panic!("Ended - {v:?}");
                     }
                 };
+            },
+            ProcessHeat::Remote => {
+                let mut is_watching = false;
+                let mut reload_complete = false;
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Calling Watch Function") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("Executing first run") {
+                                reload_complete = true;
+                            }
+                            if line.contains("Calling Watch Function") {
+                                is_watching = true;
+                            }
+                            if reload_complete && is_watching {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
+            ProcessHeat::Host => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
+
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
         }
         println!("Ready");
@@ -339,44 +446,104 @@ impl RunningProcess {
 
     pub async fn has_updated(&mut self) {
         println!("Awaiting hot reload");
-        if self.is_hot {
-            self.send("\n").expect("Failed to send empty line");
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(_) => {}
+        match self.is_hot {
+            ProcessHeat::Hot => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
 
-                    Line::Err(line) => {
-                        if line.contains("Build completed") {
-                            break;
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
                         }
-                    }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
-            }
-            self.send("\n").expect("Failed to send empty line");
-            loop {
-                match self.read_next_line().await.expect("No Next Line") {
-                    Line::Std(v) => {
-                        println!("Got a line while waiting {v}");
-                    }
-
-                    Line::Err(line) => {
-                        if line.contains("reload complete") {
-                            break;
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
                         }
-                        println!("got an err while waiting {line}");
-                    }
+                    };
+                }
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(v) => {
+                            println!("Got a line while waiting {v}");
+                        }
 
-                    Line::Ended(v) => {
-                        panic!("Ended - {v:?}");
-                    }
-                };
+                        Line::Err(line) => {
+                            if line.contains("reload complete") {
+                                break;
+                            }
+                            println!("got an err while waiting {line}");
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
             }
-        } else {
-            panic!("Not a hot reloadable attempt")
+            ProcessHeat::Cold => panic!("Not a hot reloadable attempt"),
+            ProcessHeat::Remote => {
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(line) => {
+                            if line.contains("Updated Files Downloaded") {
+                                break;
+                            }
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("Updated Files Downloaded") {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(v) => {
+                            println!("Got a line while waiting {v}");
+                        }
+
+                        Line::Err(line) => {
+                            if line.contains("reload complete") {
+                                break;
+                            }
+                            println!("got an err while waiting {line}");
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
+            ProcessHeat::Host => {
+                self.send("\n").expect("Failed to send empty line");
+                loop {
+                    match self.read_next_line().await.expect("No Next Line") {
+                        Line::Std(_) => {}
+
+                        Line::Err(line) => {
+                            if line.contains("Build completed") {
+                                break;
+                            }
+                        }
+
+                        Line::Ended(v) => {
+                            panic!("Ended - {v:?}");
+                        }
+                    };
+                }
+            }
         }
         println!("Successfully hot reloaded");
     }

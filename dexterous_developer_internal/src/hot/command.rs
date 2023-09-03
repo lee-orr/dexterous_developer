@@ -2,155 +2,25 @@ use std::{
     collections::BTreeSet,
     path::PathBuf,
     process::{Command, Stdio},
-    sync::{mpsc, Once, OnceLock},
+    sync::mpsc,
     thread,
     time::Duration,
 };
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
 use log::{debug, error, info};
 use notify::{RecursiveMode, Watcher};
 
-use crate::{internal_shared::cargo_path_utils, internal_shared::LibPathSet, HotReloadOptions};
+use crate::{
+    hot::singleton::{BUILD_SETTINGS, WATCHER},
+    internal_shared::cargo_path_utils,
+    internal_shared::LibPathSet,
+    HotReloadOptions,
+};
 
-struct BuildSettings {
-    watch_folder: PathBuf,
-    manifest: Option<PathBuf>,
-    lib_path: PathBuf,
-    package: String,
-    features: String,
-    target_folder: Option<PathBuf>,
-    out_target: PathBuf,
-}
-
-impl ToString for BuildSettings {
-    fn to_string(&self) -> String {
-        let BuildSettings {
-            watch_folder,
-            manifest,
-            package,
-            features,
-            target_folder,
-            lib_path,
-            out_target,
-        } = self;
-
-        let target = target_folder
-            .as_ref()
-            .map(|v| v.to_string_lossy().to_string())
-            .unwrap_or_default();
-
-        let out_target = out_target.to_string_lossy().to_string();
-
-        let watch_folder = watch_folder.to_string_lossy();
-        let manifest = manifest
-            .as_ref()
-            .map(|v| v.to_string_lossy())
-            .unwrap_or_default();
-        let lib_path = lib_path.to_string_lossy();
-
-        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}")
-    }
-}
-
-impl TryFrom<&str> for BuildSettings {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let mut split = value.split(":!:");
-        let lib_path = split
-            .next()
-            .map(PathBuf::from)
-            .ok_or(Error::msg("no library path"))?;
-        let watch_folder = split
-            .next()
-            .map(PathBuf::from)
-            .ok_or(Error::msg("no watch folder"))?;
-        let manifest = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
-        let package = split
-            .next()
-            .map(|v| v.to_string())
-            .ok_or(Error::msg("no package"))?;
-        let features = split
-            .next()
-            .map(|v| v.to_string())
-            .ok_or(Error::msg("no features"))?;
-        let out_target = split
-            .next()
-            .map(PathBuf::from)
-            .ok_or(Error::msg("no out_target"))?;
-        let target_folder = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
-
-        Ok(BuildSettings {
-            lib_path,
-            watch_folder,
-            manifest,
-            package,
-            features,
-            target_folder,
-            out_target,
-        })
-    }
-}
-
-static BUILD_SETTINGS: OnceLock<BuildSettings> = OnceLock::new();
-
-#[cfg(target_os = "windows")]
-const RUSTC_ARGS: [(&str, &str); 3] = [
-    ("RUSTUP_TOOLCHAIN", "nightly"),
-    ("RUSTC_LINKER", "rust-lld.exe"),
-    ("RUSTFLAGS", "-Zshare-generics=n"),
-];
-#[cfg(target_os = "linux")]
-const RUSTC_ARGS: [(&str, &str); 3] = [
-    ("RUSTUP_TOOLCHAIN", "nightly"),
-    ("RUSTC_LINKER", "clang"),
-    ("RUSTFLAGS", "-Zshare-generics=y  -Clink-arg=-fuse-ld=lld"),
-];
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-const RUSTC_ARGS: [(&str, &str); 2] = [
-    ("RUSTUP_TOOLCHAIN", "nightly"),
-    (
-        "RUSTFLAGS",
-        "-Zshare-generics=y -Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
-    ),
-];
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-const RUSTC_ARGS: [(&str, &str); 2] = [
-    ("RUSTUP_TOOLCHAIN", "nightly"),
-    (
-        "RUSTFLAGS",
-        "-Zshare-generics=y -Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
-    ),
-];
-#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
-const RUSTC_ARGS: [(&str, &str); 2] = [
-    ("RUSTUP_TOOLCHAIN", "nightly"),
-    ("RUSTFLAGS", "-Zshare-generics=y"),
-];
-
-fn set_envs(prefer_mold: bool) -> anyhow::Result<()> {
-    for (var, val) in RUSTC_ARGS.iter() {
-        let val = if cfg!(target_os = "linux") && prefer_mold {
-            val.replace("lld", "mold")
-        } else {
-            val.to_string()
-        };
-
-        if (var == &"RUSTC_LINKER") && which::which(&val).is_err() {
-            bail!("Linker {val} is not installed");
-        } else if val.contains("-fuse-ld=") {
-            let mut split = val.split("-fuse-ld=");
-            let _ = split.next();
-            let after = split.next().ok_or(Error::msg("No value for -fuse-ld="))?;
-            which::which(after).context("Can't find lld")?;
-        }
-        std::env::set_var(var, val);
-    }
-    Ok(())
-}
+use super::build_settings::BuildSettings;
 
 pub enum BuildSettingsReady {
     LibraryPath(LibPathSet),
@@ -159,7 +29,7 @@ pub enum BuildSettingsReady {
 
 pub(crate) fn setup_build_settings(
     options: &HotReloadOptions,
-) -> anyhow::Result<BuildSettingsReady> {
+) -> anyhow::Result<(BuildSettings, BTreeSet<PathBuf>)> {
     let HotReloadOptions {
         manifest_path,
         package,
@@ -167,7 +37,7 @@ pub(crate) fn setup_build_settings(
         watch_folder,
         target_folder,
         features,
-        prefer_mold,
+        build_target,
         ..
     } = options;
 
@@ -191,9 +61,11 @@ pub(crate) fn setup_build_settings(
         info!("Watching source at  {}", l.to_string_lossy());
     }
 
-    info!("Compiling with features: {}", features.join(", "));
+    if let Some(l) = build_target.as_ref() {
+        info!("For platform {l}");
+    }
 
-    set_envs(*prefer_mold)?;
+    info!("Compiling with features: {}", features.join(", "));
 
     let features = features
         .iter()
@@ -281,6 +153,11 @@ pub(crate) fn setup_build_settings(
         .arg("--print=target-libdir")
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
+    super::env::set_envs(&mut rustc, build_target.as_ref().map(|v| v.as_str()))?;
+
+    if let Some(build_target) = build_target {
+        rustc.arg("--target").arg(build_target.as_str());
+    }
 
     let cmd_string = print_command(&rustc);
 
@@ -319,6 +196,42 @@ pub(crate) fn setup_build_settings(
 
     let lib_path = out_target.join(lib_file_name);
 
+    debug!("Filtered paths {paths:?}");
+
+    let settings = BuildSettings {
+        lib_path: lib_path.clone(),
+        watch_folder: watch_folder
+            .as_ref()
+            .cloned()
+            .or_else(|| {
+                lib.src_path
+                    .clone()
+                    .into_std_path_buf()
+                    .parent()
+                    .map(|v| v.to_path_buf())
+            })
+            .ok_or(Error::msg("Couldn't find source directory to watch"))?,
+        manifest: manifest_path.clone(),
+        package: pkg.name.clone().clone(),
+        features: features.into_iter().collect::<Vec<_>>().join(","),
+        target_folder: target_folder.as_ref().cloned().map(|mut v| {
+            if v.ends_with("debug") {
+                v.pop();
+            }
+            v
+        }),
+        out_target,
+        build_target: build_target.as_ref().cloned(),
+        ..Default::default()
+    };
+
+    Ok((settings, paths))
+}
+
+pub(crate) fn setup_build_setting_environment(
+    settings: BuildSettings,
+    paths: BTreeSet<PathBuf>,
+) -> anyhow::Result<BuildSettingsReady> {
     // SET ENVIRONMENT VARS HERE!
     let dylib_path_var = cargo_path_utils::dylib_path_envvar();
     let mut env_paths = cargo_path_utils::dylib_path();
@@ -326,8 +239,6 @@ pub(crate) fn setup_build_settings(
         .into_iter()
         .filter(|v| v.extension().is_none() && v.is_absolute())
         .collect::<Vec<_>>();
-
-    debug!("Filtered paths {paths:?}");
 
     if paths.iter().any(|v| !env_paths.contains(v)) {
         for path in paths.iter() {
@@ -355,31 +266,6 @@ pub(crate) fn setup_build_settings(
             std::env::var(dylib_path_var)
         );
 
-        let settings = BuildSettings {
-            lib_path,
-            watch_folder: watch_folder
-                .as_ref()
-                .cloned()
-                .or_else(|| {
-                    lib.src_path
-                        .clone()
-                        .into_std_path_buf()
-                        .parent()
-                        .map(|v| v.to_path_buf())
-                })
-                .ok_or(Error::msg("Couldn't find source directory to watch"))?,
-            manifest: manifest_path.clone(),
-            package: pkg.name.clone().clone(),
-            features: features.into_iter().collect::<Vec<_>>().join(","),
-            target_folder: target_folder.as_ref().cloned().map(|mut v| {
-                if v.ends_with("debug") {
-                    v.pop();
-                }
-                v
-            }),
-            out_target,
-        };
-
         let settings = settings.to_string();
 
         debug!("Setting DEXTEROUS_BUILD_SETTINGS env to {settings}");
@@ -391,73 +277,42 @@ pub(crate) fn setup_build_settings(
         ));
     }
 
-    let settings = BuildSettings {
-        lib_path: lib_path.clone(),
-        watch_folder: watch_folder
-            .as_ref()
-            .cloned()
-            .or_else(|| {
-                lib.src_path
-                    .clone()
-                    .into_std_path_buf()
-                    .parent()
-                    .map(|v| v.to_path_buf())
-            })
-            .ok_or(Error::msg("Couldn't find source directory to watch"))?,
-        manifest: manifest_path.clone(),
-        package: pkg.name.clone(),
-        features: features.into_iter().collect::<Vec<_>>().join(","),
-        target_folder: target_folder.as_ref().cloned().map(|mut v| {
-            if v.ends_with("debug") {
-                v.pop();
-            }
-            v
-        }),
-        out_target,
-    };
-
     BUILD_SETTINGS
-        .set(settings)
+        .set(settings.clone())
         .map_err(|_| Error::msg("Build settings already set"))?;
 
     info!("Finished Setting Up");
 
-    Ok(BuildSettingsReady::LibraryPath(LibPathSet::new(lib_path)))
+    Ok(BuildSettingsReady::LibraryPath(LibPathSet::new(
+        settings.lib_path.clone(),
+    )))
 }
 
-pub(crate) fn load_build_settings(settings: String) -> anyhow::Result<LibPathSet> {
-    let settings = BuildSettings::try_from(settings.as_str())?;
-    let lib_path = settings.lib_path.clone();
-    BUILD_SETTINGS
-        .set(settings)
-        .map_err(|_| Error::msg("Build settings already set"))?;
-    Ok(LibPathSet::new(lib_path))
-}
-
-pub(crate) fn first_exec() -> anyhow::Result<()> {
+pub(crate) fn first_exec(settings: &BuildSettings) -> anyhow::Result<()> {
     info!("First Execution");
-    rebuild_internal()
+    rebuild_internal(settings)
 }
-
-static WATCHER: Once = Once::new();
 
 pub(crate) fn run_watcher() {
     debug!("run watcher called");
     WATCHER.call_once(|| {
+        debug!("Getting Settings");
+        let Some(settings) = BUILD_SETTINGS.get() else {
+            panic!("Couldn't get settings...");
+        };
         debug!("Setting up watcher");
-        if let Err(e) = run_watcher_inner() {
+        if let Err(e) = run_watcher_with_settings(settings) {
             error!("Couldn't set up watcher - {e:?}");
         };
     });
 }
 
-fn run_watcher_inner() -> anyhow::Result<()> {
+pub(crate) fn run_watcher_with_settings(settings: &BuildSettings) -> anyhow::Result<()> {
     info!("Getting watch settings");
     let delay = Duration::from_secs(2);
-    let Some(BuildSettings { watch_folder, .. }) = BUILD_SETTINGS.get() else {
-        bail!("Couldn't get settings...");
-    };
     let (watching_tx, watching_rx) = mpsc::channel::<()>();
+    let watch_folder = settings.watch_folder.clone();
+    let settings = settings.clone();
 
     info!("Setting up watcher with {watch_folder:?}");
     thread::spawn(move || {
@@ -479,7 +334,7 @@ fn run_watcher_inner() -> anyhow::Result<()> {
         };
         debug!("Watcher response set up");
 
-        if let Err(e) = watcher.watch(watch_folder, RecursiveMode::Recursive) {
+        if let Err(e) = watcher.watch(watch_folder.as_path(), RecursiveMode::Recursive) {
             error!("Error watching files: {e:?}");
             return;
         }
@@ -487,7 +342,7 @@ fn run_watcher_inner() -> anyhow::Result<()> {
         watching_tx.send(()).expect("Couldn't send watch");
 
         while rx.recv().is_ok() {
-            rebuild();
+            rebuild(&settings);
         }
     });
     info!("Starting watch receiver");
@@ -496,28 +351,28 @@ fn run_watcher_inner() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn rebuild() {
-    if let Err(e) = rebuild_internal() {
+fn rebuild(settings: &BuildSettings) {
+    if let Err(e) = rebuild_internal(settings) {
         error!("Failed to rebuild: {e:?}");
     }
 }
 
-fn rebuild_internal() -> anyhow::Result<()> {
-    let Some(BuildSettings {
+fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
+    let BuildSettings {
         manifest,
         features,
         package,
         out_target,
         lib_path,
+        build_target,
         ..
-    }) = BUILD_SETTINGS.get()
-    else {
-        bail!("Couldn't get settings...");
-    };
+    } = settings;
 
     let mut command = Command::new("cargo");
+    let build_command =
+        super::env::set_envs(&mut command, build_target.as_ref().map(|v| v.as_str()))?;
     command
-        .arg("build")
+        .arg(build_command)
         .arg("--profile")
         .arg("dev")
         .arg("-p")
@@ -529,6 +384,10 @@ fn rebuild_internal() -> anyhow::Result<()> {
 
     if let Some(manifest) = manifest {
         command.arg("--manifest-path").arg(manifest.as_os_str());
+    }
+
+    if let Some(build_target) = build_target {
+        command.arg("--target").arg(build_target.as_str());
     }
 
     info!("Command: {}", print_command(&command));
@@ -572,6 +431,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
     let result = child.wait()?;
 
     if result.success() && succeeded {
+        let mut moved = vec![];
         for path in artifacts {
             let Some(parent) = path.parent() else {
                 continue;
@@ -594,6 +454,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
                     let out_path = out_target.join(filename);
                     if !out_path.exists() {
                         debug!("Copying from {deps_path:?} to {out_path:?}");
+                        moved.push(out_path.clone());
                         std::fs::copy(deps_path, out_path)?;
                     } else {
                         if out_path.as_path() != lib_path.as_path() {
@@ -601,7 +462,10 @@ fn rebuild_internal() -> anyhow::Result<()> {
                             continue;
                         }
                         match std::fs::copy(deps_path, out_path.as_path()) {
-                            Ok(_) => debug!("{out_path:?} replaced"),
+                            Ok(_) => {
+                                moved.push(out_path.clone());
+                                debug!("{out_path:?} replaced");
+                            }
                             Err(_e) => error!("Couldn't replace {out_path:?} - using original"),
                         }
                     }
@@ -632,6 +496,7 @@ fn rebuild_internal() -> anyhow::Result<()> {
                         let out_path = out_target.join(filename);
                         if !out_path.exists() {
                             debug!("Copying from {deps_path:?} to {out_path:?}");
+                            moved.push(out_path.clone());
                             std::fs::copy(found_file, out_path)?;
                         } else {
                             if filename.to_string_lossy().starts_with(&format!("{stem}-")) {
@@ -639,7 +504,10 @@ fn rebuild_internal() -> anyhow::Result<()> {
                                 continue;
                             }
                             match std::fs::copy(found_file, out_path.as_path()) {
-                                Ok(_) => debug!("{out_path:?} replaced"),
+                                Ok(_) => {
+                                    debug!("{out_path:?} replaced");
+                                    moved.push(out_path.clone());
+                                }
                                 Err(_e) => {
                                     error!("Couldn't replace {out_path:?} - using original")
                                 }
@@ -647,6 +515,25 @@ fn rebuild_internal() -> anyhow::Result<()> {
                         }
                     }
                 }
+            }
+        }
+
+        #[cfg(feature = "cli")]
+        {
+            if let Some(sender) = settings.updated_file_channel.as_ref() {
+                let _ = sender.send(crate::HotReloadMessage::UpdatedLibs(
+                    moved
+                        .iter()
+                        .filter_map(|v| (v.file_name().map(|f| (v, f))))
+                        .filter_map(|(path, name)| std::fs::read(path).ok().map(|f| (f, name)))
+                        .map(|(f, name)| {
+                            let hash = blake3::hash(&f);
+
+                            (name, hash.as_bytes().to_owned())
+                        })
+                        .map(|(v, h)| (v.to_string_lossy().to_string(), h))
+                        .collect(),
+                ));
             }
         }
         info!("Build completed");
