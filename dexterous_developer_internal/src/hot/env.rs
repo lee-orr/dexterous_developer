@@ -117,14 +117,6 @@ mod cross_host {
 
     pub struct CrossProvider(PathBuf);
 
-    impl CrossProvider {
-        pub fn new(p: impl Into<PathBuf>) -> Box<Self> {
-            let path: PathBuf = p.into();
-            println!("Using cross provier at path {path:?}");
-            Box::new(Self(path))
-        }
-    }
-
     impl BuildArgsProvider for CrossProvider {
         fn set_env_vars(&self, command: &mut Command) {
             command
