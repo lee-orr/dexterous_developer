@@ -226,20 +226,18 @@ async fn can_run_remote() {
     let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
     let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
 
-    let mut host_process = project.run_host_cli("2345").await.unwrap();
+    let mut host_process = project.run_host_cli("1234").await.unwrap();
 
-    host_process.wait_for_lines(&["Serving on 2345"]).await;
+    host_process.wait_for_lines(&["Serving on 1234"]).await;
 
-    let mut process = client.run_client_cli("2345").await.unwrap();
+    let mut process = client.run_client_cli("1234").await.unwrap();
 
-    process
-        .wait_for_lines(&["Received Keep Alive Message"])
-        .await;
+    process.wait_for_lines(&["Got Message"]).await;
     process.exit().await;
 
     host_process.is_ready().await;
 
-    let mut process = client.run_client_cli("2345").await.unwrap();
+    let mut process = client.run_client_cli("1234").await.unwrap();
 
     process.is_ready();
 
@@ -278,9 +276,7 @@ async fn can_update_assets() {
 
     let mut process = client.run_client_cli("2345").await.unwrap();
 
-    process
-        .wait_for_lines(&["Received Keep Alive Message"])
-        .await;
+    process.wait_for_lines(&["Got Message"]).await;
     process.exit().await;
 
     host_process.is_ready().await;
