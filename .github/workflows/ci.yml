@@ -87,6 +87,51 @@ jobs:
         with:
           name: ${{matrix.os}}-tester
           path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+  
+  cross-build-tests:
+    needs: build-tester
+    strategy:
+      matrix:
+        target: 
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            target: x86_64--unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - run: mkdir bins
+      - name: Download CLI
+        uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-latest-cli
+          path: ${{github.workspace}}/bins
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
+        working-directory: testing/templates/simple_cli_test
+      - name: Store Libs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.os}}-test-libs
+          path: ${{github.workspace}}/libs
+
 
   tests:
     needs: build-tester
