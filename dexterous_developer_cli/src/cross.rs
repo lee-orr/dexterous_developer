@@ -11,6 +11,26 @@ pub async fn install_cross() -> anyhow::Result<()> {
         setup_target(rust).await?;
     }
 
+    let binstall = {
+        let command_list = tokio::process::Command::new("cargo")
+            .arg("--list")
+            .output()
+            .await?;
+        let commands = std::str::from_utf8(&command_list.stdout)?;
+        commands.contains("binstall")
+    };
+
+    let status = tokio::process::Command::new("cargo")
+        .arg(if binstall { "binstall" } else { "install" })
+        .arg("-y")
+        .arg("cross")
+        .status()
+        .await?;
+
+    if !status.success() {
+        bail!("Failed to install cross-rs");
+    }
+
     Ok(())
 }
 
@@ -56,11 +76,8 @@ async fn setup_target(rust: &str) -> anyhow::Result<()> {
 }
 
 pub const CROSS_TARGETS: &[&str] = &[
-    #[cfg(target_os = "linux")]
     Target::Linux.to_static(),
-    #[cfg(target_os = "linux")]
     Target::LinuxArm.to_static(),
-    #[cfg(target_os = "linux")]
     Target::Windows.to_static(),
     // #[cfg(target_os = "linux")]
     // Target::Mac.to_static(),
@@ -70,11 +87,5 @@ pub const CROSS_TARGETS: &[&str] = &[
 
 #[allow(clippy::single_match)]
 pub fn check_cross_requirements_installed(target: &Target) -> anyhow::Result<()> {
-    match target {
-        Target::Windows => {
-            which::which("x86_64-w64-mingw32-gcc").context("You need to install a Mingw-w64 cross compiler - some options are found here: https://www.mingw-w64.org/downloads/")?;
-        }
-        _ => {}
-    }
     Ok(())
 }

@@ -153,7 +153,7 @@ pub(crate) fn setup_build_settings(
         .arg("--print=target-libdir")
         .arg("--print=native-static-libs")
         .arg("--print=file-names");
-    super::env::set_envs(&mut rustc, build_target.as_ref().map(|v| v.as_str()))?;
+    super::env::set_envs(&mut rustc, build_target.as_ref())?;
 
     if let Some(build_target) = build_target {
         rustc.arg("--target").arg(build_target.as_str());
@@ -368,11 +368,12 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         ..
     } = settings;
 
-    let mut command = Command::new("cargo");
-    let build_command =
-        super::env::set_envs(&mut command, build_target.as_ref().map(|v| v.as_str()))?;
+    let cargo = super::env::cargo_command(build_target.as_ref())?;
+
+    let mut command = Command::new(cargo);
+    let build_command = super::env::set_envs(&mut command, build_target.as_ref())?;
     command
-        .arg(build_command)
+        .args(build_command)
         .arg("--profile")
         .arg("dev")
         .arg("-p")
@@ -382,8 +383,11 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         .arg(features)
         .arg("--message-format=json");
 
+    let mut root_directory = std::env::current_dir()?;
+
     if let Some(manifest) = manifest {
         command.arg("--manifest-path").arg(manifest.as_os_str());
+        root_directory = manifest.to_owned();
     }
 
     if let Some(build_target) = build_target {
@@ -433,6 +437,19 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     if result.success() && succeeded {
         let mut moved = vec![];
         for path in artifacts {
+            let path = if !path.exists() {
+                let path_str = if path.is_absolute() {
+                    format!(".{}", path.to_string_lossy())
+                } else {
+                    path.to_string_lossy().to_string()
+                };
+                root_directory.join(path_str)
+            } else {
+                path
+            };
+
+            let path = path.canonicalize()?;
+
             let Some(parent) = path.parent() else {
                 continue;
             };
@@ -447,6 +464,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 continue;
             };
             let extension = extension.to_string_lossy().to_string();
+
             if parent.to_string_lossy() != "deps" {
                 let deps = parent.join("deps");
                 let deps_path = deps.join(filename);

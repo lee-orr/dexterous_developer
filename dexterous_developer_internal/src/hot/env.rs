@@ -2,9 +2,15 @@ use std::{path::PathBuf, process::Command};
 
 use anyhow::Context;
 
+use crate::Target;
+
 pub trait BuildArgsProvider {
-    fn get_cargo_command(&self) -> &'static str {
-        "build"
+    fn get_cargo(&self) -> &'static str {
+        "cargo"
+    }
+
+    fn get_cargo_command(&self) -> &'static [&'static str] {
+        &["build"]
     }
 
     fn set_env_vars(&self, command: &mut Command);
@@ -15,13 +21,18 @@ pub trait BuildArgsProvider {
 }
 
 trait GetBuildArgProvider {
-    fn get_provider(target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>>;
+    fn get_provider(target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>>;
+}
+
+pub(crate) fn cargo_command(target: Option<&Target>) -> anyhow::Result<&'static str> {
+    let provider = default_host::get_provider(target)?;
+    Ok(provider.get_cargo())
 }
 
 pub(crate) fn set_envs(
     command: &mut Command,
-    target: Option<&str>,
-) -> anyhow::Result<&'static str> {
+    target: Option<&Target>,
+) -> anyhow::Result<&'static [&'static str]> {
     let provider = default_host::get_provider(target)?;
 
     if let Some(linker) = provider.get_linker() {
@@ -33,6 +44,8 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
+    use crate::Target;
+
     use super::{BuildArgsProvider, GetBuildArgProvider};
     use std::process::Command;
 
@@ -47,7 +60,7 @@ mod default_host {
     #[cfg(target_os = "windows")]
     use super::windows_host::DefaultProvider;
 
-    pub fn get_provider(target: Option<&str>) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+    pub fn get_provider(target: Option<&Target>) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
         if let Some(target) = target {
             let targets = Command::new("rustup")
                 .arg("target")
@@ -57,7 +70,13 @@ mod default_host {
                 .context("Checking if {target} is installed")?;
             let output = std::str::from_utf8(&targets.stdout)?;
 
-            if output.lines().any(|v| v == target) {
+            if output.lines().any(|v| {
+                if let Ok(v) = v.parse::<Target>() {
+                    v == *target
+                } else {
+                    false
+                }
+            }) {
                 DefaultProvider::get_provider(target)
             } else {
                 bail!("Target {target} is not installed");
@@ -77,7 +96,7 @@ mod unknown_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
@@ -96,8 +115,8 @@ mod linux_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
-            if target.contains("windows-gnu") {
+        fn get_provider(target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+            if *target == Target::Windows {
                 return Ok(Box::new(WindowsGNUProvider));
             }
             if target.contains("darwin") {
@@ -109,6 +128,10 @@ mod linux_host {
     struct WindowsGNUProvider;
 
     impl BuildArgsProvider for WindowsGNUProvider {
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
         fn set_env_vars(&self, command: &mut Command) {
             let cross_libs = match std::env::var("DEXTEROUS_CROSS_LIBS") {
                 Ok(v) => {
@@ -158,7 +181,7 @@ mod windows_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
@@ -183,7 +206,7 @@ mod macos_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(_target: &str) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+        fn get_provider(_target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
