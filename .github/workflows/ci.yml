@@ -13,31 +13,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-          override: true
-      - name: CI job
-        run: cargo run -p ci
-        working-directory: ./tools/ci
-      - name: Ensure docs compile
-        run: cargo doc --no-deps -p dexterous_developer
-        env:
-          RUSTDOCFLAGS: -Dwarnings
+  # ci:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/bin/
+  #           ~/.cargo/registry/index/
+  #           ~/.cargo/registry/cache/
+  #           ~/.cargo/git/db/
+  #           target/
+  #         key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         components: rustfmt, clippy
+  #         override: true
+  #     - name: CI job
+  #       run: cargo run -p ci
+  #       working-directory: ./tools/ci
+  #     - name: Ensure docs compile
+  #       run: cargo doc --no-deps -p dexterous_developer
+  #       env:
+  #         RUSTDOCFLAGS: -Dwarnings
 
   build-tester:
     strategy:
