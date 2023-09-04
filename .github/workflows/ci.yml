@@ -88,7 +88,7 @@ jobs:
           name: ${{matrix.os}}-tester
           path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
   
-  cross-build-tests:
+  cross-builds:
     needs: build-tester
     strategy:
       matrix:
@@ -124,6 +124,8 @@ jobs:
         with:
           name: ubuntu-latest-cli
           path: ${{github.workspace}}/bins
+      - name: Set Executable
+        run: chmod +x ./bins/*
       - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
       - name: Store Libs
@@ -132,6 +134,42 @@ jobs:
           name: ${{matrix.os}}-test-libs
           path: ${{github.workspace}}/libs
 
+cross-build-rums:
+    needs: cross-builds
+    strategy:
+      matrix:
+        target: 
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            target: x86_64--unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+    runs-on: ${{matrix.target.os}}
+    steps:
+      - run: mkdir bins
+      - name: Download CLI
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.os}}-cli
+          path: ${{github.workspace}}/bins
+      - name: Download Tester
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.os}}-tester
+          path: ${{github.workspace}}/bins
+      - name: Set Executable
+        run: chmod +x ./bins/*
+      - name: Download Libs
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.os}}-test-libs
+          path: ${{github.workspace}}/libs
+      - name: Run Compiled Artifact
+        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
+        env:
+          DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
+          DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
 
   tests:
     needs: build-tester
