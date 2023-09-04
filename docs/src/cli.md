@@ -3,6 +3,7 @@
 The CLI provides a bunch of supporting functionality.
 
 ## Run
+
 The `run` command allows you to launch a package in hot reload mode.
 
 If you are working in a non-workspace package, you can just run `dexterous_developer_cli run`.
@@ -10,13 +11,17 @@ If you are working in a workspace with multiple libraries set up, you will need 
 If you want to enable or disable features, use `--features` to add the ones you want. Note that "bevy/dynamic_linking" and "dexterous_developer/hot_internal" will always be added, since they are required for the reloading capacity to work.
 
 ## Serve
+
 The `serve` commands sets up a hot-reload build server, allowing you to connect to it via the `remote` command on another machine or serve from a dev container and run the application on the host. Currently it only supports cross compiling from Linux to Windows, otherwise both devices must be of the same platform.
 
 ## Remote
+
 This is the compliment to the `serve` command.
 
 ## Install Cross
+
 The `install-cross` installs the rust targets required for cross compilation. If/when additional cross-compilation options become available, this would install as much of the dependencies as possible.
 
 ## Run Existing & Compile Libs
+
 The `compile-libs` command creates the same libraries as the compiler for "serve", while `run-existing` can take a directory with the appropriate libraries and run it. This is mainly there to allow testing cross-platform builds in CI, but can also be used to run the most-recently served version of the application without re-connecting to the server.
