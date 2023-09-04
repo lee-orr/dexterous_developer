@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version 0.0.8
+## Version 0.0.9
 
 - Add automated tests to validate hot reload across mac, windows & linux.
 - Removed the `cargo` crate in favour of using the `cargo-metadata` crate and commands.

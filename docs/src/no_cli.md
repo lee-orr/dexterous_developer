@@ -4,7 +4,7 @@ To run without the CLI, you need to create a new launcher crate within the same 
 
 ```toml
 [dependencies]
-dexterous_developer = { version = "0.0.8", default-features = false, features = [
+dexterous_developer = { version = "0.0.9", default-features = false, features = [
     "hot",
     "cli",
 ] }
