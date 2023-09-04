@@ -11,7 +11,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use dexterous_developer_internal::{watch_reloadable, HotReloadMessage, HotReloadOptions};
+use dexterous_developer_internal::{watch_reloadable, HotReloadMessage, HotReloadOptions, Target};
 use futures_util::{SinkExt, StreamExt};
 use notify::{RecursiveMode, Watcher};
 use tokio::{
@@ -23,6 +23,8 @@ use tokio::{
 };
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
+
+use crate::cross::check_cross_requirements_installed;
 
 pub async fn run_server(port: u16, package: Option<String>, features: Vec<String>) -> Result<()> {
     let app = Router::new()
@@ -129,11 +131,22 @@ async fn websocket_connect(
     ws: WebSocketUpgrade,
     state: State<ServerState>,
 ) -> impl IntoResponse {
-    let target = target.0.clone();
-    ws.on_upgrade(|socket| websocket_connection(socket, target, state))
+    println!("Connection for target {target:?}");
+    let target: Target = match target.0.parse() {
+        Ok(target) => target,
+        Err(e) => {
+            eprintln!("Bad Request - {e:?}");
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid target {target}",
+            )
+                .into_response();
+        }
+    };
+    ws.on_upgrade(move |socket| websocket_connection(socket, target, state))
 }
 
-async fn websocket_connection(socket: WebSocket, target: String, state: State<ServerState>) {
+async fn websocket_connection(socket: WebSocket, target: Target, state: State<ServerState>) {
     let (mut sender, _) = socket.split();
     let mut asset_rx = state.asset_tx.subscribe();
     let mut updates_rx = {
@@ -217,11 +230,12 @@ async fn target_file_loader(
     state: State<ServerState>,
     request: Request<Body>,
 ) -> Result<Response> {
+    let target = target.parse()?;
     println!("Requested file {file} from {target}");
     let dir = {
         let map = state.map.read().await;
         let target = map
-            .get(target.as_str())
+            .get(&target)
             .ok_or(anyhow::Error::msg("Couldn't get target"))?;
         target.lib_dir.clone()
     };
@@ -235,7 +249,7 @@ async fn target_file_loader(
 
 #[derive(Clone)]
 pub struct ServerState {
-    map: Arc<RwLock<HashMap<String, TargetWatchInfo>>>,
+    map: Arc<RwLock<HashMap<Target, TargetWatchInfo>>>,
     package: Option<String>,
     features: Vec<String>,
     asset_directory: PathBuf,
@@ -245,8 +259,10 @@ pub struct ServerState {
 impl ServerState {
     async fn get_target_connection(
         &self,
-        target: &str,
+        target: &Target,
     ) -> (Receiver<HotReloadMessage>, String, PathBuf) {
+        check_cross_requirements_installed(target).expect("Cross Compilation Requirements Missing");
+
         {
             if let Some(map) = self.map.read().await.get(target) {
                 return (
@@ -270,7 +286,7 @@ impl ServerState {
         let options = HotReloadOptions {
             features: self.features.clone(),
             package: self.package.clone(),
-            build_target: Some(target.to_string()),
+            build_target: Some(*target),
             ..Default::default()
         };
 
@@ -288,7 +304,7 @@ impl ServerState {
             lib_path: lib_path.clone(),
             lib_dir: lib_dir.clone(),
         };
-        map.insert(target.to_string(), target_watch_info);
+        map.insert(*target, target_watch_info);
         (receiver, lib_path, lib_dir)
     }
 }

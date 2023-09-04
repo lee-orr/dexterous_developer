@@ -2,7 +2,7 @@
 
 Grab the CLI by running: ```cargo install dexterous_developer_cli```.
 
-You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
+You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli run` in your terminal.
 
 In your `Cargo.toml` add the following:
 
@@ -14,7 +14,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.8"
+dexterous_developer = "0.0.9"
 serde = "1" # If you want the serialization capacities
 ```
 

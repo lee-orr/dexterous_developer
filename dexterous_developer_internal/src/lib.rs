@@ -18,13 +18,15 @@ mod logger;
 
 pub use dexterous_developer_macros::*;
 
-pub use types::HotReloadOptions;
+pub use types::*;
 
 #[cfg(feature = "hot")]
 pub use hot::{run_reloadabe_app, HotReloadMessage};
 
 #[cfg(feature = "cli")]
-pub use hot::{run_existing_library, run_served_file, watch_reloadable};
+pub use hot::{
+    compile_reloadable_libraries, run_existing_library, run_served_file, watch_reloadable,
+};
 
 #[cfg(feature = "bevy")]
 pub use bevy_support::*;

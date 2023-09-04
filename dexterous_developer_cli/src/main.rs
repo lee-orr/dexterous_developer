@@ -8,11 +8,13 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use dexterous_developer_internal::HotReloadOptions;
+use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOptions, Target};
 use existing::load_existing_directory;
 use remote::connect_to_remote;
 
 use serve::run_server;
+
+use crate::cross::check_cross_requirements_installed;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -59,9 +61,28 @@ enum Commands {
         #[arg(short, long)]
         dir: Option<PathBuf>,
     },
-    ///Set up cross compilation support
+    /// Set up cross compilation support
     InstallCross,
+    /// Run a pre-existing set of compiled libraries. Mostly useful for debugging purposes.
     RunExisting {
+        /// The location of the existing libraries
+        #[arg(short, long, default_value = "./libs")]
+        libs: PathBuf,
+    },
+    /// Compile reloading libraries, without running them. Mostly useful for debugging purposes.
+    CompileLibs {
+        /// Package to build (required in a workspace)
+        #[arg(short, long)]
+        package: Option<String>,
+
+        /// Features to include
+        #[arg(short, long)]
+        features: Vec<String>,
+
+        /// Target
+        #[arg(short, long)]
+        target: Option<String>,
+
         /// The location of the existing libraries
         #[arg(short, long, default_value = "./libs")]
         libs: PathBuf,
@@ -122,6 +143,31 @@ async fn main() {
             load_existing_directory(libs)
                 .await
                 .expect("Couldn't run existing libs");
+        }
+        Commands::CompileLibs {
+            package,
+            features,
+            libs,
+            target,
+        } => {
+            let target = target.map(|v| v.parse::<Target>().expect("Invalid Target {v}"));
+
+            println!("Compiling Reloadable Libs");
+
+            if let Some(target) = target.as_ref() {
+                check_cross_requirements_installed(target)
+                    .expect("Cross Compilation Requirements Missing");
+            }
+
+            let options = HotReloadOptions {
+                package,
+                features,
+                build_target: target,
+                ..Default::default()
+            };
+
+            compile_reloadable_libraries(options, &libs)
+                .expect("Couldn't compile reloadable library");
         }
     }
 }

@@ -221,7 +221,7 @@ pub(crate) fn setup_build_settings(
             v
         }),
         out_target,
-        build_target: build_target.as_ref().cloned(),
+        build_target: build_target.as_ref().copied(),
         ..Default::default()
     };
 

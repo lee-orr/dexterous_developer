@@ -100,6 +100,9 @@ mod linux_host {
             if target.contains("windows-gnu") {
                 return Ok(Box::new(WindowsGNUProvider));
             }
+            if target.contains("darwin") {
+                return Ok(Box::new(AppleDarwinProvider));
+            }
             Ok(Box::new(Self))
         }
     }
@@ -107,8 +110,24 @@ mod linux_host {
 
     impl BuildArgsProvider for WindowsGNUProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
+            let cross_libs = match std::env::var("DEXTEROUS_CROSS_LIBS") {
+                Ok(v) => {
+                    let split = std::env::split_paths(&v);
+                    split
+                        .map(|v| format!("-L {}", v.to_string_lossy()))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                }
+                Err(_) => String::default(),
+            };
+            command.env("RUSTFLAGS", format!("{cross_libs} -Zshare-generics=n"));
         }
+    }
+
+    struct AppleDarwinProvider;
+
+    impl BuildArgsProvider for AppleDarwinProvider {
+        fn set_env_vars(&self, _: &mut Command) {}
     }
 }
 
@@ -116,14 +135,6 @@ mod cross_host {
     use super::*;
 
     pub struct CrossProvider(PathBuf);
-
-    impl CrossProvider {
-        pub fn new(p: impl Into<PathBuf>) -> Box<Self> {
-            let path: PathBuf = p.into();
-            println!("Using cross provier at path {path:?}");
-            Box::new(Self(path))
-        }
-    }
 
     impl BuildArgsProvider for CrossProvider {
         fn set_env_vars(&self, command: &mut Command) {
