@@ -125,8 +125,10 @@ jobs:
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
-      - run: RUST_LOG=dexterous_developer_internal=trace ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
+        env:
+          RUST_LOG: dexterous_developer_internal=trace
       - name: Store Libs
         uses: actions/upload-artifact@v3
         with:
@@ -165,10 +167,11 @@ jobs:
           name: ${{matrix.os}}-test-libs
           path: ${{github.workspace}}/libs
       - name: Run Compiled Artifact
-        run: RUST_LOG=dexterous_developer_internal=trace bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
+        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
+          RUST_LOG: dexterous_developer_internal=trace
 
   tests:
     needs: build-tester
@@ -219,10 +222,11 @@ jobs:
       - name: Set Executable
         run: chmod +x ./bins/*
       - name: Run Test - ${{matrix.test}}
-        run: RUST_LOG=dexterous_developer_internal=trace bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{matrix.test}}
+        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{matrix.test}}
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
+          RUST_LOG: dexterous_developer_internal=trace
 
   mdbook:
     runs-on: ubuntu-20.04
