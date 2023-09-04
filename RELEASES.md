@@ -2,6 +2,14 @@
 
 ## Version 0.0.9
 
+- Add tests for networked hot reload
+- Add `run`, `serve`, `remote`, `compile-libs`, `run-existing` and `install-cross` commands to the CLI
+- Add ability to compile reloadable libraries and load existing libraries
+- Add linux-to-windows cross compiled hot reload
+- Removed broken mold support
+
+## Version 0.0.8
+
 - Add automated tests to validate hot reload across mac, windows & linux.
 - Removed the `cargo` crate in favour of using the `cargo-metadata` crate and commands.
 - Added checks for clang, lld, and the like.

@@ -28,7 +28,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 Grab the CLI by running: ```cargo install dexterous_developer_cli```.
 
-You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli` in your terminal.
+You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli run` in your terminal.
 
 In your `Cargo.toml` add the following:
 

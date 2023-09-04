@@ -132,7 +132,7 @@ jobs:
       - name: Store Libs
         uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.os}}-test-libs
+          name: ${{matrix.target.os}}-test-libs
           path: ${{github.workspace}}/libs
 
   cross-build-runs:
@@ -152,19 +152,19 @@ jobs:
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.os}}-cli
+          name: ${{matrix.target.os}}-cli
           path: ${{github.workspace}}/bins
       - name: Download Tester
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.os}}-tester
+          name: ${{matrix.target.os}}-tester
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
       - name: Download Libs
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.os}}-test-libs
+          name: ${{matrix.target.os}}-test-libs
           path: ${{github.workspace}}/libs
       - name: Run Compiled Artifact
         run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs

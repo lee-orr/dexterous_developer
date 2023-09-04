@@ -127,7 +127,7 @@ mod linux_host {
     struct AppleDarwinProvider;
 
     impl BuildArgsProvider for AppleDarwinProvider {
-        fn set_env_vars(&self, command: &mut Command) {}
+        fn set_env_vars(&self, _: &mut Command) {}
     }
 }
 
