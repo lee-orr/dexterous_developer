@@ -95,9 +95,11 @@ jobs:
         target: 
           - os: windows-latest
             target: x86_64-pc-windows-gnu
+            builder: ubuntu-latest
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-    runs-on: ubuntu-latest
+            builder: windows-latest
+    runs-on: ${{matrix.target.builder}}
     steps: 
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -114,14 +116,12 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mingw-w64
       - run: mkdir bins
       - run: rustup target install ${{matrix.target.target}}
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ubuntu-latest-cli
+          name: ${{matrix.os.builder}}-cli
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
