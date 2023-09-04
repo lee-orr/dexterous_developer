@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::bail;
 
 use dexterous_developer_internal::Target;
 
@@ -86,6 +86,6 @@ pub const CROSS_TARGETS: &[&str] = &[
 ];
 
 #[allow(clippy::single_match)]
-pub fn check_cross_requirements_installed(target: &Target) -> anyhow::Result<()> {
+pub fn check_cross_requirements_installed(_target: &Target) -> anyhow::Result<()> {
     Ok(())
 }
