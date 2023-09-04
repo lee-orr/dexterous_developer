@@ -134,7 +134,7 @@ jobs:
           name: ${{matrix.os}}-test-libs
           path: ${{github.workspace}}/libs
 
-cross-build-rums:
+  cross-build-ruNs:
     needs: cross-builds
     strategy:
       matrix:
