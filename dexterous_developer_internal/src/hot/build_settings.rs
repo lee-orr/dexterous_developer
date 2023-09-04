@@ -101,7 +101,7 @@ impl TryFrom<&str> for BuildSettings {
     }
 }
 
-use cargo_metadata::Target;
+
 #[cfg(feature = "cli")]
 use serde::{Deserialize, Serialize};
 

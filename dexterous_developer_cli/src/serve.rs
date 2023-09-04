@@ -6,7 +6,7 @@ use axum::{
         ws::{Message, WebSocket},
         Path, State, WebSocketUpgrade,
     },
-    http::{Error, Request},
+    http::{Request},
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,

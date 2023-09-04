@@ -1,14 +1,14 @@
-use std::{env::consts::ARCH, ops::Deref, path::Path};
+
 
 use anyhow::{bail, Context};
-use axum::http::HeaderName;
+
 use dexterous_developer_internal::Target;
-use reqwest::Method;
+
 
 use crate::paths::{get_paths, CliPaths};
 
 pub async fn install_cross() -> anyhow::Result<()> {
-    let CliPaths { data } = get_paths()?;
+    let CliPaths { data: _ } = get_paths()?;
 
     for rust in CROSS_TARGETS.iter() {
         setup_target(rust).await?;
