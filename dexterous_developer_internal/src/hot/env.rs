@@ -100,6 +100,9 @@ mod linux_host {
             if target.contains("windows-gnu") {
                 return Ok(Box::new(WindowsGNUProvider));
             }
+            if target.contains("darwin") {
+                return Ok(Box::new(AppleDarwinProvider));
+            }
             Ok(Box::new(Self))
         }
     }
@@ -119,6 +122,12 @@ mod linux_host {
             };
             command.env("RUSTFLAGS", format!("{cross_libs} -Zshare-generics=n"));
         }
+    }
+
+    struct AppleDarwinProvider;
+
+    impl BuildArgsProvider for AppleDarwinProvider {
+        fn set_env_vars(&self, command: &mut Command) {}
     }
 }
 

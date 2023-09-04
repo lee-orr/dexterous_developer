@@ -1,9 +1,6 @@
-
-
 use anyhow::{bail, Context};
 
 use dexterous_developer_internal::Target;
-
 
 use crate::paths::{get_paths, CliPaths};
 
@@ -65,10 +62,10 @@ pub const CROSS_TARGETS: &[&str] = &[
     Target::LinuxArm.to_static(),
     #[cfg(target_os = "linux")]
     Target::Windows.to_static(),
-    #[cfg(target_os = "linux")]
-    Target::Mac.to_static(),
-    #[cfg(target_os = "linux")]
-    Target::MacArm.to_static(),
+    // #[cfg(target_os = "linux")]
+    // Target::Mac.to_static(),
+    // #[cfg(target_os = "linux")]
+    // Target::MacArm.to_static(),
 ];
 
 #[allow(clippy::single_match)]

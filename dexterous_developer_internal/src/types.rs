@@ -66,7 +66,7 @@ impl FromStr for Target {
             } else {
                 Ok(Self::Linux)
             }
-        } else if s.contains("mac") {
+        } else if s.contains("darwin") || s.contains("mac") {
             if s.contains("arm") || s.contains("aarch") {
                 Ok(Self::MacArm)
             } else {

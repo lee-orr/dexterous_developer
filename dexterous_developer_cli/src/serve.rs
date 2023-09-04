@@ -132,7 +132,7 @@ async fn websocket_connect(
     state: State<ServerState>,
 ) -> impl IntoResponse {
     println!("Connection for target {target:?}");
-    let target = match target.0.parse() {
+    let target: Target = match target.0.parse() {
         Ok(target) => target,
         Err(e) => {
             eprintln!("Bad Request - {e:?}");
