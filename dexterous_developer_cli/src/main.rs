@@ -8,11 +8,13 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOptions};
+use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOptions, Target};
 use existing::load_existing_directory;
 use remote::connect_to_remote;
 
 use serve::run_server;
+
+use crate::cross::check_cross_requirements_installed;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -148,7 +150,15 @@ async fn main() {
             libs,
             target,
         } => {
+            let target = target.map(|v| v.parse::<Target>().expect("Invalid Target {v}"));
+
             println!("Compiling Reloadable Libs");
+
+            if let Some(target) = target.as_ref() {
+                check_cross_requirements_installed(target)
+                    .expect("Cross Compilation Requirements Missing");
+            }
+
             let options = HotReloadOptions {
                 package,
                 features,

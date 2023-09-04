@@ -18,7 +18,7 @@ mod logger;
 
 pub use dexterous_developer_macros::*;
 
-pub use types::HotReloadOptions;
+pub use types::*;
 
 #[cfg(feature = "hot")]
 pub use hot::{run_reloadabe_app, HotReloadMessage};

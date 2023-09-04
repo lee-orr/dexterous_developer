@@ -12,7 +12,7 @@ pub(crate) struct BuildSettings {
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
-    pub build_target: Option<String>,
+    pub build_target: Option<crate::Target>,
     pub updated_file_channel: Option<tokio::sync::broadcast::Sender<HotReloadMessage>>,
 }
 
@@ -26,7 +26,7 @@ pub(crate) struct BuildSettings {
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
-    pub build_target: Option<String>,
+    pub build_target: Option<crate::Target>,
 }
 
 impl ToString for BuildSettings {
@@ -101,6 +101,7 @@ impl TryFrom<&str> for BuildSettings {
     }
 }
 
+use cargo_metadata::Target;
 #[cfg(feature = "cli")]
 use serde::{Deserialize, Serialize};
 

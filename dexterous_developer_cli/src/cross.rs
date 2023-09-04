@@ -1,9 +1,14 @@
-use anyhow::bail;
+use std::{env::consts::ARCH, ops::Deref, path::Path};
+
+use anyhow::{bail, Context};
+use axum::http::HeaderName;
+use dexterous_developer_internal::Target;
+use reqwest::Method;
 
 use crate::paths::{get_paths, CliPaths};
 
 pub async fn install_cross() -> anyhow::Result<()> {
-    let CliPaths { data: _ } = get_paths()?;
+    let CliPaths { data } = get_paths()?;
 
     for rust in CROSS_TARGETS.iter() {
         setup_target(rust).await?;
@@ -55,13 +60,24 @@ async fn setup_target(rust: &str) -> anyhow::Result<()> {
 
 pub const CROSS_TARGETS: &[&str] = &[
     #[cfg(target_os = "linux")]
-    "aarch64-unknown-linux-gnu",
+    Target::Linux.to_static(),
     #[cfg(target_os = "linux")]
-    "x86_64-unknown-linux-gnu",
+    Target::LinuxArm.to_static(),
     #[cfg(target_os = "linux")]
-    "x86_64-pc-windows-gnu",
+    Target::Windows.to_static(),
     #[cfg(target_os = "linux")]
-    "aarch64-apple-darwin",
+    Target::Mac.to_static(),
     #[cfg(target_os = "linux")]
-    "x86_64-apple-darwin",
+    Target::MacArm.to_static(),
 ];
+
+#[allow(clippy::single_match)]
+pub fn check_cross_requirements_installed(target: &Target) -> anyhow::Result<()> {
+    match target {
+        Target::Windows => {
+            which::which("x86_64-w64-mingw32-gcc").context("You need to install a Mingw-w64 cross compiler - some options are found here: https://www.mingw-w64.org/downloads/")?;
+        }
+        _ => {}
+    }
+    Ok(())
+}

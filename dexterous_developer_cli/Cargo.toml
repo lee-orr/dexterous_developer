@@ -42,3 +42,4 @@ notify = { version = "6", default-features = false, features = [
 dunce = "1"
 directories = "5"
 semver = "1"
+which = "4"

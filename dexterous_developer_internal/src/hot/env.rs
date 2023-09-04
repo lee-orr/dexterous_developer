@@ -107,7 +107,17 @@ mod linux_host {
 
     impl BuildArgsProvider for WindowsGNUProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=n  -Clink-arg=-fuse-ld=lld");
+            let cross_libs = match std::env::var("DEXTEROUS_CROSS_LIBS") {
+                Ok(v) => {
+                    let split = std::env::split_paths(&v);
+                    split
+                        .map(|v| format!("-L {}", v.to_string_lossy()))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                }
+                Err(_) => String::default(),
+            };
+            command.env("RUSTFLAGS", format!("{cross_libs} -Zshare-generics=n"));
         }
     }
 }

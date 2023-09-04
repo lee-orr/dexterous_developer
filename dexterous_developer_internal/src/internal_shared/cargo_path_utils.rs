@@ -40,6 +40,17 @@ pub fn dylib_path() -> Vec<PathBuf> {
     }
 }
 
+/// Returns a list of directories that are searched for dynamic libraries.
+///
+/// Note that some operating systems will have defaults if this is empty that
+/// will need to be dealt with.
+pub fn bin_path() -> Vec<PathBuf> {
+    match env::var_os("PATH") {
+        Some(var) => env::split_paths(&var).collect(),
+        None => Vec::new(),
+    }
+}
+
 pub fn print_dylib_path() -> String {
     dylib_path()
         .iter()
