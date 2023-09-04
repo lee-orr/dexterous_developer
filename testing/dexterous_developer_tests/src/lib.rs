@@ -1,6 +1,9 @@
 mod utils;
 
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use crate::utils::*;
 
@@ -302,6 +305,24 @@ async fn can_update_assets() {
     host_process.exit().await;
 }
 
+async fn can_run_existing(path: &Path) {
+    let mut project = TestProject::existing_project(path, "can_run_existing").unwrap();
+
+    let mut process = project.run_existing().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    process.exit().await;
+}
+
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
@@ -335,6 +356,19 @@ pub async fn run_tests() {
         "asset" => {
             println!("Can update asset");
             can_update_assets().await;
+        }
+        "existing" => {
+            println!("Can run existing assets");
+            let libs = args.next().expect("No next lib set");
+            let mut libs = PathBuf::from(libs);
+            if !libs.is_absolute() {
+                libs = std::env::current_dir().unwrap().join(libs);
+            }
+            if !libs.exists() || !libs.is_dir() {
+                panic!("libs should be a directory");
+            }
+            let libs = libs.canonicalize().unwrap();
+            can_run_existing(&libs).await;
         }
         _ => {
             eprintln!("{argument} is an invalid test");

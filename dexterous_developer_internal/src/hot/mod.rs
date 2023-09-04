@@ -194,7 +194,7 @@ pub fn compile_reloadable_libraries(
     use anyhow::Context;
 
     let _ = env_logger::try_init();
-    let (settings, paths) = setup_build_settings(&options)?;
+    let (mut settings, paths) = setup_build_settings(&options)?;
     let lib_path = settings.lib_path.clone();
 
     let lib_dir = if lib_dir.is_absolute() {
@@ -202,6 +202,7 @@ pub fn compile_reloadable_libraries(
     } else {
         std::env::current_dir()?.join(lib_dir)
     };
+    settings.out_target = lib_dir.clone();
 
     if !lib_dir.exists() {
         let _ = std::fs::create_dir_all(&lib_dir);

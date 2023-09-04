@@ -130,6 +130,15 @@ impl TestProject {
         })
     }
 
+    pub fn existing_project(path: &Path, name: &'static str) -> anyhow::Result<Self> {
+        std::fs::create_dir_all(path.join("assets"))?;
+        Ok(Self {
+            path: path.to_path_buf(),
+            name: name.to_string(),
+            package: name.to_string(),
+        })
+    }
+
     pub fn write_file(&self, path: &Path, content: &str) -> anyhow::Result<()> {
         let mut file_path = self.path.clone();
         file_path.push(path);
@@ -162,6 +171,20 @@ impl TestProject {
         let mut cmd: Command = Command::new(cli_path);
         cmd.current_dir(&wd).arg("run").arg("-p").arg(&self.package);
         self.run(cmd, ProcessHeat::Hot).await
+    }
+
+    pub async fn run_existing(&mut self) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd)
+            .arg("run-existing")
+            .arg("--libs")
+            .arg(&self.path);
+        self.run(cmd, ProcessHeat::Cold).await
     }
 
     pub async fn run_host_cli(&mut self, port: &str) -> anyhow::Result<RunningProcess> {
