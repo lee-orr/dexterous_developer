@@ -6,7 +6,7 @@ use axum::{
         ws::{Message, WebSocket},
         Path, State, WebSocketUpgrade,
     },
-    http::{Request},
+    http::Request,
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
@@ -131,12 +131,17 @@ async fn websocket_connect(
     ws: WebSocketUpgrade,
     state: State<ServerState>,
 ) -> impl IntoResponse {
-    let Ok(target) = target.0.parse() else {
-        return (
-            axum::http::StatusCode::BAD_REQUEST,
-            "Invalid target {target}",
-        )
-            .into_response();
+    println!("Connection for target {target:?}");
+    let target = match target.0.parse() {
+        Ok(target) => target,
+        Err(e) => {
+            eprintln!("Bad Request - {e:?}");
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid target {target}",
+            )
+                .into_response();
+        }
     };
     ws.on_upgrade(move |socket| websocket_connection(socket, target, state))
 }
