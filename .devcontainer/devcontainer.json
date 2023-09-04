@@ -11,7 +11,7 @@
 		},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {
-			"PACKAGES": "g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mold libssl-dev mingw-w64"
+			"PACKAGES": "g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mold libssl-dev"
 		}
 	}
 	// Features to add to the dev container. More info: https://containers.dev/features.
