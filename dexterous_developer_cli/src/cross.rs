@@ -41,6 +41,7 @@ pub async fn install_cross(
 
     println!("Installing cross");
     let status = tokio::process::Command::new("cargo")
+        .arg("+nightly")
         .args({
             let args: &'static [&'static str] = if binstall {
                 &["binstall", "-y"]
@@ -184,6 +185,7 @@ pub async fn setup_custom_images(
         let mut build_command = tokio::process::Command::new("cargo");
         build_command
             .current_dir(&cross_dir)
+            .arg("+nightly")
             .arg("build-docker-image")
             .arg(&image_name)
             .arg("--tag")
