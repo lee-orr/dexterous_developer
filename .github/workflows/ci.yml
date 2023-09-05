@@ -121,7 +121,7 @@ jobs:
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.os.builder}}-cli
+          name: ${{matrix.target.builder}}-cli
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
