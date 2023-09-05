@@ -46,14 +46,13 @@ enum Commands {
         features: Vec<String>,
 
         /// Port to host on
-        #[arg(short = 's', long, default_value = "1234")]
+        #[arg(default_value = "1234")]
         port: u16,
     },
     /// Connect to a remote dev server and run it's application locally
     Remote {
         /// Reload from remote dev server
         /// Will place all files within the current working directory, or in the reload directory
-        #[arg(short, long)]
         remote: url::Url,
 
         /// Reload directory
@@ -66,7 +65,7 @@ enum Commands {
     /// Run a pre-existing set of compiled libraries. Mostly useful for debugging purposes.
     RunExisting {
         /// The location of the existing libraries
-        #[arg(short, long, default_value = "./libs")]
+        #[arg(default_value = "./libs")]
         libs: PathBuf,
     },
     /// Compile reloading libraries, without running them. Mostly useful for debugging purposes.
@@ -84,7 +83,7 @@ enum Commands {
         target: Option<String>,
 
         /// The location of the existing libraries
-        #[arg(short, long, default_value = "./libs")]
+        #[arg(default_value = "./libs")]
         libs: PathBuf,
     },
 }
