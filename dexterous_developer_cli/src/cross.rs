@@ -152,6 +152,8 @@ pub async fn setup_custom_images(
         }
     }
 
+    tokio::fs::remove_file(cross_dir.join("Cargo.lock")).await?;
+
     println!("Initializing submodules");
     let submodules = tokio::process::Command::new("git")
         .args(["submodule", "update", "--init", "--remote"])
