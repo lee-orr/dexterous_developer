@@ -162,7 +162,7 @@ jobs:
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target}.os}-cli
+          name: ${{matrix.target.os}}-cli
           path: ${{github.workspace}}/bins
       - name: Download Tester
         uses: actions/download-artifact@v3
