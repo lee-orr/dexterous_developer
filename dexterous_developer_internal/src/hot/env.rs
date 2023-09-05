@@ -60,6 +60,7 @@ mod default_host {
     #[cfg(target_os = "windows")]
     use super::windows_host::DefaultProvider;
 
+    #[allow(unreachable_code)]
     fn get_native_target() -> Target {
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
         {
