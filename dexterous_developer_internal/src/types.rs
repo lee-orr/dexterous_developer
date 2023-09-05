@@ -28,7 +28,13 @@ impl Target {
         match self {
             Target::Linux => "x86_64-unknown-linux-gnu",
             Target::LinuxArm => "aarch64-unknown-linux-gnu",
-            Target::Windows => "x86_64-pc-windows-gnu",
+            Target::Windows => {
+                if cfg!(windows) {
+                    "x86_64-pc-windows-msvc"
+                } else {
+                    "x86_64-pc-windows-gnu"
+                }
+            }
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
         }
