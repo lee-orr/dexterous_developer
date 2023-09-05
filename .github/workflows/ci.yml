@@ -125,7 +125,7 @@ jobs:
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{target}}
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target}}
       - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target}} --libs ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
         env:
