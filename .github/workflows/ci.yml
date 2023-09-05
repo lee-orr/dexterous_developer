@@ -168,7 +168,7 @@ jobs:
       - name: Download Libs
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target}}-${{matrix-builder}}-test-libs
+          name: ${{matrix.target}}-${{matrix.builder}}-test-libs
           path: ${{github.workspace}}/libs
       - name: Run Compiled Artifact
         run: bins/run_tests${{ matrix.target == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
