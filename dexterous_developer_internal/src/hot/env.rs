@@ -60,30 +60,56 @@ mod default_host {
     #[cfg(target_os = "windows")]
     use super::windows_host::DefaultProvider;
 
+    fn get_native_target() -> Target {
+        #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+        {
+            return Target::Linux;
+        }
+        #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+        {
+            return Target::LinuxArm;
+        }
+        #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+        {
+            return Target::Windows;
+        }
+        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+        {
+            return Target::Mac;
+        }
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        {
+            return Target::MacArm;
+        }
+
+        panic!("Invalid Platform...");
+    }
+
     pub fn get_provider(target: Option<&Target>) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
         if let Some(target) = target {
-            let targets = Command::new("rustup")
-                .arg("target")
-                .arg("list")
-                .arg("--installed")
-                .output()
-                .context("Checking if {target} is installed")?;
-            let output = std::str::from_utf8(&targets.stdout)?;
+            if *target != get_native_target() {
+                let targets = Command::new("rustup")
+                    .arg("target")
+                    .arg("list")
+                    .arg("--installed")
+                    .output()
+                    .context("Checking if {target} is installed")?;
+                let output = std::str::from_utf8(&targets.stdout)?;
 
-            if output.lines().any(|v| {
-                if let Ok(v) = v.parse::<Target>() {
-                    v == *target
+                if output.lines().any(|v| {
+                    if let Ok(v) = v.parse::<Target>() {
+                        v == *target
+                    } else {
+                        false
+                    }
+                }) {
+                    return super::cross_host::DefaultProvider::get_provider(target);
                 } else {
-                    false
+                    bail!("Target {target} is not installed");
                 }
-            }) {
-                DefaultProvider::get_provider(target)
-            } else {
-                bail!("Target {target} is not installed");
             }
-        } else {
-            Ok(Box::new(DefaultProvider))
         }
+        Ok(Box::new(DefaultProvider))
     }
 }
 
@@ -115,28 +141,50 @@ mod linux_host {
     }
 
     impl GetBuildArgProvider for DefaultProvider {
-        fn get_provider(target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
-            if *target == Target::Windows {
-                return Ok(Box::new(WindowsGNUProvider));
-            }
-            if *target == Target::Mac {
-                return Ok(Box::new(AppleDarwinProvider));
-            }
-            if *target == Target::MacArm {
-                return Ok(Box::new(AppleDarwinArmProvider));
-            }
+        fn get_provider(_: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
             Ok(Box::new(Self))
         }
     }
-    struct WindowsGNUProvider;
+}
 
-    impl BuildArgsProvider for WindowsGNUProvider {
+mod cross_host {
+    use super::*;
+
+    pub struct DefaultProvider;
+
+    impl GetBuildArgProvider for DefaultProvider {
+        fn get_provider(target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>> {
+            match target {
+                Target::Linux => Ok(Box::new(LinuxProvider)),
+                Target::LinuxArm => Ok(Box::new(LinuxProvider)),
+                Target::Windows => Ok(Box::new(WindowsProvider)),
+                Target::Mac => Ok(Box::new(AppleDarwinProvider)),
+                Target::MacArm => Ok(Box::new(AppleDarwinArmProvider)),
+            }
+        }
+    }
+
+    struct LinuxProvider;
+
+    impl BuildArgsProvider for LinuxProvider {
         fn get_cargo(&self) -> &'static str {
             "cross"
         }
 
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", format!("-Zshare-generics=n"));
+            command.env("RUSTFLAGS", "-Zshare-generics=y");
+        }
+    }
+
+    struct WindowsProvider;
+
+    impl BuildArgsProvider for WindowsProvider {
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
+        fn set_env_vars(&self, command: &mut Command) {
+            command.env("RUSTFLAGS", "-Zshare-generics=n");
         }
     }
 
@@ -149,8 +197,12 @@ mod linux_host {
 
         fn set_env_vars(&self, command: &mut Command) {
             command
+                .env("CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER", "clang")
                 .env("RUSTC_LINKER", "clang")
-                .env("RUSTFLAGS", format!("-Zshare-generics=y"))
+                .env(
+                    "RUSTFLAGS",
+                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                )
                 .env("SYSTEM_VERSION_COMPAT", "0");
         }
     }
@@ -166,22 +218,11 @@ mod linux_host {
             command
                 .env("CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER", "clang")
                 .env("RUSTC_LINKER", "clang")
-                .env("RUSTFLAGS", format!("-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h"))
+                .env(
+                    "RUSTFLAGS",
+                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                )
                 .env("SYSTEM_VERSION_COMPAT", "0");
-        }
-    }
-}
-
-mod cross_host {
-    use super::*;
-
-    pub struct CrossProvider(PathBuf);
-
-    impl BuildArgsProvider for CrossProvider {
-        fn set_env_vars(&self, command: &mut Command) {
-            command
-                .env("CC", self.0.as_os_str())
-                .env("RUST_LINKER", self.0.as_os_str());
         }
     }
 }

@@ -108,7 +108,6 @@ const CROSS_TARGETS: &[Target] = &[
     Target::Linux,
     Target::LinuxArm,
     Target::Windows,
-    Target::WindowsArm,
     Target::Mac,
     Target::MacArm,
 ];

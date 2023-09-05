@@ -23,7 +23,6 @@ pub enum Target {
     Linux,
     LinuxArm,
     Windows,
-    WindowsArm,
     Mac,
     MacArm,
 }
@@ -59,7 +58,6 @@ impl Target {
                     "x86_64-pc-windows-gnu"
                 }
             }
-            Target::WindowsArm => "aarch64-pc-windows-msvc",
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
         }
@@ -90,11 +88,7 @@ impl FromStr for Target {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim().to_lowercase();
         if s.contains("windows") {
-            if s.contains("arm") || s.contains("aarch") {
-                Ok(Self::WindowsArm)
-            } else {
-                Ok(Self::Windows)
-            }
+            Ok(Self::Windows)
         } else if s.contains("linux") {
             if s.contains("arm") || s.contains("aarch") {
                 Ok(Self::LinuxArm)
