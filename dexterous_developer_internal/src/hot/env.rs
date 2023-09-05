@@ -119,8 +119,11 @@ mod linux_host {
             if *target == Target::Windows {
                 return Ok(Box::new(WindowsGNUProvider));
             }
-            if target.contains("darwin") {
+            if *target == Target::Mac {
                 return Ok(Box::new(AppleDarwinProvider));
+            }
+            if *target == Target::MacArm {
+                return Ok(Box::new(AppleDarwinArmProvider));
             }
             Ok(Box::new(Self))
         }
@@ -133,24 +136,39 @@ mod linux_host {
         }
 
         fn set_env_vars(&self, command: &mut Command) {
-            let cross_libs = match std::env::var("DEXTEROUS_CROSS_LIBS") {
-                Ok(v) => {
-                    let split = std::env::split_paths(&v);
-                    split
-                        .map(|v| format!("-L {}", v.to_string_lossy()))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                }
-                Err(_) => String::default(),
-            };
-            command.env("RUSTFLAGS", format!("{cross_libs} -Zshare-generics=n"));
+            command.env("RUSTFLAGS", format!("-Zshare-generics=n"));
         }
     }
 
     struct AppleDarwinProvider;
 
     impl BuildArgsProvider for AppleDarwinProvider {
-        fn set_env_vars(&self, _: &mut Command) {}
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
+        fn set_env_vars(&self, command: &mut Command) {
+            command
+                .env("RUSTC_LINKER", "clang")
+                .env("RUSTFLAGS", format!("-Zshare-generics=y"))
+                .env("SYSTEM_VERSION_COMPAT", "0");
+        }
+    }
+
+    struct AppleDarwinArmProvider;
+
+    impl BuildArgsProvider for AppleDarwinArmProvider {
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
+        fn set_env_vars(&self, command: &mut Command) {
+            command
+                .env("CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER", "clang")
+                .env("RUSTC_LINKER", "clang")
+                .env("RUSTFLAGS", format!("-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h"))
+                .env("SYSTEM_VERSION_COMPAT", "0");
+        }
     }
 }
 

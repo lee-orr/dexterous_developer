@@ -13,8 +13,12 @@ use existing::load_existing_directory;
 use remote::connect_to_remote;
 
 use serve::run_server;
+use url::Url;
 
-use crate::cross::check_cross_requirements_installed;
+use crate::{
+    cross::{check_cross_requirements_installed, AppleSDKPath},
+    paths::CliPaths,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -61,7 +65,17 @@ enum Commands {
         dir: Option<PathBuf>,
     },
     /// Set up cross compilation support
-    InstallCross,
+    InstallCross {
+        /// Macos SDK Tarball File Path
+        #[arg(long)]
+        macos_sdk_file: Option<PathBuf>,
+
+        /// Macos SDK Tarball Download URL - only used if macos_sdk_dir is not provided
+        #[arg(long)]
+        macos_sdk_url: Option<Url>,
+
+        targets: Vec<Target>,
+    },
     /// Run a pre-existing set of compiled libraries. Mostly useful for debugging purposes.
     RunExisting {
         /// The location of the existing libraries
@@ -131,9 +145,14 @@ async fn main() {
                 .await
                 .expect("Remote Connection Failed");
         }
-        Commands::InstallCross => {
+        Commands::InstallCross {
+            macos_sdk_url,
+            macos_sdk_file,
+            targets,
+        } => {
+            let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);
             println!("Setup cross compiling");
-            cross::install_cross()
+            cross::install_cross(&targets, macos_sdk)
                 .await
                 .expect("Failed to install cross");
         }
@@ -149,6 +168,10 @@ async fn main() {
             libs,
             target,
         } => {
+            let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
+            if cross_config.exists() {
+                std::env::set_var("CROSS_CONFIG", &cross_config);
+            }
             let target = target.map(|v| v.parse::<Target>().expect("Invalid Target {v}"));
 
             println!("Compiling Reloadable Libs");

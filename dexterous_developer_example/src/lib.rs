@@ -82,7 +82,7 @@ fn setup_cube(
     let cube_color = Color::ORANGE;
 
     #[cfg(not(feature = "orange"))]
-    let cube_color = Color::BLUE;
+    let cube_color = Color::YELLOW;
 
     // cube
     commands.spawn((

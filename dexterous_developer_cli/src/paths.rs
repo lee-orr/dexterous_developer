@@ -14,9 +14,13 @@ pub fn get_paths() -> anyhow::Result<CliPaths> {
         std::fs::create_dir_all(data.as_path())?;
     }
 
-    Ok(CliPaths { data })
+    Ok(CliPaths {
+        cross_config: data.join("cross_config.toml"),
+        data,
+    })
 }
 
 pub struct CliPaths {
     pub data: PathBuf,
+    pub cross_config: PathBuf,
 }

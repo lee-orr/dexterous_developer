@@ -1,6 +1,10 @@
 use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
 
 use anyhow::bail;
+use serde::{
+    de::{self, DeserializeOwned},
+    Deserialize, Deserializer, Serialize,
+};
 
 #[derive(Debug, Default)]
 pub struct HotReloadOptions {
@@ -19,8 +23,28 @@ pub enum Target {
     Linux,
     LinuxArm,
     Windows,
+    WindowsArm,
     Mac,
     MacArm,
+}
+
+impl Serialize for Target {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self.to_static())
+    }
+}
+
+impl<'de> Deserialize<'de> for Target {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(de::Error::custom)
+    }
 }
 
 impl Target {
@@ -35,6 +59,7 @@ impl Target {
                     "x86_64-pc-windows-gnu"
                 }
             }
+            Target::WindowsArm => "aarch64-pc-windows-msvc",
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
         }
@@ -65,7 +90,11 @@ impl FromStr for Target {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim().to_lowercase();
         if s.contains("windows") {
-            Ok(Self::Windows)
+            if s.contains("arm") || s.contains("aarch") {
+                Ok(Self::WindowsArm)
+            } else {
+                Ok(Self::Windows)
+            }
         } else if s.contains("linux") {
             if s.contains("arm") || s.contains("aarch") {
                 Ok(Self::LinuxArm)
