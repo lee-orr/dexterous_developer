@@ -24,9 +24,18 @@ use tokio::{
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::cross::check_cross_requirements_installed;
+use crate::{
+    cross::check_cross_requirements_installed,
+    paths::{self, CliPaths},
+};
 
 pub async fn run_server(port: u16, package: Option<String>, features: Vec<String>) -> Result<()> {
+    let CliPaths { cross_config, .. } = paths::get_paths()?;
+
+    if cross_config.exists() {
+        std::env::set_var("CROSS_CONFIG", &cross_config);
+    }
+
     let app = Router::new()
         .route("/targets", get(list_targets))
         .route("/libs/:target/:file", get(target_file_loader))

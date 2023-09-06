@@ -87,18 +87,20 @@ jobs:
         with:
           name: ${{matrix.os}}-tester
           path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-  
+
   cross-builds:
     needs: build-tester
     strategy:
       matrix:
-        target: 
+        builder:
+          - ubuntu-latest
+        target:
+          - os: macos-latest
+            target: mac
           - os: windows-latest
-            target: x86_64-pc-windows-gnu
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-    runs-on: ubuntu-latest
-    steps: 
+            target: windows
+    runs-on: ${{matrix.builder}}
+    steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:
@@ -114,40 +116,40 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
           override: true
-      - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mingw-w64
       - run: mkdir bins
-      - run: rustup target install ${{matrix.target.target}}
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ubuntu-latest-cli
+          name: ${{matrix.builder}}-cli
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
         env:
           RUST_LOG: dexterous_developer_internal=trace
       - name: Store Libs
         uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.target.os}}-test-libs
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
           path: ${{github.workspace}}/libs
 
   cross-build-runs:
     needs: cross-builds
     strategy:
       matrix:
-        target: 
+        builder:
+          - ubuntu-latest
+        target:
+          - os: macos-latest
+            target: mac
           - os: windows-latest
-            target: x86_64-pc-windows-gnu
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: windows
     runs-on: ${{matrix.target.os}}
     steps:
       - uses: msys2/setup-msys2@v2
-        if:  ${{ matrix.target.os == 'windows-latest' }}
+        if: ${{ matrix.target.os == 'windows-latest' }}
       - run: mkdir bins
       - name: Download CLI
         uses: actions/download-artifact@v3
@@ -164,10 +166,10 @@ jobs:
       - name: Download Libs
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target.os}}-test-libs
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
           path: ${{github.workspace}}/libs
       - name: Run Compiled Artifact
-        run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
+        run: bins/run_tests${{ matrix.target.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing

@@ -23,6 +23,37 @@ pub enum Target {
     MacArm,
 }
 
+#[cfg(any(feature = "cli", feature = "bevy"))]
+pub use serialize::*;
+
+#[cfg(any(feature = "cli", feature = "bevy"))]
+mod serialize {
+    use super::*;
+    use serde::{
+        de::{self},
+        Deserialize, Deserializer, Serialize,
+    };
+
+    impl Serialize for Target {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.collect_str(self.to_static())
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Target {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            FromStr::from_str(&s).map_err(de::Error::custom)
+        }
+    }
+}
+
 impl Target {
     pub const fn to_static(self) -> &'static str {
         match self {

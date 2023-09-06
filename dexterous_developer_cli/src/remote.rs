@@ -76,18 +76,45 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
             .current_dir(reload_dir.as_path())
             .env(dylib_path_envvar(), os_paths.as_os_str())
             .arg("remote")
-            .arg("--remote")
             .arg(remote.as_str())
             .status()
             .expect("Couldn't execute executable");
         std::process::exit(result.code().unwrap_or_default());
     } else {
         let targets = get_valid_targets(&remote).await?;
-        println!("TARGETS AVAILABLE {targets:?}");
-        let target = targets
-            .first()
-            .ok_or(anyhow::Error::msg(format!("No valid targets at {remote}")))?
-            .to_owned();
+        let target = if targets.len() > 1 {
+            println!("Choose from Available Targets:");
+            for (i, target) in targets.iter().enumerate() {
+                let i = i + 1;
+                println!("{target}: {i}");
+            }
+            let mut target = 0;
+            for line in std::io::stdin().lines() {
+                let line = line?;
+                let Ok(index) = line.parse::<usize>() else {
+                    println!("Please type the number for your chosen target.");
+                    continue;
+                };
+                let Some(index) = index.checked_sub(1) else {
+                    println!("Please type one of the numbers for the targets above.");
+                    continue;
+                };
+                if index < targets.len() {
+                    target = index;
+                    break;
+                }
+                println!("Please type one of the numbers for the targets above.");
+            }
+            targets
+                .get(target)
+                .ok_or(anyhow::Error::msg(format!("No valid targets at {remote}")))?
+                .to_owned()
+        } else {
+            targets
+                .first()
+                .ok_or(anyhow::Error::msg(format!("No valid targets at {remote}")))?
+                .to_owned()
+        };
         println!("Connecting to {remote} for target{target}");
         let (lib_name_tx, mut lib_name_rx) = mpsc::channel(1);
         let (paths_ready_tx, mut paths_ready_rx) = mpsc::channel(1);

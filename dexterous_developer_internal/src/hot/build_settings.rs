@@ -101,7 +101,6 @@ impl TryFrom<&str> for BuildSettings {
     }
 }
 
-
 #[cfg(feature = "cli")]
 use serde::{Deserialize, Serialize};
 

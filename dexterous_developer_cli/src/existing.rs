@@ -63,7 +63,6 @@ pub async fn load_existing_directory(libs: PathBuf) -> anyhow::Result<()> {
         let result = Command::new(current)
             .env(dylib_path_envvar(), os_paths.as_os_str())
             .arg("run-existing")
-            .arg("--libs")
             .arg(libs.as_os_str())
             .status()
             .expect("Couldn't execute executable");
