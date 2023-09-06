@@ -6,7 +6,7 @@
 - Add `run`, `serve`, `remote`, `compile-libs`, `run-existing` and `install-cross` commands to the CLI
 - Add ability to compile reloadable libraries and load existing libraries
 - Add cross compiled, remote hot reload
-- Removed broken mold support
+- Mold support has changed - the path to mold needs to be provided via the `DEXTEROUS_DEVELOPER_LD_PATH` environment variable
 
 ## Version 0.0.8
 
