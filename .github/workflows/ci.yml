@@ -89,7 +89,7 @@ jobs:
   #         path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
   cross-builds:
-    needs: build-tester
+    # needs: build-tester
     strategy:
       matrix:
         builder:
