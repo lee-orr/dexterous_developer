@@ -87,11 +87,24 @@ mod linux_host {
     use super::*;
     pub struct DefaultProvider;
 
+    #[cfg(target_arch = "aarch64")]
+    const LINKER_VAR: &str = "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER";
+
+    #[cfg(not(target_arch))]
+    const LINKER_VAR: &str = "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER";
+
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command
-                .env("RUSTC_LINKER", "clang")
-                .env("RUSTFLAGS", "-Zshare-generics=y  -Clink-arg=-fuse-ld=lld");
+            if let Ok(ld_path) = std::env::var("DEXTEROUS_DEVELOPER_LD_PATH") {
+                command.env(LINKER_VAR, "clang").env(
+                    "RUSTFLAGS",
+                    format!("-Zshare-generics=y  -Clink-arg=-fuse-ld={ld_path}"),
+                );
+            } else {
+                command
+                    .env(LINKER_VAR, "clang")
+                    .env("RUSTFLAGS", "-Zshare-generics=y  -Clink-arg=-fuse-ld=lld");
+            }
         }
     }
 
@@ -152,7 +165,7 @@ mod windows_host {
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
             command
-                .env("RUSTC_LINKER", "rust-lld.exe")
+                .env("CARGO_TARGET_x86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe")
                 .env("RUSTFLAGS", "-Zshare-generics=n");
         }
     }
