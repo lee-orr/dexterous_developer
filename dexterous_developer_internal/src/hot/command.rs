@@ -10,7 +10,7 @@ use std::{
 use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{
@@ -435,6 +435,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     let result = child.wait()?;
 
     if result.success() && succeeded {
+        debug!("Copying built files");
         let mut moved = vec![];
         for path in artifacts {
             let path = if !path.exists() {
@@ -449,26 +450,33 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
             };
 
             let path = path.canonicalize()?;
+            debug!("Checking {path:?} for copy");
 
             let Some(parent) = path.parent() else {
+                trace!("{path:?} has no parent");
                 continue;
             };
             let Some(filename) = path.file_name() else {
+                trace!("{path:?} has no file name");
                 continue;
             };
             let Some(stem) = path.file_stem() else {
+                trace!("{path:?} has no stem");
                 continue;
             };
             let stem = stem.to_string_lossy().to_string();
             let Some(extension) = path.extension() else {
+                trace!("{path:?} has no extension");
                 continue;
             };
             let extension = extension.to_string_lossy().to_string();
+            trace!("file has stem {stem} and extension {extension}");
 
             if parent.to_string_lossy() != "deps" {
                 let deps = parent.join("deps");
                 let deps_path = deps.join(filename);
                 if deps_path.exists() {
+                    trace!("{deps_path:?} exists - using it instead of {path:?}");
                     let out_path = out_target.join(filename);
                     if !out_path.exists() {
                         debug!("Copying from {deps_path:?} to {out_path:?}");
@@ -488,6 +496,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                         }
                     }
                 } else {
+                    trace!("Searching for deps file for {path:?}");
                     let mut found_file = None;
                     let Ok(read_dir) = deps.read_dir() else {
                         error!("Couldn't read directory {deps:?}");
@@ -507,7 +516,9 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                             }
                         }
                     }
+
                     if let Some((found_file, _)) = found_file {
+                        trace!("Found {found_file:?} in deps");
                         let Some(filename) = found_file.file_name() else {
                             continue;
                         };
