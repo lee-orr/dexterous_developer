@@ -129,7 +129,7 @@ jobs:
       - name: Set Executable
         run: chmod +x ./bins/*
       - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
         env:
           RUST_LOG: dexterous_developer_internal=trace
