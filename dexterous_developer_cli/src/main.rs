@@ -66,10 +66,9 @@ enum Commands {
     },
     /// Set up cross compilation support
     InstallCross {
-        /// Macos SDK Tarball File Path
-        #[arg(long)]
-        macos_sdk_file: Option<PathBuf>,
-
+        // /// Macos SDK Tarball File Path
+        // #[arg(long)]
+        // macos_sdk_file: Option<PathBuf>,
         /// Macos SDK Tarball Download URL - only used if macos_sdk_dir is not provided
         #[arg(long)]
         macos_sdk_url: Option<Url>,
@@ -149,7 +148,6 @@ async fn main() {
         }
         Commands::InstallCross {
             macos_sdk_url,
-            macos_sdk_file: _,
             targets,
         } => {
             let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);

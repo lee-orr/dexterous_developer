@@ -20,7 +20,7 @@ This is the compliment to the `serve` command.
 
 ## Install Cross
 
-The `install-cross` installs the rust targets required for cross compilation. If/when additional cross-compilation options become available, this would install as much of the dependencies as possible.
+The `install-cross` installs the rust targets required for cross compilation. If you want to use a MacOS target, you need to provide the URL of a macos sdk. All cross compilation is based on [Cross](https://github.com/cross-rs/cross) - and so requires either docker or podman.
 
 ## Run Existing & Compile Libs
 
