@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Error};
+use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
 use log::{debug, error, info, trace};
@@ -438,8 +438,11 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         debug!("Copying built files");
         let mut moved = vec![];
         for path in artifacts {
+            trace!("Checking {path:?}");
             let path = if !path.exists() {
-                let path_str = if path.is_absolute() {
+                trace!("path doesn't exist");
+                let path_str = if cargo == "cross" {
+                    trace!("Cross build - adjusting path");
                     format!(".{}", path.to_string_lossy())
                 } else {
                     path.to_string_lossy().to_string()
@@ -449,7 +452,11 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 path
             };
 
-            let path = path.canonicalize()?;
+            if !path.exists() {
+                error!("{path:?} doesn't exist - skipping this file");
+                continue;
+            }
+
             debug!("Checking {path:?} for copy");
 
             let Some(parent) = path.parent() else {
