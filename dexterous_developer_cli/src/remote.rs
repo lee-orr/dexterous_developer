@@ -76,7 +76,6 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
             .current_dir(reload_dir.as_path())
             .env(dylib_path_envvar(), os_paths.as_os_str())
             .arg("remote")
-            .arg("--remote")
             .arg(remote.as_str())
             .status()
             .expect("Couldn't execute executable");

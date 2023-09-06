@@ -180,10 +180,7 @@ impl TestProject {
 
         let mut wd = self.path.clone();
         let mut cmd: Command = Command::new(cli_path);
-        cmd.current_dir(&wd)
-            .arg("run-existing")
-            .arg("--libs")
-            .arg(&self.path);
+        cmd.current_dir(&wd).arg("run-existing").arg(&self.path);
         self.run(cmd, ProcessHeat::Cold).await
     }
 
@@ -198,7 +195,6 @@ impl TestProject {
             .arg("serve")
             .arg("-p")
             .arg(&self.package)
-            .arg("-s")
             .arg(port);
         self.run(cmd, ProcessHeat::Host).await
     }
@@ -212,7 +208,6 @@ impl TestProject {
         let mut cmd: Command = Command::new(cli_path);
         cmd.current_dir(&wd)
             .arg("remote")
-            .arg("-r")
             .arg(&format!("http://localhost:{port}"));
         self.run(cmd, ProcessHeat::Remote).await
     }

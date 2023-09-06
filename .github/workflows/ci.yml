@@ -97,9 +97,12 @@ jobs:
           - macos-latest
           - windows-latest
         target:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+          - os: ubuntu-latest
+            target: linux
+          - os: macos-latest
+            target: mac
+          - os: windows-latest
+            target: windows
     runs-on: ${{matrix.builder}}
     steps:
       - uses: actions/checkout@v2
@@ -125,15 +128,15 @@ jobs:
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target}} --libs ${{github.workspace}}/libs
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} --libs ${{github.workspace}}/libs
         working-directory: testing/templates/simple_cli_test
         env:
           RUST_LOG: dexterous_developer_internal=trace
       - name: Store Libs
         uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.target}}-${{matrix.builder}}-test-libs
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
           path: ${{github.workspace}}/libs
 
   cross-build-runs:
@@ -145,33 +148,36 @@ jobs:
           - macos-latest
           - windows-latest
         target:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-    runs-on: ${{matrix.target}}
+          - os: ubuntu-latest
+            target: linux
+          - os: macos-latest
+            target: mac
+          - os: windows-latest
+            target: windows
+    runs-on: ${{matrix.target.os}}
     steps:
       - uses: msys2/setup-msys2@v2
-        if: ${{ matrix.target == 'windows-latest' }}
+        if: ${{ matrix.target.os == 'windows-latest' }}
       - run: mkdir bins
       - name: Download CLI
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target}}-cli
+          name: ${{matrix.target.os}}-cli
           path: ${{github.workspace}}/bins
       - name: Download Tester
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target}}-tester
+          name: ${{matrix.target.os}}-tester
           path: ${{github.workspace}}/bins
       - name: Set Executable
         run: chmod +x ./bins/*
       - name: Download Libs
         uses: actions/download-artifact@v3
         with:
-          name: ${{matrix.target}}-${{matrix.builder}}-test-libs
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
           path: ${{github.workspace}}/libs
       - name: Run Compiled Artifact
-        run: bins/run_tests${{ matrix.target == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
+        run: bins/run_tests${{ matrix.target.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
           DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
