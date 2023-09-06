@@ -18,7 +18,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - Run systems after hot-reload
 - Create functions to set-up & tear down upon either entering/exiting a state or on hot reload
 - Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
-- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a linux-based development container, but it can be configured to work directly on windows or mac as well - albiet less reliably. Support for working directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.
+- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a linux-based development container, but it can be configured to work directly on windows or mac as well - albiet less reliably. Support for cross-compilation directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.
 
 ## Known issues
 
