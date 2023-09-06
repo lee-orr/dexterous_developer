@@ -13,15 +13,16 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 - Define the reloadable areas of your game explicitly - which can include systems, components and resources (w/ some limitations)
 - Reset resources to a default or pre-determined value upon reload
-- serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
-- mark entities to get removed on hot reload
-- run systems after hot-reload
-- create functions to set-up & tear down upon either entering/exiting a state or on hot reload
-- only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
+- Serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
+- Mark entities to get removed on hot reload
+- Run systems after hot-reload
+- Create functions to set-up & tear down upon either entering/exiting a state or on hot reload
+- Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
+- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a dev container, but it can be configured to work on windows or mac as well - albiet less reliably.
 
 ## Known issues
 
-- Won't work on mobile or WASM, and only tested on Windows
+- Won't work on mobile or WASM
 - events and states still need to be pre-defined
 
 ## Installation
