@@ -74,6 +74,8 @@ enum Commands {
         #[arg(long)]
         macos_sdk_url: Option<Url>,
 
+        /// The targets you want to install. Options are: linux, linux-arm, windows, mac, mac-arm
+        #[arg(required = true)]
         targets: Vec<Target>,
     },
     /// Run a pre-existing set of compiled libraries. Mostly useful for debugging purposes.
