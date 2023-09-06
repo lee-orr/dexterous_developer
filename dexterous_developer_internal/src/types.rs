@@ -30,7 +30,7 @@ pub use serialize::*;
 mod serialize {
     use super::*;
     use serde::{
-        de::{self, DeserializeOwned},
+        de::{self},
         Deserialize, Deserializer, Serialize,
     };
 

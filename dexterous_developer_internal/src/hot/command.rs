@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Error};
 
 use debounce::EventDebouncer;
 use log::{debug, error, info, trace};

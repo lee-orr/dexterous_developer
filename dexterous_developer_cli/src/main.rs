@@ -147,7 +147,7 @@ async fn main() {
         }
         Commands::InstallCross {
             macos_sdk_url,
-            macos_sdk_file,
+            macos_sdk_file: _,
             targets,
         } => {
             let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);

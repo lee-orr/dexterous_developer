@@ -1,18 +1,12 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::Path};
 
 use anyhow::{bail, Context};
 
 use dexterous_developer_internal::Target;
-use toml::Table;
+
 use url::Url;
 
-use crate::{
-    cross,
-    paths::{get_paths, CliPaths},
-};
+use crate::paths::{get_paths, CliPaths};
 
 pub async fn install_cross(
     targets: &[Target],
