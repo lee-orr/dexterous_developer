@@ -95,8 +95,6 @@ jobs:
         builder:
           - ubuntu-latest
         target:
-          - os: ubuntu-latest
-            target: linux
           - os: macos-latest
             target: mac
           - os: windows-latest
@@ -144,8 +142,6 @@ jobs:
         builder:
           - ubuntu-latest
         target:
-          - os: ubuntu-latest
-            target: linux
           - os: macos-latest
             target: mac
           - os: windows-latest
