@@ -1,10 +1,6 @@
 use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
 
 use anyhow::bail;
-use serde::{
-    de::{self, DeserializeOwned},
-    Deserialize, Deserializer, Serialize,
-};
 
 #[derive(Debug, Default)]
 pub struct HotReloadOptions {
@@ -27,22 +23,34 @@ pub enum Target {
     MacArm,
 }
 
-impl Serialize for Target {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.collect_str(self.to_static())
-    }
-}
+#[cfg(any(feature = "cli", feature = "bevy"))]
+pub use serialize::*;
 
-impl<'de> Deserialize<'de> for Target {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        FromStr::from_str(&s).map_err(de::Error::custom)
+#[cfg(any(feature = "cli", feature = "bevy"))]
+mod serialize {
+    use super::*;
+    use serde::{
+        de::{self, DeserializeOwned},
+        Deserialize, Deserializer, Serialize,
+    };
+
+    impl Serialize for Target {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.collect_str(self.to_static())
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Target {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            FromStr::from_str(&s).map_err(de::Error::custom)
+        }
     }
 }
 
