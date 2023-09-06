@@ -39,57 +39,57 @@ jobs:
   #       env:
   #         RUSTDOCFLAGS: -Dwarnings
 
-  # build-tester:
-  #   strategy:
-  #     matrix:
-  #       os: [windows-latest, macos-latest, ubuntu-latest]
-  #   runs-on: ${{matrix.os}}
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: actions/cache@v2
-  #       with:
-  #         path: |
-  #           ~/.cargo/bin/
-  #           ~/.cargo/registry/index/
-  #           ~/.cargo/registry/cache/
-  #           ~/.cargo/git/db/
-  #           target/
-  #         key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
-  #     - uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: nightly
-  #         components: rustfmt, clippy
-  #         override: true
-  #     - if: ${{ matrix.os == 'windows-latest' }}
-  #       name: Add Binutils
-  #       run: cargo install -f cargo-binutils
-  #     - if: ${{ matrix.os == 'windows-latest' }}
-  #       name: Add llvm
-  #       run: rustup component add llvm-tools-preview
-  #     - if: ${{ matrix.os == 'macos-latest' }}
-  #       name: Install LLVM
-  #       run: brew install llvm
-  #     - if: ${{ matrix.os == 'ubuntu-latest' }}
-  #       name: Dependencies
-  #       run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
-  #     - name: Build CLI
-  #       run: cargo build -p dexterous_developer_cli
-  #     - name: Build Tester
-  #       run: cargo build
-  #       working-directory: ./testing/dexterous_developer_tests
-  #     - name: Store CLI
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: ${{matrix.os}}-cli
-  #         path: target/debug/dexterous_developer_cli${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-  #     - name: Store Tester
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: ${{matrix.os}}-tester
-  #         path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+  build-tester:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Add Binutils
+        run: cargo install -f cargo-binutils
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Add llvm
+        run: rustup component add llvm-tools-preview
+      - if: ${{ matrix.os == 'macos-latest' }}
+        name: Install LLVM
+        run: brew install llvm
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        name: Dependencies
+        run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - name: Build CLI
+        run: cargo build -p dexterous_developer_cli
+      - name: Build Tester
+        run: cargo build
+        working-directory: ./testing/dexterous_developer_tests
+      - name: Store CLI
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.os}}-cli
+          path: target/debug/dexterous_developer_cli${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+      - name: Store Tester
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.os}}-tester
+          path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
   cross-builds:
-    # needs: build-tester
+    needs: build-tester
     strategy:
       matrix:
         builder:
@@ -109,83 +109,83 @@ jobs:
         if: ${{matrix.builder == 'macos-latest'}}
         uses: docker-practice/actions-setup-docker@master
 
-  #     - uses: actions/checkout@v2
-  #     - uses: actions/cache@v2
-  #       with:
-  #         path: |
-  #           ~/.cargo/bin/
-  #           ~/.cargo/registry/index/
-  #           ~/.cargo/registry/cache/
-  #           ~/.cargo/git/db/
-  #           target/
-  #         key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
-  #     - uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: nightly
-  #         components: rustfmt, clippy
-  #         override: true
-  #     - run: mkdir bins
-  #     - name: Download CLI
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: ${{matrix.builder}}-cli
-  #         path: ${{github.workspace}}/bins
-  #     - name: Set Executable
-  #       run: chmod +x ./bins/*
-  #     - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
-  #     - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} ${{github.workspace}}/libs
-  #       working-directory: testing/templates/simple_cli_test
-  #       env:
-  #         RUST_LOG: dexterous_developer_internal=trace
-  #     - name: Store Libs
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
-  #         path: ${{github.workspace}}/libs
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-tests-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - run: mkdir bins
+      - name: Download CLI
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.builder}}-cli
+          path: ${{github.workspace}}/bins
+      - name: Set Executable
+        run: chmod +x ./bins/*
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} ${{github.workspace}}/libs
+        working-directory: testing/templates/simple_cli_test
+        env:
+          RUST_LOG: dexterous_developer_internal=trace
+      - name: Store Libs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
+          path: ${{github.workspace}}/libs
 
-  # cross-build-runs:
-  #   needs: cross-builds
-  #   strategy:
-  #     matrix:
-  #       builder:
-  #         - ubuntu-latest
-  #         - macos-latest
-  #         - windows-latest
-  #       target:
-  #         - os: ubuntu-latest
-  #           target: linux
-  #         - os: macos-latest
-  #           target: mac
-  #         - os: windows-latest
-  #           target: windows
-  #   runs-on: ${{matrix.target.os}}
-  #   steps:
-  #     - uses: msys2/setup-msys2@v2
-  #       if: ${{ matrix.target.os == 'windows-latest' }}
-  #     - run: mkdir bins
-  #     - name: Download CLI
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: ${{matrix.target.os}}-cli
-  #         path: ${{github.workspace}}/bins
-  #     - name: Download Tester
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: ${{matrix.target.os}}-tester
-  #         path: ${{github.workspace}}/bins
-  #     - name: Set Executable
-  #       run: chmod +x ./bins/*
-  #     - name: Download Libs
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
-  #         path: ${{github.workspace}}/libs
-  #     - name: Run Compiled Artifact
-  #       run: bins/run_tests${{ matrix.target.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
-  #       env:
-  #         DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
-  #         DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
-  #         RUST_LOG: dexterous_developer_internal=trace
+  cross-build-runs:
+    needs: cross-builds
+    strategy:
+      matrix:
+        builder:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        target:
+          - os: ubuntu-latest
+            target: linux
+          - os: macos-latest
+            target: mac
+          - os: windows-latest
+            target: windows
+    runs-on: ${{matrix.target.os}}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        if: ${{ matrix.target.os == 'windows-latest' }}
+      - run: mkdir bins
+      - name: Download CLI
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.target.os}}-cli
+          path: ${{github.workspace}}/bins
+      - name: Download Tester
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.target.os}}-tester
+          path: ${{github.workspace}}/bins
+      - name: Set Executable
+        run: chmod +x ./bins/*
+      - name: Download Libs
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.target.os}}-${{matrix.builder}}-test-libs
+          path: ${{github.workspace}}/libs
+      - name: Run Compiled Artifact
+        run: bins/run_tests${{ matrix.target.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
+        env:
+          DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
+          DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
+          RUST_LOG: dexterous_developer_internal=trace
 
   # tests:
   #   needs: build-tester
