@@ -13,6 +13,13 @@ repository = "https://github.com/lee-orr/dexterous_developer"
 documentation = "https://lee-orr.github.io/dexterous_developer/"
 description = "A CLI for hot reloadable apps in bevy, using the dexterous_developer crate"
 
+[lib]
+crate-type = ["rlib"]
+
+[[bin]]
+name = "dexterous_developer_cli"
+path = "src/main.rs"
+
 [dependencies]
 dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.0.9", default-features = false, features = [
     "hot",

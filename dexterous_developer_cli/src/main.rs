@@ -1,23 +1,18 @@
-mod cross;
-mod existing;
-mod paths;
-mod remote;
-mod serve;
-
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
 use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOptions, Target};
-use existing::load_existing_directory;
-use remote::connect_to_remote;
-
-use serve::run_server;
 use url::Url;
 
-use crate::{
+use dexterous_developer_cli::{
+    cross,
     cross::{check_cross_requirements_installed, AppleSDKPath},
+    existing::load_existing_directory,
+    paths,
     paths::CliPaths,
+    remote::connect_to_remote,
+    serve::run_server,
 };
 
 #[derive(Parser, Debug)]
