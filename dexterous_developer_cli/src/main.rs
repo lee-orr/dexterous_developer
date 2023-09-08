@@ -123,6 +123,10 @@ async fn main() {
     match command {
         Commands::Run { package, features } => {
             println!("Running {package:?} with {features:?}");
+            let dir = std::env::current_dir().expect("No current directory - nothing to run");
+            println!("Current directory: {:?}", dir);
+
+            std::env::set_var("CARGO_MANIFEST_DIR", dir);
 
             let options = HotReloadOptions {
                 features,
