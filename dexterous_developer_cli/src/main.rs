@@ -38,6 +38,10 @@ enum Commands {
         /// Features to include
         #[arg(short, long)]
         features: Vec<String>,
+
+        /// Folders to watch - defaults to src in the package root
+        #[arg(short, long)]
+        watch: Vec<PathBuf>,
     },
     /// Start a dev server for remote, hot reloaded development
     Serve {
@@ -52,6 +56,10 @@ enum Commands {
         /// Port to host on
         #[arg(default_value = "1234")]
         port: u16,
+
+        /// Folders to watch - defaults to src in the package root
+        #[arg(short, long)]
+        watch: Vec<PathBuf>,
     },
     /// Connect to a remote dev server and run it's application locally
     Remote {
@@ -108,6 +116,7 @@ impl Default for Commands {
         Self::Run {
             package: None,
             features: vec![],
+            watch: vec![],
         }
     }
 }
@@ -125,12 +134,17 @@ async fn main() {
     std::env::set_var("CARGO_MANIFEST_DIR", dir);
 
     match command {
-        Commands::Run { package, features } => {
+        Commands::Run {
+            package,
+            features,
+            watch,
+        } => {
             println!("Running {package:?} with {features:?}");
 
             let options = HotReloadOptions {
                 features,
                 package,
+                watch_folders: watch,
                 ..Default::default()
             };
             dexterous_developer_internal::run_reloadabe_app(options);
@@ -138,10 +152,11 @@ async fn main() {
         Commands::Serve {
             package,
             features,
+            watch,
             port,
         } => {
             println!("Serving {package:?} on port {port}");
-            run_server(port, package, features)
+            run_server(port, package, features, watch)
                 .await
                 .expect("Couldn't run server");
         }
