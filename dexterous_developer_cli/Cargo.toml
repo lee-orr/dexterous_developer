@@ -1,6 +1,6 @@
 [package]
 name = "dexterous_developer_cli"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -14,7 +14,7 @@ documentation = "https://lee-orr.github.io/dexterous_developer/"
 description = "A CLI for hot reloadable apps in bevy, using the dexterous_developer crate"
 
 [dependencies]
-dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.0.9", default-features = false, features = [
+dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.0.10", default-features = false, features = [
     "hot",
     "cli",
 ] }
@@ -43,4 +43,4 @@ dunce = "1"
 directories = "5"
 semver = "1"
 which = "4"
-toml = "0.7"
+toml = "0.8"
