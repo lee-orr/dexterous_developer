@@ -385,7 +385,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         .arg("--lib")
         .arg("--features")
         .arg(features)
-        .arg("--message-format=json");
+        .arg("--message-format=json-render-diagnostics");
 
     let mut root_directory = std::env::current_dir()?;
 
@@ -411,7 +411,6 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
             .take()
             .ok_or(anyhow::Error::msg("Couldn't get stdout"))?,
     );
-
     let mut succeeded = false;
 
     let mut artifacts = Vec::with_capacity(20);
@@ -427,11 +426,14 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 }
             }
             cargo_metadata::Message::BuildFinished(finished) => {
-                debug!("Build finished: {finished:?}");
+                info!("Build finished: {finished:?}");
                 succeeded = finished.success;
             }
+            cargo_metadata::Message::CompilerMessage(message) => {
+                info!("Compiler: {}", message.to_string());
+            }
             _ => {
-                debug!("Compilation Message: {message:?}");
+                info!("Compilation Message: {message:?}");
             }
         }
     }
@@ -578,15 +580,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         }
         info!("Build completed");
     } else {
-        bail!(
-            "Failed to build
-        env:
-        {}",
-            std::env::vars()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
+        bail!("Failed to build");
     }
 
     Ok(())
