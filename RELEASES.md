@@ -1,5 +1,9 @@
 # Release Notes
 
+## UPCOMING
+
+- make sure compilation errors are emmitted properly
+
 ## Version 0.0.10
 
 - Fix handling of assets when using `dexterous_developer_cli run` or `remote`
