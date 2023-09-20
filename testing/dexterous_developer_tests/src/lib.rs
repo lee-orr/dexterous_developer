@@ -101,9 +101,9 @@ async fn can_run_hot_and_edit_with_launcher() {
     process.exit().await;
 }
 
-async fn can_run_with_reloadables() {
+async fn insert_replacable_resource() {
     let mut project: TestProject =
-        TestProject::new("reloadables_test", "can_run_with_reloadables").unwrap();
+        TestProject::new("reloadables_test", "insert_replacable_resource").unwrap();
     let mut process = project.run_hot_cli().await.unwrap();
 
     process.is_ready().await;
@@ -111,8 +111,6 @@ async fn can_run_with_reloadables() {
     process.send("\n").expect("Failed to send empty line");
 
     process.wait_for_lines(&["Ran Update"]).await;
-
-    println!("INSERT REPLACABLE RESOURCE");
 
     project
         .write_file(
@@ -126,17 +124,22 @@ async fn can_run_with_reloadables() {
     process.send("\n").expect("Failed to send empty line");
 
     process.wait_for_lines(&["Got: Resource Added"]).await;
+    process.exit().await;
+}
 
-    println!("RESET REPLACABLE RESOURCE");
+async fn update_replacable_resource() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "update_replacable_resource").unwrap();
 
     project
         .write_file(
             PathBuf::from("src/update.rs").as_path(),
-            include_str!("./reset_replacable_resource.txt"),
+            &include_str!("./update_replaceable_resource.txt").replace("Retained:", "Got:"),
         )
         .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
 
-    process.has_updated().await;
+    process.is_ready().await;
 
     process.send("\n").expect("Failed to send empty line");
 
@@ -149,8 +152,6 @@ async fn can_run_with_reloadables() {
     process
         .wait_for_lines(&["Updated: Resource Replaced And Updated"])
         .await;
-
-    println!("UPDATE RESOURCE WITHOUT RESET");
 
     project
         .write_file(
@@ -167,8 +168,108 @@ async fn can_run_with_reloadables() {
         .wait_for_lines(&["Retained: Resource Replaced And Updated"])
         .await;
 
-    println!("UPDATE SCHEMA RESOURCE");
+    process.exit().await;
+}
 
+async fn reset_replacable_resource() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "reset_replacable_resource").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./reset_replacable_resource.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: Resource Replaced"]).await;
+
+    process
+        .send("And Updated\n")
+        .expect("Failed to send empty line");
+
+    process
+        .wait_for_lines(&["Updated: Resource Replaced And Updated"])
+        .await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            &include_str!("./reset_replacable_resource.txt").replace("Got:", "Reset:"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Reset: Resource Replaced"]).await;
+    process.exit().await;
+}
+
+async fn reset_replacable_resource_to_value() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "reset_replacable_resource_to_value").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./reset_replacable_resource_to_value.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: Resource At Value"]).await;
+
+    process
+        .send("And Updated\n")
+        .expect("Failed to send empty line");
+
+    process
+        .wait_for_lines(&["Updated: Resource At Value And Updated"])
+        .await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            &include_str!("./reset_replacable_resource_to_value.txt").replace("Got:", "Reset:"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Reset: Resource At Value"]).await;
+    process.exit().await;
+}
+
+async fn update_resource_schema() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "update_resource_schema").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./insert_replacable_resource.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: Resource Added"]).await;
     project
         .write_file(
             PathBuf::from("src/update.rs").as_path(),
@@ -183,8 +284,12 @@ async fn can_run_with_reloadables() {
     process
         .wait_for_lines(&["Got: Resource Replaced - Added Field"])
         .await;
+    process.exit().await;
+}
 
-    println!("INSERT REPLACABLE COMPONENTS");
+async fn insert_replacable_components() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "insert_replacable_components").unwrap();
 
     project
         .write_file(
@@ -192,23 +297,22 @@ async fn can_run_with_reloadables() {
             include_str!("./insert_replacable_components.txt"),
         )
         .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
 
-    process.has_updated().await;
+    process.is_ready().await;
 
     process.send("first\n").expect("Failed to send empty line");
 
-    process.wait_for_lines(&["first"]).await;
+    process.wait_for_lines(&["Has component: first"]).await;
 
     process.send("second\n").expect("Failed to send empty line");
 
-    process.wait_for_lines(&["second"]).await;
-
-    println!("UPDATE COMPONENT SCHEMA");
-
+    process.wait_for_lines(&["Has component: second"]).await;
     project
         .write_file(
             PathBuf::from("src/update.rs").as_path(),
-            include_str!("./update_schema_component.txt"),
+            &include_str!("./insert_replacable_components.txt")
+                .replace("Has component", "COMPONENTS"),
         )
         .expect("Couldn't update file");
 
@@ -216,11 +320,50 @@ async fn can_run_with_reloadables() {
 
     process.send("\n").expect("Failed to send empty line");
 
-    process.wait_for_lines(&["first"]).await;
+    process.wait_for_lines(&["COMPONENTS: first"]).await;
 
     process.send("\n").expect("Failed to send empty line");
 
-    process.wait_for_lines(&["second"]).await;
+    process.wait_for_lines(&["COMPONENTS: second"]).await;
+    process.exit().await;
+}
+
+async fn update_schema_component() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "update_schema_component").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./insert_replacable_components.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("first\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Has component: first"]).await;
+
+    process.send("second\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Has component: second"]).await;
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./update_schema_component.txt"),
+        )
+        .expect("Couldn't update file");
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["inner - first"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["inner - second"]).await;
 
     process.exit().await;
 }
@@ -345,9 +488,26 @@ pub async fn run_tests() {
             println!("Can edit with hot reload launcher");
             can_run_hot_and_edit_with_launcher().await;
         }
-        "reloadables" => {
-            println!("Can handle reloadables");
-            can_run_with_reloadables().await;
+        "initialize_resource" => {
+            insert_replacable_resource().await;
+        }
+        "update_resource" => {
+            update_replacable_resource().await;
+        }
+        "reset_resource" => {
+            reset_replacable_resource().await;
+        }
+        "reset_resource_to_value" => {
+            reset_replacable_resource_to_value().await;
+        }
+        "resource_schema" => {
+            update_resource_schema().await;
+        }
+        "insert_components" => {
+            insert_replacable_components().await;
+        }
+        "component_schema" => {
+            update_schema_component().await;
         }
         "remote" => {
             println!("Can run remote");
@@ -377,9 +537,15 @@ pub async fn run_tests() {
             println!("hot");
             println!("edit");
             println!("launcher");
-            println!("reloadables");
             println!("remote");
             println!("asset");
+            println!("initialize_resource");
+            println!("update_resource");
+            println!("reset_resource");
+            println!("reset_replacable_resource_to_value");
+            println!("resource_schema");
+            println!("insert_components");
+            println!("component_schema");
             std::process::exit(1)
         }
     }

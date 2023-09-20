@@ -6,7 +6,7 @@ use crate::shared::StdInput;
 
 fn update(texts: Query<&TextComponent>) {
     for t in texts.iter() {
-        println!("Has component: {}", t.inner);
+        println!("Has component: inner - {}", t.inner);
     }
 }
 

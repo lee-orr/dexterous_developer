@@ -180,7 +180,23 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        test: [cold, hot, edit, launcher, reloadables, remote, asset]
+        test:
+          [
+            cold,
+            hot,
+            edit,
+            launcher,
+            remote,
+            asset,
+            initialize_resource,
+            update_resource,
+            reset_resource,
+            reset_replacable,
+            resource_to_value,
+            resource_schema,
+            insert_components,
+            component_schema,
+          ]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
