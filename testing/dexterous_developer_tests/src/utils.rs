@@ -341,6 +341,7 @@ pub enum ProcessHeat {
 
 impl RunningProcess {
     pub fn send(&self, msg: impl ToString) -> Result<usize, SendError<LineIn>> {
+        println!("Sending {} -> {}", self.name, msg.to_string());
         self.write.send(LineIn(msg.to_string()))
     }
 

@@ -368,6 +368,135 @@ async fn update_schema_component() {
     process.exit().await;
 }
 
+async fn clear_component_on_reload() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "clear_component_on_reload").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./clear_on_reload.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["No components"]).await;
+
+    process.send("first\n").expect("Failed to send first line");
+
+    process.wait_for_lines(&["Has component: first"]).await;
+
+    process
+        .send("second\n")
+        .expect("Failed to send second line");
+
+    process.wait_for_lines(&["Has component: second"]).await;
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            &include_str!("./clear_on_reload.txt").replace("Has component", "COMPONENTS"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["No components"]).await;
+    process.exit().await;
+}
+
+async fn run_setup_on_reload() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "run_setup_on_reload").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./setup_on_reload.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Components: a_thing"]).await;
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            &include_str!("./setup_on_reload.txt").replace("a_thing", "b_another"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Components: b_another"]).await;
+    process.exit().await;
+}
+
+async fn run_setup_in_state() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "run_setup_in_state").unwrap();
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./setup_in_state.txt"),
+        )
+        .expect("Couldn't update file");
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+    process.send("\n").expect("Failed to send empty line");
+    process.wait_for_lines(&["No components"]).await;
+
+    process
+        .send("another_state\n")
+        .expect("failed to set state");
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Components: a_thing"]).await;
+
+    process
+        .send("default_state\n")
+        .expect("failed to set state");
+    process.send("\n").expect("Failed to send empty line");
+    process.wait_for_lines(&["No components"]).await;
+
+    process
+        .send("another_state\n")
+        .expect("failed to set state");
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Components: a_thing"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            &include_str!("./setup_in_state.txt").replace("a_thing", "b_another"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Components: b_another"]).await;
+
+    process
+        .send("default_state\n")
+        .expect("failed to set state");
+    process.send("\n").expect("Failed to send empty line");
+    process.wait_for_lines(&["No components"]).await;
+    process.exit().await;
+}
+
 async fn can_run_remote() {
     let mut project = TestProject::new("simple_cli_test", "can_run_remote_host").unwrap();
     let mut client = TestProject::new("remote_client", "can_run_remote_client").unwrap();
@@ -509,6 +638,15 @@ pub async fn run_tests() {
         "component_schema" => {
             update_schema_component().await;
         }
+        "clear_on_reload" => {
+            clear_component_on_reload().await;
+        }
+        "setup_on_reload" => {
+            run_setup_on_reload().await;
+        }
+        "setup_in_state" => {
+            run_setup_in_state().await;
+        }
         "remote" => {
             println!("Can run remote");
             can_run_remote().await;
@@ -546,6 +684,9 @@ pub async fn run_tests() {
             println!("resource_schema");
             println!("insert_components");
             println!("component_schema");
+            println!("clear_on_reload");
+            println!("setup_on_reload");
+            println!("setup_in_state");
             std::process::exit(1)
         }
     }
