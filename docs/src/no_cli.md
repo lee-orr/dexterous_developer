@@ -10,6 +10,15 @@ dexterous_developer = { version = "0.0.10", default-features = false, features =
 ] }
 ```
 
+In addition, you'll need to add `dylib` to the crate type for your main game.
+
+```toml
+[lib]
+name = "lib_THE_NAME_OF_YOUR_GAME"
+path = "src/lib.rs"
+crate-type = ["rlib", "dylib"]
+```
+
 Then in the `main.rs` file, you'd want to trigger the launcher using `run_reloadable_app` - like so:
 
 ```rust
