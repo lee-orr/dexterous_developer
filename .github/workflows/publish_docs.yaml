@@ -36,7 +36,7 @@ jobs:
           mdbook-version: "latest"
 
       - name: Add Dependencies
-        run: sudo apt-get install -y portaudio19-dev build-essential libpulse-dev libdbus-1-dev g++ pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev build-essential libpulse-dev libdbus-1-dev g++ pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
       - run: mdbook build
       - name: build docs
