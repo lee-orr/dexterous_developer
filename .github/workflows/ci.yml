@@ -191,11 +191,13 @@ jobs:
             initialize_resource,
             update_resource,
             reset_resource,
-            reset_replacable,
-            resource_to_value,
+            reset_resource_to_value,
             resource_schema,
             insert_components,
             component_schema,
+            clear_on_reload,
+            setup_on_reload,
+            setup_in_state,
           ]
     runs-on: ${{matrix.os}}
     steps:

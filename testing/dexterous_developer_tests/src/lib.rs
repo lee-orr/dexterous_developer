@@ -680,7 +680,7 @@ pub async fn run_tests() {
             println!("initialize_resource");
             println!("update_resource");
             println!("reset_resource");
-            println!("reset_replacable_resource_to_value");
+            println!("reset_resource_to_value");
             println!("resource_schema");
             println!("insert_components");
             println!("component_schema");
