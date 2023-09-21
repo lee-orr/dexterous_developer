@@ -7,7 +7,7 @@ edition = "2021"
 [lib]
 name = "lib_dexterous_developer_example"
 path = "src/lib.rs"
-crate-type = ["rlib", "dylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 bevy = { version = "0.11" }

@@ -2,7 +2,7 @@ use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
 
 use anyhow::bail;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct HotReloadOptions {
     pub manifest_path: Option<PathBuf>,
     pub package: Option<String>,
