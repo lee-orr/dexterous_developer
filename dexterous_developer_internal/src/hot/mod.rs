@@ -20,7 +20,6 @@ static RUNNER: Once = Once::new();
 
 pub fn run_reloadabe_app(options: HotReloadOptions) {
     RUNNER.call_once(|| {
-        println!("Called Run Init");
         let _ = env_logger::try_init();
         if let Ok(settings) = std::env::var("DEXTEROUS_BUILD_SETTINGS") {
             info!("Running based on DEXTEROUS_BUILD_SETTINGS env");
@@ -77,6 +76,9 @@ fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
 }
 
 fn run_reloadable_from_env(settings: String) {
+    println!("Running from env");
+    let dir = std::env::current_dir();
+    println!("Current directory: {:?}", dir);
     debug!("__Envvironment Variables__");
     for (key, val) in std::env::vars_os() {
         debug!("{key:?}={val:?}");

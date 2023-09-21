@@ -1,13 +1,18 @@
-use bevy::prelude::{Commands, Component, PreUpdate, Query, Res, Resource, Startup, Update};
+use bevy::prelude::*;
 use dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
-use crate::shared::StdInput;
+use crate::shared::{StdInput, AppState};
 
 fn update(texts: Query<&TextComponent>) {
-    for t in texts.iter() {
-        println!("Has component: inner - {}", t.inner);
+    if texts.is_empty() {
+        println!("No components");
+        return;
     }
+    let mut texts = texts.iter().map(|v| v.content.clone()).collect::<Vec<_>>();
+    texts.sort();
+    let text = texts.join(", ");
+    println!("Components: {text}");
 }
 
 fn startup() {
@@ -20,24 +25,32 @@ fn spawn_texts(input: Res<StdInput>, mut commands: Commands) {
         return;
     }
 
-    commands.spawn(TextComponent {
-        inner: text.to_string(),
-    });
+    if text == "default_state" {
+        commands.insert_resource(NextState(Some(AppState::State)));
+    } else if text == "another_state" {
+        commands.insert_resource(NextState(Some(AppState::AnotherState)));
+    } else {
+        commands.spawn(TextComponent {
+            content: text.to_string(),
+        });
+    }
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn(TextComponent { content: "a_thing".to_string()});
 }
 
 #[dexterous_developer_setup]
 pub fn reloadable(app: &mut ReloadableAppContents) {
-    app
-        .add_systems(Startup, startup)
+    app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
-        .register_replacable_component::<TextComponent>();
+        .reset_setup_in_state::<TextComponent, _, _>(AppState::AnotherState, setup);
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]
 struct TextComponent {
-    #[serde(alias = "content")]
-    inner: String,
+    content: String,
 }
 
 impl ReplacableComponent for TextComponent {

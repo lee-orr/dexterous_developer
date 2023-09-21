@@ -29,7 +29,12 @@ use crate::{
     paths::{self, CliPaths},
 };
 
-pub async fn run_server(port: u16, package: Option<String>, features: Vec<String>) -> Result<()> {
+pub async fn run_server(
+    port: u16,
+    package: Option<String>,
+    features: Vec<String>,
+    watch: Vec<PathBuf>,
+) -> Result<()> {
     let CliPaths { cross_config, .. } = paths::get_paths()?;
 
     if cross_config.exists() {
@@ -110,6 +115,7 @@ pub async fn run_server(port: u16, package: Option<String>, features: Vec<String
         features,
         asset_directory,
         asset_tx,
+        watch,
     });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -263,6 +269,7 @@ pub struct ServerState {
     features: Vec<String>,
     asset_directory: PathBuf,
     asset_tx: broadcast::Sender<HotReloadMessage>,
+    watch: Vec<PathBuf>,
 }
 
 impl ServerState {
@@ -296,6 +303,7 @@ impl ServerState {
             features: self.features.clone(),
             package: self.package.clone(),
             build_target: Some(*target),
+            watch_folders: self.watch.clone(),
             ..Default::default()
         };
 

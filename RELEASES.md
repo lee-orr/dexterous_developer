@@ -1,5 +1,14 @@
 # Release Notes
 
+## UPCOMING
+
+- make sure compilation errors are emmitted properly
+
+## Version 0.0.10
+
+- Fix handling of assets when using `dexterous_developer_cli run` or `remote`
+- Add ability to pass in multiple watch directories instead of just watching `src` on the package being built
+
 ## Version 0.0.9
 
 - Add tests for networked hot reload

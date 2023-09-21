@@ -14,7 +14,7 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.9"
+dexterous_developer = "0.0.10"
 serde = "1" # If you want the serialization capacities
 ```
 

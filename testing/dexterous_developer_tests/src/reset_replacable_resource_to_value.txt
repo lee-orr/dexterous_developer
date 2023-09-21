@@ -1,10 +1,19 @@
-use bevy::prelude::{Component, Res, Resource, Startup, Update};
+use bevy::prelude::{Component, Res, ResMut, Resource, Startup, Update};
 use dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
-fn update(text: Res<TextResource>) {
-    let text = text.0.as_str();
-    println!("Got: {text}");
+use crate::shared::StdInput;
+
+fn update(mut text: ResMut<TextResource>, input: Res<StdInput>) {
+    let input = &input.0;
+    if input.is_empty() {
+        let text = text.0.as_str();
+        println!("Got: {text}");
+    } else {
+        let t = format!("{} {input}", text.0);
+        println!("Updated: {t}");
+        text.0 = t;
+    }
 }
 
 fn startup() {
@@ -15,7 +24,7 @@ fn startup() {
 pub fn reloadable(app: &mut ReloadableAppContents) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update)
-        .insert_replacable_resource::<TextResource>();
+        .reset_resource_to_value::<TextResource>(TextResource("Resource At Value".to_string()));
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]
@@ -27,12 +36,12 @@ impl ReplacableComponent for TextComponent {
     }
 }
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Resource, Clone, Serialize, Deserialize)]
 struct TextResource(String);
 
 impl Default for TextResource {
     fn default() -> Self {
-        Self("Resource Added".to_string())
+        Self("Resource Replaced".to_string())
     }
 }
 

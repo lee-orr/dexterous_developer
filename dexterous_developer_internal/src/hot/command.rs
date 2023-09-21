@@ -34,7 +34,7 @@ pub(crate) fn setup_build_settings(
         manifest_path,
         package,
         lib_name,
-        watch_folder,
+        watch_folders,
         target_folder,
         features,
         build_target,
@@ -200,17 +200,17 @@ pub(crate) fn setup_build_settings(
 
     let settings = BuildSettings {
         lib_path: lib_path.clone(),
-        watch_folder: watch_folder
-            .as_ref()
-            .cloned()
-            .or_else(|| {
-                lib.src_path
-                    .clone()
-                    .into_std_path_buf()
-                    .parent()
-                    .map(|v| v.to_path_buf())
-            })
-            .ok_or(Error::msg("Couldn't find source directory to watch"))?,
+        watch_folders: if watch_folders.is_empty() {
+            vec![lib
+                .src_path
+                .clone()
+                .into_std_path_buf()
+                .parent()
+                .map(|v| v.to_path_buf())
+                .ok_or(Error::msg("Couldn't find source directory to watch"))?]
+        } else {
+            watch_folders.clone()
+        },
         manifest: manifest_path.clone(),
         package: pkg.name.clone().clone(),
         features: features.into_iter().collect::<Vec<_>>().join(","),
@@ -311,40 +311,44 @@ pub(crate) fn run_watcher_with_settings(settings: &BuildSettings) -> anyhow::Res
     info!("Getting watch settings");
     let delay = Duration::from_secs(2);
     let (watching_tx, watching_rx) = mpsc::channel::<()>();
-    let watch_folder = settings.watch_folder.clone();
-    let settings = settings.clone();
+    let watch_folders = settings.watch_folders.clone();
 
-    info!("Setting up watcher with {watch_folder:?}");
-    thread::spawn(move || {
-        let (tx, rx) = mpsc::channel();
+    for watch_folder in watch_folders.iter() {
+        let watch_folder = watch_folder.clone();
+        let watching_tx = watching_tx.clone();
+        let settings = settings.clone();
+        info!("Setting up watcher with {watch_folder:?}");
+        thread::spawn(move || {
+            let (tx, rx) = mpsc::channel();
 
-        debug!("Spawned watch thread");
-        let debounced = EventDebouncer::new(delay, move |_data: ()| {
-            debug!("Files Changed");
-            let _ = tx.send(());
+            debug!("Spawned watch thread");
+            let debounced = EventDebouncer::new(delay, move |_data: ()| {
+                debug!("Files Changed");
+                let _ = tx.send(());
+            });
+            debug!("Debouncer set up with delay {delay:?}");
+
+            let Ok(mut watcher) = notify::recommended_watcher(move |_| {
+                debug!("Got Watch Event");
+                debounced.put(());
+            }) else {
+                error!("Couldn't setup watcher");
+                return;
+            };
+            debug!("Watcher response set up");
+
+            if let Err(e) = watcher.watch(watch_folder.as_path(), RecursiveMode::Recursive) {
+                error!("Error watching files: {e:?}");
+                return;
+            }
+
+            watching_tx.send(()).expect("Couldn't send watch");
+
+            while rx.recv().is_ok() {
+                rebuild(&settings);
+            }
         });
-        debug!("Debouncer set up with delay {delay:?}");
-
-        let Ok(mut watcher) = notify::recommended_watcher(move |_| {
-            debug!("Got Watch Event");
-            debounced.put(());
-        }) else {
-            error!("Couldn't setup watcher");
-            return;
-        };
-        debug!("Watcher response set up");
-
-        if let Err(e) = watcher.watch(watch_folder.as_path(), RecursiveMode::Recursive) {
-            error!("Error watching files: {e:?}");
-            return;
-        }
-
-        watching_tx.send(()).expect("Couldn't send watch");
-
-        while rx.recv().is_ok() {
-            rebuild(&settings);
-        }
-    });
+    }
     info!("Starting watch receiver");
     watching_rx.recv()?;
     info!("Watching...");
@@ -381,7 +385,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         .arg("--lib")
         .arg("--features")
         .arg(features)
-        .arg("--message-format=json");
+        .arg("--message-format=json-render-diagnostics");
 
     let mut root_directory = std::env::current_dir()?;
 
@@ -407,7 +411,6 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
             .take()
             .ok_or(anyhow::Error::msg("Couldn't get stdout"))?,
     );
-
     let mut succeeded = false;
 
     let mut artifacts = Vec::with_capacity(20);
@@ -423,11 +426,14 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 }
             }
             cargo_metadata::Message::BuildFinished(finished) => {
-                debug!("Build finished: {finished:?}");
+                info!("Build finished: {finished:?}");
                 succeeded = finished.success;
             }
+            cargo_metadata::Message::CompilerMessage(message) => {
+                info!("Compiler: {}", message.to_string());
+            }
             _ => {
-                debug!("Compilation Message: {message:?}");
+                info!("Compilation Message: {message:?}");
             }
         }
     }
@@ -574,15 +580,7 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
         }
         info!("Build completed");
     } else {
-        bail!(
-            "Failed to build
-        env:
-        {}",
-            std::env::vars()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
+        bail!("Failed to build");
     }
 
     Ok(())

@@ -248,7 +248,7 @@ mod windows_host {
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
             command
-                .env("CARGO_TARGET_x86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe")
+                .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe")
                 .env("RUSTFLAGS", "-Zshare-generics=n");
         }
     }
