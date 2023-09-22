@@ -202,12 +202,17 @@ async fn main() {
                     .expect("Cross Compilation Requirements Missing");
             }
 
+            let options = generate_temporary_lib::generate_temporary_libs(
+                &features,
+                package.as_deref(),
+                &[],
+                &dir,
+            )
+            .expect("Couldn't set up temporary lib");
+
             let options = HotReloadOptions {
-                package,
-                features,
                 build_target: target,
-                target_folder: Some(dir.join("target/dexterous")),
-                ..Default::default()
+                ..options
             };
 
             compile_reloadable_libraries(options, &libs)
