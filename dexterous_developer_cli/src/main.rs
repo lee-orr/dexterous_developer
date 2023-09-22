@@ -1,3 +1,9 @@
+mod cross;
+mod existing;
+mod generate_temporary_lib;
+mod paths;
+mod remote;
+mod serve;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
@@ -124,9 +130,9 @@ async fn main() {
 
     let Args { command } = Args::parse();
     let dir = std::env::current_dir().expect("No current directory - nothing to run");
-    println!("Current directory: {:?}", dir);
+    println!("Current directory: {:?}", &dir);
 
-    std::env::set_var("CARGO_MANIFEST_DIR", dir);
+    std::env::set_var("CARGO_MANIFEST_DIR", &dir);
 
     match command {
         Commands::Run {
@@ -136,12 +142,13 @@ async fn main() {
         } => {
             println!("Running {package:?} with {features:?}");
 
-            let options = HotReloadOptions {
-                features,
-                package,
-                watch_folders: watch,
-                ..Default::default()
-            };
+            let options = generate_temporary_lib::generate_temporary_libs(
+                &features,
+                package.as_deref(),
+                &watch,
+                &dir,
+            )
+            .expect("Couldn't set up temporary lib");
             dexterous_developer_internal::run_reloadabe_app(options);
         }
         Commands::Serve {
@@ -195,11 +202,17 @@ async fn main() {
                     .expect("Cross Compilation Requirements Missing");
             }
 
+            let options = generate_temporary_lib::generate_temporary_libs(
+                &features,
+                package.as_deref(),
+                &[],
+                &dir,
+            )
+            .expect("Couldn't set up temporary lib");
+
             let options = HotReloadOptions {
-                package,
-                features,
                 build_target: target,
-                ..Default::default()
+                ..options
             };
 
             compile_reloadable_libraries(options, &libs)
