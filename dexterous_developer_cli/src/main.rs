@@ -9,7 +9,7 @@ use dexterous_developer_cli::{
     cross,
     cross::{check_cross_requirements_installed, AppleSDKPath},
     existing::load_existing_directory,
-    paths,
+    generate_temporary_lib, paths,
     paths::CliPaths,
     remote::connect_to_remote,
     serve::run_server,

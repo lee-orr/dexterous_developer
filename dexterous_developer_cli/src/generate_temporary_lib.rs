@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context};
 use dexterous_developer_internal::HotReloadOptions;
 
-pub(crate) fn generate_temporary_libs(
+pub fn generate_temporary_libs(
     features: &[String],
     package: Option<&str>,
     watch: &[PathBuf],
