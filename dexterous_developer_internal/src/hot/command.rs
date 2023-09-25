@@ -67,13 +67,14 @@ pub(crate) fn setup_build_settings(
 
     info!("Compiling with features: {}", features.join(", "));
 
-    let features = features.iter().cloned();
-    let features: BTreeSet<_> = features
+    let features = features
+        .iter()
+        .cloned()
         .chain([
             "bevy/dynamic_linking".to_string(),
             "dexterous_developer/hot_internal".to_string(),
         ])
-        .collect();
+        .collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();

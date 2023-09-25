@@ -26,7 +26,6 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
     cross::check_cross_requirements_installed,
-    generate_temporary_lib::generate_temporary_libs,
     paths::{self, CliPaths},
 };
 
@@ -47,9 +46,7 @@ pub async fn run_server(
         .route("/libs/:target/:file", get(target_file_loader))
         .route("/connect/:target", get(websocket_connect));
 
-    let dir = std::env::current_dir()?;
-
-    let asset_directory = dir.join("assets");
+    let asset_directory = std::env::current_dir()?.join("assets");
     if !asset_directory.exists() {
         std::fs::create_dir_all(asset_directory.as_path())?;
     }
@@ -112,13 +109,13 @@ pub async fn run_server(
 
     let app = app.nest_service("/assets", ServeDir::new(asset_directory.as_path()));
 
-    let options = generate_temporary_libs(&features, package.as_deref(), &watch, &dir)?;
-
     let app = app.with_state(ServerState {
         map: Default::default(),
+        package,
+        features,
         asset_directory,
         asset_tx,
-        base_options: options,
+        watch,
     });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -268,9 +265,11 @@ async fn target_file_loader(
 #[derive(Clone)]
 pub struct ServerState {
     map: Arc<RwLock<HashMap<Target, TargetWatchInfo>>>,
+    package: Option<String>,
+    features: Vec<String>,
     asset_directory: PathBuf,
     asset_tx: broadcast::Sender<HotReloadMessage>,
-    base_options: HotReloadOptions,
+    watch: Vec<PathBuf>,
 }
 
 impl ServerState {
@@ -301,8 +300,11 @@ impl ServerState {
         }
 
         let options = HotReloadOptions {
+            features: self.features.clone(),
+            package: self.package.clone(),
             build_target: Some(*target),
-            ..self.base_options.clone()
+            watch_folders: self.watch.clone(),
+            ..Default::default()
         };
 
         let (lib_path, lib_dir) =
