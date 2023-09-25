@@ -37,7 +37,7 @@ In your `Cargo.toml` add the following:
 [lib]
 name = "lib_THE_NAME_OF_YOUR_GAME"
 path = "src/lib.rs"
-crate-type = ["rlib"]
+crate-type = ["rlib", "dylib"]
 
 [dependencies]
 bevy = "0.11"
