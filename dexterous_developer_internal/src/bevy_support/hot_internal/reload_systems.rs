@@ -23,6 +23,7 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
         internal.library = Some(lib);
         internal.updated_this_frame = true;
         internal.last_update_time = Instant::now();
+        internal.last_update_date_time = chrono::Local::now();
     }
 }
 

@@ -87,3 +87,8 @@ impl<P: Plugin> InitialPlugins for P {
 pub trait InitialPlugins {
     fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder;
 }
+
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct ReloadSettings {
+    pub display_update_time: bool,
+}

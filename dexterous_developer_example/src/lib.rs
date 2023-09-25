@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 #[allow(unused_imports)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use dexterous_developer::ReloadSettings;
 #[allow(unused_imports)]
 use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
@@ -17,6 +18,9 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>()
+        .insert_resource(ReloadSettings {
+            display_update_time: true,
+        })
         .run();
 }
 
@@ -45,7 +49,7 @@ struct Cube(Vec3);
 
 impl Default for Cube {
     fn default() -> Self {
-        Self((Vec3::NEG_X + Vec3::Y) * 0.5)
+        Self((Vec3::NEG_X + Vec3::Y) * 0.89)
     }
 }
 
@@ -63,7 +67,7 @@ struct VelocityMultiplier(Vec3);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0.5, 0., 0.2))
+        Self(Vec3::new(0.5, 0., 0.5))
     }
 }
 

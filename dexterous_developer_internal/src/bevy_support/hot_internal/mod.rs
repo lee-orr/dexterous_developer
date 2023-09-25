@@ -7,7 +7,7 @@ mod schedules;
 
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, First, Plugin, PreStartup};
+use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
 use bevy::utils::Instant;
 
@@ -16,6 +16,7 @@ use bevy::log::{debug, info, LogPlugin};
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
+use crate::bevy_support::hot_internal::hot_reload_internal::draw_internal_hot_reload;
 use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
@@ -65,6 +66,7 @@ impl Plugin for HotReloadPlugin {
             last_lib: None,
             updated_this_frame: true,
             last_update_time: Instant::now(),
+            last_update_date_time: chrono::Local::now(),
             libs: LibPathSet::new(lib_path),
         };
 
@@ -97,7 +99,8 @@ impl Plugin for HotReloadPlugin {
 
         app.add_systems(PreStartup, (watcher, reload))
             .add_systems(CleanupReloaded, cleanup)
-            .add_systems(First, (update_lib_system, reload).chain());
+            .add_systems(First, (update_lib_system, reload).chain())
+            .add_systems(Update, draw_internal_hot_reload);
         debug!("Finished build");
     }
 }
