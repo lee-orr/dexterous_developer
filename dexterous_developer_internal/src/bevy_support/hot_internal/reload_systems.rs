@@ -1,10 +1,13 @@
 use bevy::{
     log::{debug, error, info},
-    prelude::{Commands, Res, ResMut, Schedule, Schedules, World},
+    prelude::{Commands, Input, KeyCode, Res, ResMut, Schedule, Schedules, World},
     utils::Instant,
 };
 
-use crate::internal_shared::update_lib::update_lib;
+use crate::{
+    bevy_support::hot_internal::schedules::CleanupSchedules,
+    internal_shared::update_lib::update_lib, ReloadSettings,
+};
 
 use super::super::hot_internal::{
     hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
@@ -28,22 +31,54 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
 }
 
 pub fn reload(world: &mut World) {
-    let internal_state = world.resource::<InternalHotReload>();
-    if !internal_state.updated_this_frame {
-        return;
+    {
+        let internal_state = world.resource::<InternalHotReload>();
+        let input = world.resource::<Input<KeyCode>>();
+
+        let (reload_mode, manual_reload) = world
+            .get_resource::<ReloadSettings>()
+            .map(|v| (v.reload_mode, v.manual_reload))
+            .unwrap_or_default();
+
+        let manual_reload = manual_reload
+            .map(|v| input.just_pressed(v))
+            .unwrap_or(false);
+
+        if !internal_state.updated_this_frame && !manual_reload {
+            return;
+        }
+
+        let should_serialize = reload_mode.should_serialize();
+        let should_run_setups = reload_mode.should_run_setups();
+
+        if should_serialize {
+            debug!("Serializing...");
+            let _ = world.try_run_schedule(SerializeReloadables);
+        }
+        if should_run_setups {
+            debug!("Cleanup Reloaded...");
+            let _ = world.try_run_schedule(CleanupReloaded);
+        }
+        debug!("Cleanup Schedules...");
+        let _ = world.try_run_schedule(CleanupSchedules);
+        debug!("Setup...");
+        let _ = world.try_run_schedule(SetupReload);
+        debug!("Set Schedules...");
+        register_schedules(world);
+        if should_serialize {
+            debug!("Deserialize...");
+            let _ = world.try_run_schedule(DeserializeReloadables);
+        }
+        if should_run_setups {
+            info!("reload complete");
+            let _ = world.try_run_schedule(OnReloadComplete);
+        }
     }
-    debug!("Serializing...");
-    let _ = world.try_run_schedule(SerializeReloadables);
-    debug!("Cleanup...");
-    let _ = world.try_run_schedule(CleanupReloaded);
-    debug!("Setup...");
-    let _ = world.try_run_schedule(SetupReload);
-    debug!("Set Schedules...");
-    register_schedules(world);
-    debug!("Deserialize...");
-    let _ = world.try_run_schedule(DeserializeReloadables);
-    info!("reload complete");
-    let _ = world.try_run_schedule(OnReloadComplete);
+
+    {
+        let mut internal_state = world.resource_mut::<InternalHotReload>();
+        internal_state.last_update_date_time = chrono::Local::now();
+    }
 }
 
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
@@ -150,7 +185,7 @@ pub fn register_schedules(world: &mut World) {
     world.insert_resource(inner);
 }
 
-pub fn cleanup(
+pub fn cleanup_schedules(
     mut commands: Commands,
     mut schedules: ResMut<Schedules>,
     reloadable: Res<ReloadableAppCleanupData>,
@@ -168,4 +203,22 @@ pub fn cleanup(
 
 pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
     reload.updated_this_frame
+}
+
+pub fn toggle_reload_mode(settings: Option<ResMut<ReloadSettings>>, input: Res<Input<KeyCode>>) {
+    let Some(mut settings) = settings else {
+        return;
+    };
+
+    let Some(toggle) = settings.toggle_reload_mode else {
+        return;
+    };
+
+    if input.just_pressed(toggle) {
+        settings.reload_mode = match settings.reload_mode {
+            crate::ReloadMode::Full => crate::ReloadMode::SystemAndSetup,
+            crate::ReloadMode::SystemAndSetup => crate::ReloadMode::SystemOnly,
+            crate::ReloadMode::SystemOnly => crate::ReloadMode::Full,
+        };
+    }
 }

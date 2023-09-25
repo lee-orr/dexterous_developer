@@ -2,12 +2,12 @@ use bevy::prelude::*;
 
 #[allow(unused_imports)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use dexterous_developer::ReloadSettings;
 #[allow(unused_imports)]
 use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
 };
+use dexterous_developer::{ReloadMode, ReloadSettings};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
@@ -20,6 +20,9 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .setup_reloadable_elements::<reloadable>()
         .insert_resource(ReloadSettings {
             display_update_time: true,
+            manual_reload: Some(KeyCode::F2),
+            toggle_reload_mode: Some(KeyCode::F1),
+            reload_mode: ReloadMode::Full,
         })
         .run();
 }
@@ -34,7 +37,7 @@ pub enum AppState {
 #[dexterous_developer_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     println!("Setting up reloadabless");
-    app.add_systems(Update, (move_cube, toggle));
+    app.add_systems(Update, (move_cube, toggle, advance_time));
     println!("Reset Resource");
     app.reset_resource::<VelocityMultiplier>();
     println!("Reset Setup");
@@ -63,11 +66,11 @@ impl ReplacableComponent for Cube {
 pub struct Sphere;
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Debug)]
-struct VelocityMultiplier(Vec3);
+struct VelocityMultiplier(Vec3, f32);
 
 impl Default for VelocityMultiplier {
     fn default() -> Self {
-        Self(Vec3::new(0.5, 0., 0.5))
+        Self(Vec3::new(0.5, 0., 2.5), 0.)
     }
 }
 
@@ -86,7 +89,7 @@ fn setup_cube(
     let cube_color = Color::ORANGE;
 
     #[cfg(not(feature = "orange"))]
-    let cube_color = Color::PINK;
+    let cube_color = Color::YELLOW;
 
     // cube
     commands.spawn((
@@ -121,7 +124,7 @@ fn setup_sphere(
                 radius: 0.2,
                 ..Default::default()
             })),
-            material: materials.add(Color::RED.into()),
+            material: materials.add(Color::PINK.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -165,13 +168,17 @@ fn move_cube(
     let position = time.elapsed_seconds() * multiplier.0;
     let position = Vec3 {
         x: position.x.sin(),
-        y: position.y.sin(),
+        y: position.y.sin() + multiplier.1 / 10.,
         z: position.z.sin(),
     };
 
     for (mut transform, base) in cubes.iter_mut() {
         transform.translation = position + base.0;
     }
+}
+
+fn advance_time(mut multiplier: ResMut<VelocityMultiplier>, time: Res<Time>) {
+    multiplier.1 += time.delta_seconds();
 }
 
 fn toggle(input: Res<Input<KeyCode>>, mut commands: Commands, current: Res<State<AppState>>) {
