@@ -103,8 +103,10 @@ pub(crate) fn setup_build_settings(
         pkg.targets
             .iter()
             .find(|p| {
-                let result = p.crate_types.contains(&String::from("dylib"));
-                result
+                p.crate_types
+                    .iter()
+                    .map(|v| v.as_str())
+                    .any(|v| v == "dylib")
             })
             .map(|p| (pkg, p))
     });
