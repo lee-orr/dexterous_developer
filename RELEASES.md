@@ -4,6 +4,7 @@
 
 - generate a temporary manifest with dylib - avoiding the need to set that up in advance
 - make sure compilation errors are emmitted properly
+- Add ReloadSettings struct, which for now allows displaying the last update time in the window title, making it clearer when a reload occured
 
 ## Version 0.0.10
 
