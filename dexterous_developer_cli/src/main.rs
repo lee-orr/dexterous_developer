@@ -3,6 +3,7 @@ mod existing;
 mod paths;
 mod remote;
 mod serve;
+mod temporary_manifest;
 
 use std::path::PathBuf;
 
@@ -18,6 +19,7 @@ use url::Url;
 use crate::{
     cross::{check_cross_requirements_installed, AppleSDKPath},
     paths::CliPaths,
+    temporary_manifest::setup_temporary_manifest,
 };
 
 #[derive(Parser, Debug)]
@@ -124,14 +126,18 @@ impl Default for Commands {
 #[tokio::main]
 async fn main() {
     if std::env::var("DEXTEROUS_BUILD_SETTINGS").is_ok() {
-        dexterous_developer_internal::run_reloadabe_app(Default::default());
+        let result = dexterous_developer_internal::run_reloadabe_app(Default::default());
+        if let Err(e) = result {
+            eprintln!("Run Failed with error - {e}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
     }
 
     let Args { command } = Args::parse();
     let dir = std::env::current_dir().expect("No current directory - nothing to run");
-    println!("Current directory: {:?}", dir);
-
-    std::env::set_var("CARGO_MANIFEST_DIR", dir);
+    println!("Current directory: {:?}", &dir);
+    std::env::set_var("CARGO_MANIFEST_DIR", &dir);
 
     match command {
         Commands::Run {
@@ -141,13 +147,23 @@ async fn main() {
         } => {
             println!("Running {package:?} with {features:?}");
 
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
+
             let options = HotReloadOptions {
                 features,
                 package,
                 watch_folders: watch,
                 ..Default::default()
             };
-            dexterous_developer_internal::run_reloadabe_app(options);
+            let result = dexterous_developer_internal::run_reloadabe_app(options);
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
+            if let Err(e) = result {
+                eprintln!("Run Failed with error - {e}");
+                std::process::exit(1);
+            }
         }
         Commands::Serve {
             package,
@@ -156,9 +172,15 @@ async fn main() {
             port,
         } => {
             println!("Serving {package:?} on port {port}");
+
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
             run_server(port, package, features, watch)
                 .await
                 .expect("Couldn't run server");
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
         }
         Commands::Remote { remote, dir } => {
             connect_to_remote(remote, dir)
@@ -187,6 +209,8 @@ async fn main() {
             libs,
             target,
         } => {
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
             let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
             if cross_config.exists() {
                 std::env::set_var("CROSS_CONFIG", &cross_config);
@@ -209,6 +233,9 @@ async fn main() {
 
             compile_reloadable_libraries(options, &libs)
                 .expect("Couldn't compile reloadable library");
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
         }
     }
 }

@@ -2,7 +2,7 @@ mod build_settings;
 mod command;
 mod env;
 mod singleton;
-use std::{process::Command, sync::Once};
+use std::{fmt::Display, process::Command, sync::Once};
 
 use log::{debug, error, info};
 
@@ -16,22 +16,41 @@ use crate::{
 
 pub use self::build_settings::HotReloadMessage;
 
+#[derive(Clone, Debug)]
+pub struct Error {
+    msg: String,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Error Running App - {}", &self.msg))
+    }
+}
+
 static RUNNER: Once = Once::new();
 
-pub fn run_reloadabe_app(options: HotReloadOptions) {
+pub fn run_reloadabe_app(options: HotReloadOptions) -> Result<(), Error> {
+    let mut outcome = None;
     RUNNER.call_once(|| {
         let _ = env_logger::try_init();
         if let Ok(settings) = std::env::var("DEXTEROUS_BUILD_SETTINGS") {
             info!("Running based on DEXTEROUS_BUILD_SETTINGS env");
-            run_reloadable_from_env(settings);
+            outcome = Some(run_reloadable_from_env(settings));
         } else {
             info!("Running based on options");
-            run_reloadabe_app_inner(options);
+            outcome = Some(run_reloadabe_app_inner(options));
         }
     });
+
+    match outcome {
+        Some(outcome) => outcome,
+        None => Err(Error {
+            msg: "Called run_reloadable_app too many times".to_string(),
+        }),
+    }
 }
 
-fn run_reloadabe_app_inner(options: HotReloadOptions) {
+fn run_reloadabe_app_inner(options: HotReloadOptions) -> Result<(), Error> {
     let (settings, paths) =
         setup_build_settings(&options).expect("Couldn't get initial build settings");
 
@@ -39,22 +58,27 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) {
         .expect("Couldn't set up build settings in environment")
     {
         BuildSettingsReady::LibraryPath(library_paths) => {
-            run_app_with_path(library_paths);
+            run_app_with_path(library_paths).map_err(|e| Error { msg: e.to_string() })
         }
         BuildSettingsReady::RequiredEnvChange(var, val) => {
             info!("Requires env change");
             let current = std::env::current_exe().expect("Can't get current executable");
             debug!("Setting {var} to {val}");
-            let result = Command::new(current)
-                .env(var, val)
-                .status()
-                .expect("Couldn't execute executable");
-            std::process::exit(result.code().unwrap_or_default());
+            let result = Command::new(current).env(var, val).status();
+            let result = result.map_err(|_| Error {
+                msg: "Couldn't execute app".to_string(),
+            })?;
+            if !result.success() {
+                return Err(Error {
+                    msg: "Error while running app".to_string(),
+                });
+            }
+            Ok(())
         }
     }
 }
 
-fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
+fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) -> Result<(), Error> {
     let _ = std::fs::remove_file(library_paths.library_path());
     let settings = BUILD_SETTINGS
         .get()
@@ -72,10 +96,10 @@ fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) {
 
     let lib = get_initial_library(&library_paths).expect("Failed to find library");
 
-    run_from_file(library_paths, lib, run_watcher).expect("Couldn't run file");
+    run_from_file(library_paths, lib, run_watcher).map_err(|e| Error { msg: e.to_string() })
 }
 
-fn run_reloadable_from_env(settings: String) {
+fn run_reloadable_from_env(settings: String) -> Result<(), Error> {
     println!("Running from env");
     let dir = std::env::current_dir();
     println!("Current directory: {:?}", dir);
@@ -87,7 +111,7 @@ fn run_reloadable_from_env(settings: String) {
 
     let library_paths =
         load_build_settings(settings).expect("Couldn't load build settings from env");
-    run_app_with_path(library_paths);
+    run_app_with_path(library_paths)
 }
 
 #[cfg(feature = "cli")]

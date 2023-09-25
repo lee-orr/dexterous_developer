@@ -8,4 +8,5 @@ fn main() {
         package: Some("simple".to_string()),
         ..Default::default()
     })
+    .expect("Run Reloadable App Failed")
 }

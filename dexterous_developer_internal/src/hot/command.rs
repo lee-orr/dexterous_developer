@@ -96,7 +96,6 @@ pub(crate) fn setup_build_settings(
     let libs = packages.filter_map(|pkg| {
         if let Some(package) = package.as_ref() {
             let pkg = &pkg.name;
-            debug!("Checking package name: {package} - {pkg}");
             if pkg != package.as_str() {
                 return None;
             }
@@ -105,10 +104,6 @@ pub(crate) fn setup_build_settings(
             .iter()
             .find(|p| {
                 let result = p.crate_types.contains(&String::from("dylib"));
-                debug!(
-                    "Checking {} @ {} - {:?} {result}",
-                    p.name, pkg.name, p.crate_types
-                );
                 result
             })
             .map(|p| (pkg, p))
