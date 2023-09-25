@@ -10,15 +10,6 @@ dexterous_developer = { version = "0.0.10", default-features = false, features =
 ] }
 ```
 
-In addition, you'll need to add `dylib` to the crate type for your main game.
-
-```toml
-[lib]
-name = "lib_THE_NAME_OF_YOUR_GAME"
-path = "src/lib.rs"
-crate-type = ["rlib", "dylib"]
-```
-
 Then in the `main.rs` file, you'd want to trigger the launcher using `run_reloadable_app` - like so:
 
 ```rust
@@ -31,6 +22,8 @@ fn main() {
     })
 }
 ```
+
+You will also need to add `dylib` to the crate type of your main library, or create a separate dynamic library crate that will be loaded by the launcher. When using the CLI it creates a temporary manifest file that adds the dylib - so it's not needed with the CLI.
 
 The HotReloadOptions can also contain things like features, a custom library name, the watch folder, and the target folder - but it should infer most of that from the package.
 

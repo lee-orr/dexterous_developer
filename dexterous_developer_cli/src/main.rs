@@ -6,13 +6,13 @@ use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOption
 use url::Url;
 
 use dexterous_developer_cli::{
-    cross,
-    cross::{check_cross_requirements_installed, AppleSDKPath},
+    cross::AppleSDKPath,
+    cross::{self, check_cross_requirements_installed},
     existing::load_existing_directory,
-    generate_temporary_lib, paths,
-    paths::CliPaths,
+    paths::{self, CliPaths},
     remote::connect_to_remote,
     serve::run_server,
+    temporary_manifest::setup_temporary_manifest,
 };
 
 #[derive(Parser, Debug)]
@@ -119,13 +119,17 @@ impl Default for Commands {
 #[tokio::main]
 async fn main() {
     if std::env::var("DEXTEROUS_BUILD_SETTINGS").is_ok() {
-        dexterous_developer_internal::run_reloadabe_app(Default::default());
+        let result = dexterous_developer_internal::run_reloadabe_app(Default::default());
+        if let Err(e) = result {
+            eprintln!("Run Failed with error - {e}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
     }
 
     let Args { command } = Args::parse();
     let dir = std::env::current_dir().expect("No current directory - nothing to run");
     println!("Current directory: {:?}", &dir);
-
     std::env::set_var("CARGO_MANIFEST_DIR", &dir);
 
     match command {
@@ -136,14 +140,23 @@ async fn main() {
         } => {
             println!("Running {package:?} with {features:?}");
 
-            let options = generate_temporary_lib::generate_temporary_libs(
-                &features,
-                package.as_deref(),
-                &watch,
-                &dir,
-            )
-            .expect("Couldn't set up temporary lib");
-            dexterous_developer_internal::run_reloadabe_app(options);
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
+
+            let options = HotReloadOptions {
+                features,
+                package,
+                watch_folders: watch,
+                ..Default::default()
+            };
+            let result = dexterous_developer_internal::run_reloadabe_app(options);
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
+            if let Err(e) = result {
+                eprintln!("Run Failed with error - {e}");
+                std::process::exit(1);
+            }
         }
         Commands::Serve {
             package,
@@ -152,9 +165,15 @@ async fn main() {
             port,
         } => {
             println!("Serving {package:?} on port {port}");
+
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
             run_server(port, package, features, watch)
                 .await
                 .expect("Couldn't run server");
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
         }
         Commands::Remote { remote, dir } => {
             connect_to_remote(remote, dir)
@@ -183,6 +202,8 @@ async fn main() {
             libs,
             target,
         } => {
+            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+                .expect("Couldn't set up temporary manifest");
             let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
             if cross_config.exists() {
                 std::env::set_var("CROSS_CONFIG", &cross_config);
@@ -196,21 +217,18 @@ async fn main() {
                     .expect("Cross Compilation Requirements Missing");
             }
 
-            let options = generate_temporary_lib::generate_temporary_libs(
-                &features,
-                package.as_deref(),
-                &[],
-                &dir,
-            )
-            .expect("Couldn't set up temporary lib");
-
             let options = HotReloadOptions {
+                package,
+                features,
                 build_target: target,
-                ..options
+                ..Default::default()
             };
 
             compile_reloadable_libraries(options, &libs)
                 .expect("Couldn't compile reloadable library");
+            if let Some(manifest) = temporary {
+                println!("Resetting original manifest - {manifest}");
+            };
         }
     }
 }

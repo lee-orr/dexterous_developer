@@ -67,13 +67,14 @@ pub(crate) fn setup_build_settings(
 
     info!("Compiling with features: {}", features.join(", "));
 
-    let features = features.iter().cloned();
-    let features: BTreeSet<_> = features
+    let features = features
+        .iter()
+        .cloned()
         .chain([
             "bevy/dynamic_linking".to_string(),
             "dexterous_developer/hot_internal".to_string(),
         ])
-        .collect();
+        .collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();
@@ -95,7 +96,6 @@ pub(crate) fn setup_build_settings(
     let libs = packages.filter_map(|pkg| {
         if let Some(package) = package.as_ref() {
             let pkg = &pkg.name;
-            debug!("Checking package name: {package} - {pkg}");
             if pkg != package.as_str() {
                 return None;
             }
@@ -103,12 +103,10 @@ pub(crate) fn setup_build_settings(
         pkg.targets
             .iter()
             .find(|p| {
-                let result = p.crate_types.contains(&String::from("dylib"));
-                debug!(
-                    "Checking {} @ {} - {:?} {result}",
-                    p.name, pkg.name, p.crate_types
-                );
-                result
+                p.crate_types
+                    .iter()
+                    .map(|v| v.as_str())
+                    .any(|v| v == "dylib")
             })
             .map(|p| (pkg, p))
     });

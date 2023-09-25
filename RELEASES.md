@@ -2,8 +2,8 @@
 
 ## UPCOMING
 
+- generate a temporary manifest with dylib - avoiding the need to set that up in advance
 - make sure compilation errors are emmitted properly
-- remove need to set up a dylib if using the CLI
 
 ## Version 0.0.10
 

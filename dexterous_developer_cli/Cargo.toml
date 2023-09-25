@@ -51,4 +51,4 @@ directories = "5"
 semver = "1"
 which = "4"
 toml = "0.8"
-cargo_metadata = "0.18"
+cargo_metadata = { version = "0.18" }
