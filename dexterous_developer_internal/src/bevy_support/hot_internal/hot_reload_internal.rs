@@ -25,7 +25,7 @@ pub fn draw_internal_hot_reload(
     let reloadable_element_selection = settings
         .reloadable_element_selection
         .unwrap_or("all reloadables")
-        .trim_end_matches("_dexterous_developerd_inner_reloadable");
+        .replace("_dexterous_developered_inner_", "_");
 
     let update = internal
         .last_update_date_time

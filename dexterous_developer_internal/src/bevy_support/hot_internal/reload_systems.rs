@@ -1,18 +1,21 @@
 use bevy::{
     log::{debug, error, info},
     prelude::*,
-    utils::{HashSet, Instant},
+    utils::Instant,
 };
 
 use crate::{
-    bevy_support::hot_internal::schedules::CleanupSchedules,
-    internal_shared::update_lib::update_lib, ReloadSettings,
+    bevy_support::hot_internal::{
+        reloadable_app::ReloadableAppContents, schedules::CleanupSchedules,
+    },
+    internal_shared::update_lib::update_lib,
+    ReloadSettings,
 };
 
 use super::super::hot_internal::{
-    hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
-    DeserializeReloadables, ReloadableAppCleanupData, ReloadableAppContents, ReloadableSchedule,
-    SerializeReloadables, SetupReload,
+    hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
+    schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables, ReloadableAppCleanupData,
+    ReloadableSchedule, SerializeReloadables, SetupReload,
 };
 
 use super::super::ReloadableSetup;
@@ -87,12 +90,14 @@ pub fn reload(world: &mut World) {
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
     if let Err(e) = setup_reloadable_app_inner(name, world) {
         error!("Reloadable App Error: {e:?}");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
             return;
         };
         info!("setup default");
 
-        T::default_function(reloadable.as_mut());
+        let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
+
+        T::default_function(&mut inner_app);
     }
 }
 
@@ -136,11 +141,13 @@ fn setup_reloadable_app_inner(
     };
     let lib = lib.clone();
 
-    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
+    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
     };
 
-    if let Err(_e) = lib.call(name, reloadable.as_mut()) {
+    let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
+
+    if let Err(_e) = lib.call(name, &mut inner_app) {
         return Err(ReloadableSetupCallError::CallFailed);
     }
 
@@ -150,7 +157,7 @@ fn setup_reloadable_app_inner(
 
 pub fn register_schedules(world: &mut World) {
     debug!("Reloading schedules");
-    let Some(reloadable) = world.remove_resource::<ReloadableAppContents>() else {
+    let Some(reloadable) = world.remove_resource::<ReloadableAppElements>() else {
         return;
     };
     debug!("Has reloadable app");
@@ -200,7 +207,7 @@ pub fn cleanup_schedules(
     }
     debug!("Cleanup almost complete");
 
-    commands.insert_resource(ReloadableAppContents::default());
+    commands.insert_resource(ReloadableAppElements::default());
     debug!("Cleanup complete");
 }
 
