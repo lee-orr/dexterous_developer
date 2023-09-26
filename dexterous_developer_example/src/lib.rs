@@ -24,7 +24,7 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
-            separate_reloadable_elements: dexterous_developer::ReloadableElementPolicy::OneOfAll(
+            reloadable_element_policy: dexterous_developer::ReloadableElementPolicy::OneOfAll(
                 KeyCode::F3,
             ),
             reloadable_element_selection: None,

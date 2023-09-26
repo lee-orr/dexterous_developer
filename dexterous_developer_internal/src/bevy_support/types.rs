@@ -1,5 +1,3 @@
-
-
 use super::ReloadableAppContents;
 use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
@@ -102,7 +100,7 @@ pub struct ReloadSettings {
     /// Sets a key to manually cycle between reload modes in order - Full, System and Setup, System Only
     pub toggle_reload_mode: Option<KeyCode>,
     /// Enable the capacity to cycle between reloading different reloadable element functions.
-    pub separate_reloadable_elements: ReloadableElementPolicy,
+    pub reloadable_element_policy: ReloadableElementPolicy,
     /// The current selected reloadable element
     pub reloadable_element_selection: Option<&'static str>,
 }
@@ -114,7 +112,7 @@ impl Default for ReloadSettings {
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
-            separate_reloadable_elements: ReloadableElementPolicy::All,
+            reloadable_element_policy: ReloadableElementPolicy::OneOfAll(KeyCode::F3),
             reloadable_element_selection: None,
         }
     }

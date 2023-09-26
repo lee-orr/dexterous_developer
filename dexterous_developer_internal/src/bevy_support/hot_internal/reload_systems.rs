@@ -245,7 +245,7 @@ pub fn toggle_reloadable_elements(
         return;
     };
 
-    let Some((toggle, list)) = (match settings.separate_reloadable_elements {
+    let Some((toggle, list)) = (match settings.reloadable_element_policy {
         crate::ReloadableElementPolicy::All => None,
         crate::ReloadableElementPolicy::OneOfAll(key) => Some((key, element_list.0.as_slice())),
         crate::ReloadableElementPolicy::OneOfList(key, list) => Some((key, list)),
