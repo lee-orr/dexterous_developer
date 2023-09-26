@@ -89,7 +89,7 @@ pub trait InitialPlugins {
 }
 
 /// These are dynamically adjustable settings for reloading. Ignored when not hot reloading.
-#[derive(Resource, Clone, Copy, Debug)]
+#[derive(Resource, Clone, Debug)]
 pub struct ReloadSettings {
     /// Toggles whether the last update time is displayed in the window title. Only applicable when reload_mode is not "Full".
     pub display_update_time: bool,
@@ -119,7 +119,7 @@ impl Default for ReloadSettings {
 }
 
 /// These are the different modes for hot-reloading
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum ReloadableElementPolicy {
     /// Reloads All Reloadable Elements
     #[default]
@@ -127,7 +127,7 @@ pub enum ReloadableElementPolicy {
     /// Allows cycling among all the available reloadable elements using the provided key
     OneOfAll(KeyCode),
     /// Allows cycling among a limited set of the reloadable elements using the provided key
-    OneOfList(KeyCode, &'static [&'static str]),
+    OneOfList(KeyCode, Vec<&'static str>),
 }
 
 /// These are the different modes for hot-reloading

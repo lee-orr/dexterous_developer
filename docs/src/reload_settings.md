@@ -89,8 +89,8 @@ There are 3 possible values:
 
 - All - with this policy, all elements are always reloadable - and no toggling is available.
 - OneOfAll(KeyCode) - with this policy you provide a key that you can use to cycle between all the reloadable elements in your project.
-- OneOfList(keyCode, &'static [&'static str]) - with this policy you can provide a hard-coded subset of elements you want to allow cycling between. This is mostly useful for situations where your application is complex enough that there are too many reloadable elements to cycle through, but you might want to alternate work between a subset of them.
+- OneOfList(keyCode, Vec<&'static str>) - with this policy you can provide a hard-coded subset of elements you want to allow cycling between. This is mostly useful for situations where your application is complex enough that there are too many reloadable elements to cycle through, but you might want to alternate work between a subset of them. To set up the list, you should use the `your_reloadable_function::setup_function_name()`.
 
 ## Reloadable Element Selection
 
-This is an optional value that defaults to "None". As a rule, it is recommended to leave it as is. However, if necessary - you can use to to pre-set a specific reloadable element that will be focused on. If the policy allows for cycling between elements, that will still be possible - it just changes the initial default.
+This is an optional value that defaults to "None". As a rule, it is recommended to leave it as is. However, if necessary - you can use to to pre-set a specific reloadable element that will be focused on. If the policy allows for cycling between elements, that will still be possible - it just changes the initial default. If you want to set it, set it with the setup_function_name method: `Some(your_reloadable_function::setup_function_name())`.

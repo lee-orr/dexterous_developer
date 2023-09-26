@@ -245,15 +245,15 @@ pub fn toggle_reloadable_elements(
         return;
     };
 
-    let Some((toggle, list)) = (match settings.reloadable_element_policy {
+    let Some((toggle, list)) = (match &settings.reloadable_element_policy {
         crate::ReloadableElementPolicy::All => None,
         crate::ReloadableElementPolicy::OneOfAll(key) => Some((key, element_list.0.as_slice())),
-        crate::ReloadableElementPolicy::OneOfList(key, list) => Some((key, list)),
+        crate::ReloadableElementPolicy::OneOfList(key, list) => Some((key, list.as_slice())),
     }) else {
         return;
     };
 
-    if input.just_pressed(toggle) {
+    if input.just_pressed(*toggle) {
         let current = settings.reloadable_element_selection;
         let next = if let Some(current) = current {
             list.iter().skip_while(|v| **v != current).nth(1).copied()

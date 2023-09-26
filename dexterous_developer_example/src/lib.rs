@@ -7,7 +7,7 @@ use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
 };
-use dexterous_developer::{ReloadMode, ReloadSettings};
+use dexterous_developer::{ReloadMode, ReloadSettings, ReloadableSetup};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
@@ -24,8 +24,12 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
-            reloadable_element_policy: dexterous_developer::ReloadableElementPolicy::OneOfAll(
+            reloadable_element_policy: dexterous_developer::ReloadableElementPolicy::OneOfList(
                 KeyCode::F3,
+                vec![
+                    reloadable::setup_function_name(),
+                    reloadable_2::setup_function_name(),
+                ],
             ),
             reloadable_element_selection: None,
         })
