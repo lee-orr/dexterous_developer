@@ -1,15 +1,21 @@
 use bevy::{
     log::{debug, error, info},
-    prelude::{Commands, Res, ResMut, Schedule, Schedules, World},
+    prelude::*,
     utils::Instant,
 };
 
-use crate::internal_shared::update_lib::update_lib;
+use crate::{
+    bevy_support::hot_internal::{
+        reloadable_app::ReloadableAppContents, schedules::CleanupSchedules,
+    },
+    internal_shared::update_lib::update_lib,
+    ReloadSettings,
+};
 
 use super::super::hot_internal::{
-    hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
-    DeserializeReloadables, ReloadableAppCleanupData, ReloadableAppContents, ReloadableSchedule,
-    SerializeReloadables, SetupReload,
+    hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
+    schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables, ReloadableAppCleanupData,
+    ReloadableSchedule, SerializeReloadables, SetupReload,
 };
 
 use super::super::ReloadableSetup;
@@ -27,34 +33,75 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
     }
 }
 
+#[derive(Resource, Clone, Debug, Default)]
+pub struct ReloadableElementList(pub Vec<&'static str>);
+
 pub fn reload(world: &mut World) {
-    let internal_state = world.resource::<InternalHotReload>();
-    if !internal_state.updated_this_frame {
-        return;
+    {
+        let internal_state = world.resource::<InternalHotReload>();
+        let input = world.get_resource::<Input<KeyCode>>();
+
+        let (reload_mode, manual_reload) = world
+            .get_resource::<ReloadSettings>()
+            .map(|v| (v.reload_mode, v.manual_reload))
+            .unwrap_or_default();
+
+        let manual_reload = if let Some(input) = input {
+            manual_reload
+                .map(|v| input.just_pressed(v))
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
+        if !internal_state.updated_this_frame && !manual_reload {
+            return;
+        }
+
+        let should_serialize = reload_mode.should_serialize();
+        let should_run_setups = reload_mode.should_run_setups();
+
+        if should_serialize {
+            debug!("Serializing...");
+            let _ = world.try_run_schedule(SerializeReloadables);
+        }
+        if should_run_setups {
+            debug!("Cleanup Reloaded...");
+            let _ = world.try_run_schedule(CleanupReloaded);
+        }
+        debug!("Cleanup Schedules...");
+        let _ = world.try_run_schedule(CleanupSchedules);
+        debug!("Setup...");
+        let _ = world.try_run_schedule(SetupReload);
+        debug!("Set Schedules...");
+        register_schedules(world);
+        if should_serialize {
+            debug!("Deserialize...");
+            let _ = world.try_run_schedule(DeserializeReloadables);
+        }
+        if should_run_setups {
+            info!("reload complete");
+            let _ = world.try_run_schedule(OnReloadComplete);
+        }
     }
-    debug!("Serializing...");
-    let _ = world.try_run_schedule(SerializeReloadables);
-    debug!("Cleanup...");
-    let _ = world.try_run_schedule(CleanupReloaded);
-    debug!("Setup...");
-    let _ = world.try_run_schedule(SetupReload);
-    debug!("Set Schedules...");
-    register_schedules(world);
-    debug!("Deserialize...");
-    let _ = world.try_run_schedule(DeserializeReloadables);
-    info!("reload complete");
-    let _ = world.try_run_schedule(OnReloadComplete);
+
+    {
+        let mut internal_state = world.resource_mut::<InternalHotReload>();
+        internal_state.last_update_date_time = chrono::Local::now();
+    }
 }
 
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
     if let Err(e) = setup_reloadable_app_inner(name, world) {
         error!("Reloadable App Error: {e:?}");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
             return;
         };
         info!("setup default");
 
-        T::default_function(reloadable.as_mut());
+        let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
+
+        T::default_function(&mut inner_app);
     }
 }
 
@@ -98,11 +145,13 @@ fn setup_reloadable_app_inner(
     };
     let lib = lib.clone();
 
-    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
+    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
     };
 
-    if let Err(_e) = lib.call(name, reloadable.as_mut()) {
+    let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
+
+    if let Err(_e) = lib.call(name, &mut inner_app) {
         return Err(ReloadableSetupCallError::CallFailed);
     }
 
@@ -112,7 +161,7 @@ fn setup_reloadable_app_inner(
 
 pub fn register_schedules(world: &mut World) {
     debug!("Reloading schedules");
-    let Some(reloadable) = world.remove_resource::<ReloadableAppContents>() else {
+    let Some(reloadable) = world.remove_resource::<ReloadableAppElements>() else {
         return;
     };
     debug!("Has reloadable app");
@@ -150,7 +199,7 @@ pub fn register_schedules(world: &mut World) {
     world.insert_resource(inner);
 }
 
-pub fn cleanup(
+pub fn cleanup_schedules(
     mut commands: Commands,
     mut schedules: ResMut<Schedules>,
     reloadable: Res<ReloadableAppCleanupData>,
@@ -162,10 +211,68 @@ pub fn cleanup(
     }
     debug!("Cleanup almost complete");
 
-    commands.insert_resource(ReloadableAppContents::default());
+    commands.insert_resource(ReloadableAppElements::default());
     debug!("Cleanup complete");
 }
 
 pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
     reload.updated_this_frame
+}
+
+pub fn toggle_reload_mode(
+    settings: Option<ResMut<ReloadSettings>>,
+    input: Option<Res<Input<KeyCode>>>,
+) {
+    let Some(input) = input else {
+        return;
+    };
+    let Some(mut settings) = settings else {
+        return;
+    };
+
+    let Some(toggle) = settings.toggle_reload_mode else {
+        return;
+    };
+
+    if input.just_pressed(toggle) {
+        settings.reload_mode = match settings.reload_mode {
+            crate::ReloadMode::Full => crate::ReloadMode::SystemAndSetup,
+            crate::ReloadMode::SystemAndSetup => crate::ReloadMode::SystemOnly,
+            crate::ReloadMode::SystemOnly => crate::ReloadMode::Full,
+        };
+    }
+}
+
+pub fn toggle_reloadable_elements(
+    settings: Option<ResMut<ReloadSettings>>,
+    element_list: Option<Res<ReloadableElementList>>,
+    input: Option<Res<Input<KeyCode>>>,
+) {
+    let Some(input) = input else {
+        return;
+    };
+    let Some(mut settings) = settings else {
+        return;
+    };
+    let Some(element_list) = element_list else {
+        return;
+    };
+
+    let Some((toggle, list)) = (match &settings.reloadable_element_policy {
+        crate::ReloadableElementPolicy::All => None,
+        crate::ReloadableElementPolicy::OneOfAll(key) => Some((key, element_list.0.as_slice())),
+        crate::ReloadableElementPolicy::OneOfList(key, list) => Some((key, list.as_slice())),
+    }) else {
+        return;
+    };
+
+    if input.just_pressed(*toggle) {
+        let current = settings.reloadable_element_selection;
+        let next = if let Some(current) = current {
+            list.iter().skip_while(|v| **v != current).nth(1).copied()
+        } else {
+            list.first().copied()
+        };
+        settings.reloadable_element_selection = next;
+    }
 }

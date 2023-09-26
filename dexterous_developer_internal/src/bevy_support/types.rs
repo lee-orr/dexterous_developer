@@ -88,7 +88,66 @@ pub trait InitialPlugins {
     fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder;
 }
 
-#[derive(Resource, Clone, Copy, Debug, Default)]
+/// These are dynamically adjustable settings for reloading. Ignored when not hot reloading.
+#[derive(Resource, Clone, Debug)]
 pub struct ReloadSettings {
+    /// Toggles whether the last update time is displayed in the window title. Only applicable when reload_mode is not "Full".
     pub display_update_time: bool,
+    /// Sets the reload mode
+    pub reload_mode: ReloadMode,
+    /// Sets a key for manually triggering a reload cycle. Depending on the reload mode, it will re-set the schedules, serialize/deserialize reloadables, and re run any cleanup or setup functions.
+    pub manual_reload: Option<KeyCode>,
+    /// Sets a key to manually cycle between reload modes in order - Full, System and Setup, System Only
+    pub toggle_reload_mode: Option<KeyCode>,
+    /// Enable the capacity to cycle between reloading different reloadable element functions.
+    pub reloadable_element_policy: ReloadableElementPolicy,
+    /// The current selected reloadable element
+    pub reloadable_element_selection: Option<&'static str>,
+}
+
+impl Default for ReloadSettings {
+    fn default() -> Self {
+        Self {
+            display_update_time: true,
+            manual_reload: Some(KeyCode::F2),
+            toggle_reload_mode: Some(KeyCode::F1),
+            reload_mode: ReloadMode::Full,
+            reloadable_element_policy: ReloadableElementPolicy::OneOfAll(KeyCode::F3),
+            reloadable_element_selection: None,
+        }
+    }
+}
+
+/// These are the different modes for hot-reloading
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum ReloadableElementPolicy {
+    /// Reloads All Reloadable Elements
+    #[default]
+    All,
+    /// Allows cycling among all the available reloadable elements using the provided key
+    OneOfAll(KeyCode),
+    /// Allows cycling among a limited set of the reloadable elements using the provided key
+    OneOfList(KeyCode, Vec<&'static str>),
+}
+
+/// These are the different modes for hot-reloading
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ReloadMode {
+    /// This reloads systems/schedules, serializes/deserializes reloadable resources and components, and runs cleanup & setup functions.
+    #[default]
+    Full,
+    /// This reloads systems/schedules and runs cleanup and setup functions, but does not serialize/deserialize resources or components.
+    SystemAndSetup,
+    /// This only reloads systems and schedules, and does not run any cleanup or setup functions.
+    SystemOnly,
+}
+
+impl ReloadMode {
+    pub fn should_serialize(&self) -> bool {
+        *self == Self::Full
+    }
+
+    pub fn should_run_setups(&self) -> bool {
+        *self == Self::Full || *self == Self::SystemAndSetup
+    }
 }

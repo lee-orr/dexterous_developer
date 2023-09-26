@@ -13,6 +13,9 @@ pub struct SetupReload;
 pub struct CleanupReloaded;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct CleanupSchedules;
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct OnReloadComplete;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]

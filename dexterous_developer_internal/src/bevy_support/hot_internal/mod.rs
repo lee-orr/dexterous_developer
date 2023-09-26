@@ -17,14 +17,17 @@ pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
 use crate::bevy_support::hot_internal::hot_reload_internal::draw_internal_hot_reload;
+use crate::bevy_support::hot_internal::reload_systems::{
+    toggle_reload_mode, toggle_reloadable_elements,
+};
 use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 
 pub use reloadable_app_setup::*;
 
-use reload_systems::{cleanup, reload, update_lib_system};
-pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents};
+use reload_systems::{cleanup_schedules, reload, update_lib_system};
+pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents, ReloadableAppElements};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
@@ -50,7 +53,8 @@ impl Plugin for HotReloadPlugin {
             std::thread::current().id()
         );
         let reload_schedule = Schedule::new();
-        let cleanup_schedule = Schedule::new();
+        let cleanup_reloaded_schedule = Schedule::new();
+        let cleanup_schedules_schedule = Schedule::new();
         let serialize_schedule = Schedule::new();
         let deserialize_schedule = Schedule::new();
         let reload_complete = Schedule::new();
@@ -83,14 +87,15 @@ impl Plugin for HotReloadPlugin {
         debug!("Watcher set up triggered");
 
         app.add_schedule(SetupReload, reload_schedule)
-            .add_schedule(CleanupReloaded, cleanup_schedule)
+            .add_schedule(CleanupReloaded, cleanup_reloaded_schedule)
+            .add_schedule(CleanupSchedules, cleanup_schedules_schedule)
             .add_schedule(SerializeReloadables, serialize_schedule)
             .add_schedule(DeserializeReloadables, deserialize_schedule)
             .add_schedule(OnReloadComplete, reload_complete);
 
         debug!("scheduled attached");
 
-        app.init_resource::<ReloadableAppContents>()
+        app.init_resource::<ReloadableAppElements>()
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
@@ -98,9 +103,16 @@ impl Plugin for HotReloadPlugin {
         debug!("Added resources to app");
 
         app.add_systems(PreStartup, (watcher, reload))
-            .add_systems(CleanupReloaded, cleanup)
+            .add_systems(CleanupSchedules, cleanup_schedules)
             .add_systems(First, (update_lib_system, reload).chain())
-            .add_systems(Update, draw_internal_hot_reload);
+            .add_systems(
+                Update,
+                (
+                    draw_internal_hot_reload,
+                    toggle_reload_mode,
+                    toggle_reloadable_elements,
+                ),
+            );
         debug!("Finished build");
     }
 }
