@@ -39,16 +39,20 @@ pub struct ReloadableElementList(pub Vec<&'static str>);
 pub fn reload(world: &mut World) {
     {
         let internal_state = world.resource::<InternalHotReload>();
-        let input = world.resource::<Input<KeyCode>>();
+        let input = world.get_resource::<Input<KeyCode>>();
 
         let (reload_mode, manual_reload) = world
             .get_resource::<ReloadSettings>()
             .map(|v| (v.reload_mode, v.manual_reload))
             .unwrap_or_default();
 
-        let manual_reload = manual_reload
-            .map(|v| input.just_pressed(v))
-            .unwrap_or(false);
+        let manual_reload = if let Some(input) = input {
+            manual_reload
+                .map(|v| input.just_pressed(v))
+                .unwrap_or(false)
+        } else {
+            false
+        };
 
         if !internal_state.updated_this_frame && !manual_reload {
             return;
@@ -215,7 +219,13 @@ pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
     reload.updated_this_frame
 }
 
-pub fn toggle_reload_mode(settings: Option<ResMut<ReloadSettings>>, input: Res<Input<KeyCode>>) {
+pub fn toggle_reload_mode(
+    settings: Option<ResMut<ReloadSettings>>,
+    input: Option<Res<Input<KeyCode>>>,
+) {
+    let Some(input) = input else {
+        return;
+    };
     let Some(mut settings) = settings else {
         return;
     };
@@ -236,8 +246,11 @@ pub fn toggle_reload_mode(settings: Option<ResMut<ReloadSettings>>, input: Res<I
 pub fn toggle_reloadable_elements(
     settings: Option<ResMut<ReloadSettings>>,
     element_list: Option<Res<ReloadableElementList>>,
-    input: Res<Input<KeyCode>>,
+    input: Option<Res<Input<KeyCode>>>,
 ) {
+    let Some(input) = input else {
+        return;
+    };
     let Some(mut settings) = settings else {
         return;
     };
