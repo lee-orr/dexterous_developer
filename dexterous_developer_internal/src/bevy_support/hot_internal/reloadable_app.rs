@@ -79,7 +79,7 @@ impl crate::ReloadableApp for ReloadableAppContents {
 
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self {
         debug!("resetting resource");
-        self.add_systems(DeserializeReloadables, |mut commands: Commands| {
+        self.add_systems(OnReloadComplete, |mut commands: Commands| {
             commands.insert_resource(R::default());
         });
         self
@@ -87,7 +87,7 @@ impl crate::ReloadableApp for ReloadableAppContents {
 
     fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self {
         debug!("resetting resource");
-        self.add_systems(DeserializeReloadables, move |mut commands: Commands| {
+        self.add_systems(OnReloadComplete, move |mut commands: Commands| {
             commands.insert_resource(value.clone());
         });
         self

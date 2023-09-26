@@ -1,3 +1,5 @@
+use std::default;
+
 use super::ReloadableAppContents;
 use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
@@ -99,6 +101,10 @@ pub struct ReloadSettings {
     pub manual_reload: Option<KeyCode>,
     /// Sets a key to manually cycle between reload modes in order - Full, System and Setup, System Only
     pub toggle_reload_mode: Option<KeyCode>,
+    /// Enable the capacity to cycle between reloading different reloadable element functions.
+    pub separate_reloadable_elements: ReloadableElementPolicy,
+    /// The current selected reloadable element
+    pub reloadable_element_selection: Option<&'static str>,
 }
 
 impl Default for ReloadSettings {
@@ -108,8 +114,22 @@ impl Default for ReloadSettings {
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
+            separate_reloadable_elements: ReloadableElementPolicy::All,
+            reloadable_element_selection: None,
         }
     }
+}
+
+/// These are the different modes for hot-reloading
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ReloadableElementPolicy {
+    /// Reloads All Reloadable Elements
+    #[default]
+    All,
+    /// Allows cycling among all the available reloadable elements using the provided key
+    OneOfAll(KeyCode),
+    /// Allows cycling among a limited set of the reloadable elements using the provided key
+    OneOfList(KeyCode, &'static [&'static str]),
 }
 
 /// These are the different modes for hot-reloading

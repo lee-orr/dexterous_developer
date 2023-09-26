@@ -18,11 +18,16 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>()
+        .setup_reloadable_elements::<reloadable_2>()
         .insert_resource(ReloadSettings {
             display_update_time: true,
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
+            separate_reloadable_elements: dexterous_developer::ReloadableElementPolicy::OneOfAll(
+                KeyCode::F3,
+            ),
+            reloadable_element_selection: None,
         })
         .run();
 }
@@ -34,16 +39,23 @@ pub enum AppState {
     AnotherState,
 }
 
-#[dexterous_developer_setup]
+#[dexterous_developer_setup(first_reloadable)]
 fn reloadable(app: &mut ReloadableAppContents) {
-    println!("Setting up reloadabless");
-    app.add_systems(Update, (move_cube, toggle, advance_time));
-    println!("Reset Resource");
-    app.reset_resource::<VelocityMultiplier>();
+    println!("Setting up reloadabless #1");
+    app.add_systems(Update, (move_cube, toggle));
     println!("Reset Setup");
     app.reset_setup::<Cube, _>(setup_cube);
     println!("Reset Setup In State");
     app.reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
+    println!("Done");
+}
+
+#[dexterous_developer_setup(second_reloadable)]
+fn reloadable_2(app: &mut ReloadableAppContents) {
+    println!("Setting up reloadabless #2");
+    app.add_systems(Update, advance_time);
+    println!("Reset Resource");
+    app.reset_resource::<VelocityMultiplier>();
     println!("Done");
 }
 

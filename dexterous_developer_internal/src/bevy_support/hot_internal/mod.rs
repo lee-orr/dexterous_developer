@@ -17,7 +17,9 @@ pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
 use crate::bevy_support::hot_internal::hot_reload_internal::draw_internal_hot_reload;
-use crate::bevy_support::hot_internal::reload_systems::toggle_reload_mode;
+use crate::bevy_support::hot_internal::reload_systems::{
+    toggle_reload_mode, toggle_reloadable_elements,
+};
 use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
@@ -103,7 +105,14 @@ impl Plugin for HotReloadPlugin {
         app.add_systems(PreStartup, (watcher, reload))
             .add_systems(CleanupSchedules, cleanup_schedules)
             .add_systems(First, (update_lib_system, reload).chain())
-            .add_systems(Update, (draw_internal_hot_reload, toggle_reload_mode));
+            .add_systems(
+                Update,
+                (
+                    draw_internal_hot_reload,
+                    toggle_reload_mode,
+                    toggle_reloadable_elements,
+                ),
+            );
         debug!("Finished build");
     }
 }

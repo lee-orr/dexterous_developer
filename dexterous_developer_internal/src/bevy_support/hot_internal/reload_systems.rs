@@ -1,7 +1,7 @@
 use bevy::{
     log::{debug, error, info},
-    prelude::{Commands, Input, KeyCode, Res, ResMut, Schedule, Schedules, World},
-    utils::Instant,
+    prelude::*,
+    utils::{HashSet, Instant},
 };
 
 use crate::{
@@ -29,6 +29,9 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
         internal.last_update_date_time = chrono::Local::now();
     }
 }
+
+#[derive(Resource, Clone, Debug, Default)]
+pub struct ReloadableElementList(pub Vec<&'static str>);
 
 pub fn reload(world: &mut World) {
     {
@@ -220,5 +223,36 @@ pub fn toggle_reload_mode(settings: Option<ResMut<ReloadSettings>>, input: Res<I
             crate::ReloadMode::SystemAndSetup => crate::ReloadMode::SystemOnly,
             crate::ReloadMode::SystemOnly => crate::ReloadMode::Full,
         };
+    }
+}
+
+pub fn toggle_reloadable_elements(
+    settings: Option<ResMut<ReloadSettings>>,
+    element_list: Option<Res<ReloadableElementList>>,
+    input: Res<Input<KeyCode>>,
+) {
+    let Some(mut settings) = settings else {
+        return;
+    };
+    let Some(element_list) = element_list else {
+        return;
+    };
+
+    let Some((toggle, list)) = (match settings.separate_reloadable_elements {
+        crate::ReloadableElementPolicy::All => None,
+        crate::ReloadableElementPolicy::OneOfAll(key) => Some((key, element_list.0.as_slice())),
+        crate::ReloadableElementPolicy::OneOfList(key, list) => Some((key, list)),
+    }) else {
+        return;
+    };
+
+    if input.just_pressed(toggle) {
+        let current = settings.reloadable_element_selection;
+        let next = if let Some(current) = current {
+            list.iter().skip_while(|v| **v != current).nth(1).copied()
+        } else {
+            list.first().copied()
+        };
+        settings.reloadable_element_selection = next;
     }
 }
