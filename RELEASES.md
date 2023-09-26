@@ -5,6 +5,8 @@
 - generate a temporary manifest with dylib - avoiding the need to set that up in advance
 - make sure compilation errors are emmitted properly
 - Add ReloadSettings struct, which for now allows displaying the last update time in the window title, making it clearer when a reload occured
+- Add ability to cycle between reload modes - Full reload, Systems and Setup or Systems Only
+- Add ability to limit more advance reload to a single "reloadable element" (i.e. reloadable setup function)
 
 ## Version 0.0.10
 
