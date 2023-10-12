@@ -197,6 +197,7 @@ jobs:
             setup_on_reload,
             setup_in_state,
             replacable_state,
+            update_reloadable_event,
             remote,
             asset,
           ]

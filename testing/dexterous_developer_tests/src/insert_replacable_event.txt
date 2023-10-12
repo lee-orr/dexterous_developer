@@ -12,7 +12,7 @@ fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
 fn read(input: Res<StdInput>, mut event: EventReader<AppEvent>) {
     for event in event.iter() {
         let text = match event {
-            Text(s) => format!("Text - {s}"),
+           AppEvent::Text(s) => format!("Text - {s}"),
         };
         println!("Event: {text}");
     }
@@ -24,7 +24,7 @@ fn startup() {
     println!("Press Enter to Progress, or type 'exit' to exit");
 }
 
-#[derive(Event, PartialEq, Eq, Clone, Copy, Debug, Hash, Serialize, Deserialize)]
+#[derive(Event, Clone,  Debug, Serialize, Deserialize)]
 pub enum AppEvent {
     Text(String),
 }
@@ -41,5 +41,5 @@ pub fn reloadable(app: &mut ReloadableAppContents) {
     app
         .add_event::<AppEvent>()
         .add_systems(Startup, startup)
-        .add_systems(Update, (update, read).chain())
+        .add_systems(Update, (update, read).chain());
 }

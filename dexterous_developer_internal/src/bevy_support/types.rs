@@ -30,7 +30,7 @@ impl<T: ReplacableResource> CustomReplacableResource for T {
 pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
-pub trait ReplacableEvent: Event + Serialize + DeserializeOwned + Default {
+pub trait ReplacableEvent: Event + Serialize + DeserializeOwned {
     fn get_type_name() -> &'static str;
 }
 
@@ -69,6 +69,19 @@ impl<S: ReplacableState> CustomReplacableResource for NextState<S> {
     }
 }
 
+impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
+    fn get_type_name() -> &'static str {
+        S::get_type_name()
+    }
+
+    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(vec![])
+    }
+
+    fn from_slice(_: &[u8]) -> anyhow::Result<Self> {
+        Ok(Self::default())
+    }
+}
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }

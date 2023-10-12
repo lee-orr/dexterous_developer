@@ -192,6 +192,11 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
 
         self
     }
+
+    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+        self.insert_replacable_resource::<Events<T>>()
+            .add_systems(First, Events::<T>::update_system)
+    }
 }
 
 fn element_selection_condition(name: &'static str) -> impl Fn(Option<Res<ReloadSettings>>) -> bool {
