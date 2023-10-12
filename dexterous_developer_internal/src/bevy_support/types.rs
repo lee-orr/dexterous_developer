@@ -5,8 +5,65 @@ pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default 
     fn get_type_name() -> &'static str;
 }
 
+pub trait CustomReplacableResource: Resource + Default {
+    fn get_type_name() -> &'static str;
+
+    fn to_vec(&self) -> anyhow::Result<Vec<u8>>;
+
+    fn from_slice(val: &[u8]) -> anyhow::Result<Self>;
+}
+
+impl<T: ReplacableResource> CustomReplacableResource for T {
+    fn get_type_name() -> &'static str {
+        T::get_type_name()
+    }
+
+    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(rmp_serde::to_vec(self)?)
+    }
+
+    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
+        Ok(rmp_serde::from_slice(val)?)
+    }
+}
+
 pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
+}
+
+pub trait ReplacableState: States + Serialize + DeserializeOwned {
+    fn get_type_name() -> &'static str;
+    fn get_next_type_name() -> &'static str;
+}
+
+impl<S: ReplacableState> CustomReplacableResource for State<S> {
+    fn get_type_name() -> &'static str {
+        S::get_type_name()
+    }
+
+    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(rmp_serde::to_vec(self.get())?)
+    }
+
+    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
+        let val = rmp_serde::from_slice(val)?;
+        Ok(Self::new(val))
+    }
+}
+
+impl<S: ReplacableState> CustomReplacableResource for NextState<S> {
+    fn get_type_name() -> &'static str {
+        S::get_next_type_name()
+    }
+
+    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(rmp_serde::to_vec(&self.0)?)
+    }
+
+    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
+        let val = rmp_serde::from_slice(val)?;
+        Ok(Self(val))
+    }
 }
 
 pub(crate) mod private {
@@ -20,7 +77,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
 
-    fn insert_replacable_resource<R: ReplacableResource>(&mut self) -> &mut Self;
+    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
     fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
@@ -31,6 +88,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
+    fn add_state<S: ReplacableState>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

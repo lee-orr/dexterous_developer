@@ -4,7 +4,7 @@ This library provides an experimental hot reload system for Bevy.
 
 ## Features
 
-- Define the reloadable areas of your game explicitly - which can include systems, components and resources (w/ some limitations)
+- Define the reloadable areas of your game explicitly - which can include systems, components, state and resources (w/ some limitations)
 - Reset resources to a default or pre-determined value upon reload
 - serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
 - mark entities to get removed on hot reload

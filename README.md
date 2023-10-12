@@ -11,7 +11,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 ## Features
 
-- Define the reloadable areas of your game explicitly - which can include systems, components and resources (w/ some limitations)
+- Define the reloadable areas of your game explicitly - which can include systems, components, states and resources (w/ some limitations)
 - Reset resources to a default or pre-determined value upon reload
 - Serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
 - Mark entities to get removed on hot reload
@@ -23,7 +23,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 ## Known issues
 
 - Won't work on mobile or WASM
-- events and states still need to be pre-defined
+- events still need to be pre-defined
 
 ## Installation
 

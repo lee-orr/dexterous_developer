@@ -25,7 +25,7 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_replacable_resource<R: super::ReplacableResource>(&mut self) -> &mut Self {
+    fn insert_replacable_resource<R: super::CustomReplacableResource>(&mut self) -> &mut Self {
         self.0.init_resource::<R>();
         self
     }
@@ -67,6 +67,11 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self.0
             .add_systems(OnEnter(state.clone()), systems)
             .add_systems(OnExit(state), clear_marked_system::<C>);
+        self
+    }
+
+    fn add_state<S: super::ReplacableState>(&mut self) -> &mut Self {
+        self.0.add_state::<S>();
         self
     }
 }

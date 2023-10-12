@@ -7,14 +7,13 @@ use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
 };
-use dexterous_developer::{ReloadMode, ReloadSettings, ReloadableSetup};
+use dexterous_developer::{ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
 pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
-        .add_state::<AppState>()
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>()
@@ -36,21 +35,34 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .run();
 }
 
-#[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default)]
+#[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default, Serialize, Deserialize)]
 pub enum AppState {
     #[default]
-    State,
     AnotherState,
+    State,
+    TwoSpheres,
+}
+
+impl ReplacableState for AppState {
+    fn get_type_name() -> &'static str {
+        "app-state"
+    }
+
+    fn get_next_type_name() -> &'static str {
+        "next-app-state"
+    }
 }
 
 #[dexterous_developer_setup(first_reloadable)]
 fn reloadable(app: &mut ReloadableAppContents) {
+    app.add_state::<AppState>();
     println!("Setting up reloadabless #1");
     app.add_systems(Update, (move_cube, toggle));
     println!("Reset Setup");
     app.reset_setup::<Cube, _>(setup_cube);
     println!("Reset Setup In State");
     app.reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
+    app.reset_setup_in_state::<Sphere, AppState, _>(AppState::TwoSpheres, setup_two_spheres);
     println!("Done");
 }
 
@@ -147,6 +159,37 @@ fn setup_sphere(
     ));
 }
 
+fn setup_two_spheres(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn((
+        Sphere,
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::UVSphere {
+                radius: 0.2,
+                ..Default::default()
+            })),
+            material: materials.add(Color::PINK.into()),
+            transform: Transform::from_xyz(1.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
+    commands.spawn((
+        Sphere,
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::UVSphere {
+                radius: 0.2,
+                ..Default::default()
+            })),
+            material: materials.add(Color::PINK.into()),
+            transform: Transform::from_xyz(-1.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
+}
+
 #[allow(unused)]
 fn setup(
     mut commands: Commands,
@@ -201,7 +244,8 @@ fn toggle(input: Res<Input<KeyCode>>, mut commands: Commands, current: Res<State
     if input.just_pressed(KeyCode::Space) {
         let next = match current.get() {
             AppState::State => AppState::AnotherState,
-            AppState::AnotherState => AppState::State,
+            AppState::AnotherState => AppState::TwoSpheres,
+            AppState::TwoSpheres => AppState::State,
         };
         commands.insert_resource(NextState(Some(next)));
     }
