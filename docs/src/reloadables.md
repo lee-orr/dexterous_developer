@@ -35,9 +35,9 @@ These are added using `.add_systems`, exactly like you would add a system to a n
 
 These are special systems, that are supposed to set things up - which might need to be re-done upon a reload. The classic example is a game UI, which you might want to re-build after a reload. There are a few helpers for these types of systems
 
-First, we can clear all entites that have a marker component and then run our setup function using `.reset_setup<Component>(systems_go_here)`.
-And if we want it to only happen on entering a specific state (or re-loading while within that state), we can use `.reset_setup_in_state<Component>(state, systems)`.
-Alternatively, if we just want to clear stuff out on a reload, we can use a marker component and call `.clear_marked_on_reload<Component>()`.
+First, we can clear all entites that have a marker component and then run our setup function using `.reset_setup::<Component>(systems_go_here)`.
+And if we want it to only happen on entering a specific state (or re-loading while within that state), we can use `.reset_setup_in_state::<Component>(state, systems)`.
+Alternatively, if we just want to clear stuff out on a reload, we can use a marker component and call `.clear_marked_on_reload::<Component>()`.
 
 ## Resources
 
@@ -45,7 +45,7 @@ Reloading resources is a little more complex - so we have a few variations
 
 ### Reset on Reload
 
-If you want to reset a resource when the library reloads, you can use either `.reset_resource<Resource>()` which uses it's default value, or `.reset_resource_to_value(value)` which uses a value you provide.
+If you want to reset a resource when the library reloads, you can use either `.reset_resource::<Resource>()` which uses it's default value, or `.reset_resource_to_value(value)` which uses a value you provide.
 
 ### Replaceable Resources
 
@@ -62,11 +62,11 @@ impl ReplacableResource {
 }
 ```
 
-Then, you can register it using `.insert_replacable_resource<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
+Then, you can register it using `.insert_replacable_resource::<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
 
 ## Replacable Components
 
-The last type of reloadable are replacable components. These function like replacable resources, but involve replacing components on various entities. Here you implement the `ReplacableComponent` trait:
+You can also set up replacable components. These function like replacable resources, but involve replacing components on various entities. Here you implement the `ReplacableComponent` trait:
 
 ```rust
 #[derive(Component, Serialize, Deserialize, Default)]
@@ -80,4 +80,33 @@ impl ReplacableComponent {
 
 ```
 
-And then register it using `.register_replacable_component<ReplacableComponent>()`.
+And then register it using `.register_replacable_component::<ReplacableComponent>()`.
+
+## Replacable State
+
+States are also possible to set up as replacable. Here you implement the `ReplacableState` trait:
+
+```rust
+#[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default, Serialize, Deserialize)]
+pub enum AppState {
+    #[default]
+    A,
+    B,
+}
+
+
+impl ReplacableState for AppState {
+    fn get_type_name() -> &'static str {
+        "app-state"
+    }
+
+    fn get_next_type_name() -> &'static str {
+        "next-app-state"
+    }
+}
+
+```
+
+Note that unlike `ReplacableResource` or `ReplacableComponent`, with `ReplacableState` you need to give it a name as well as giving a name for the `NextState<S>` resource it'll create.
+
+You can then add the state using `.add_state::<ReplacableComponent>()`.
