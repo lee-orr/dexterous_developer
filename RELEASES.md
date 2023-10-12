@@ -2,6 +2,8 @@
 
 ## UPCOMING
 
+- add support for hot re-loading states
+
 ## Version 0.0.11
 
 - generate a temporary manifest with dylib - avoiding the need to set that up in advance

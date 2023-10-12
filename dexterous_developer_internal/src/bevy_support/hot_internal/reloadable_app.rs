@@ -1,5 +1,6 @@
 use bevy::{
-    ecs::schedule::ScheduleLabel,
+    ecs::schedule::common_conditions::run_once,
+    ecs::schedule::{run_enter_schedule, ScheduleLabel},
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -68,7 +69,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_replacable_resource<R: ReplacableResource>(&mut self) -> &mut Self {
+    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
             self.resources.insert(name.to_string());
@@ -175,6 +176,21 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 ),
             ),
         )
+    }
+
+    fn add_state<S: ReplacableState>(&mut self) -> &mut Self {
+        self.insert_replacable_resource::<State<S>>()
+            .insert_replacable_resource::<NextState<S>>()
+            .add_systems(
+                StateTransition,
+                ((
+                    run_enter_schedule::<S>.run_if(run_once()),
+                    apply_state_transition::<S>,
+                )
+                    .chain(),),
+            );
+
+        self
     }
 }
 

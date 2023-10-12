@@ -1,0 +1,52 @@
+use bevy::prelude::*;
+use dexterous_developer::*;
+use serde::{Deserialize, Serialize};
+use crate::shared::{StdInput};
+
+fn update_a(input: Res<StdInput>, mut next: ResMut<NextState<AppState>>) {
+    let text = input.0.as_str();
+    println!("Got: {text}");
+    if text == "toggle" {
+        next.set(AppState::B);
+    }
+}
+
+fn update_b(input: Res<StdInput>, mut next: ResMut<NextState<AppState>>) {
+    let text = input.0.as_str();
+    println!("Received: {text}");
+    if text == "toggle" {
+        next.set(AppState::A);
+    }
+}
+
+
+fn startup() {
+    println!("Press Enter to Progress, or type 'exit' to exit");
+}
+
+#[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default, Serialize, Deserialize)]
+pub enum AppState {
+    #[default]
+    A,
+    B,
+}
+
+
+impl ReplacableState for AppState {
+    fn get_type_name() -> &'static str {
+        "app-state"
+    }
+
+    fn get_next_type_name() -> &'static str {
+        "next-app-state"
+    }
+}
+
+#[dexterous_developer_setup]
+pub fn reloadable(app: &mut ReloadableAppContents) {
+    app
+        .add_state::<AppState>()
+        .add_systems(Startup, startup)
+        .add_systems(Update, update_a.run_if(in_state(AppState::A)))
+        .add_systems(Update, update_b.run_if(in_state(AppState::B)));
+}
