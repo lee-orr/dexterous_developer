@@ -655,6 +655,68 @@ async fn update_reloadable_event() {
     process.exit().await;
 }
 
+async fn replacable_state() {
+    let mut project: TestProject =
+        TestProject::new("reloadables_test", "insert_replacable_state").unwrap();
+    let mut process = project.run_hot_cli().await.unwrap();
+
+    process.is_ready().await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Ran Update"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./insert_replacable_state.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("test\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: test"]).await;
+
+    process.send("toggle\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: toggle"]).await;
+
+    process.send("test\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Received: test"]).await;
+
+    project
+        .write_file(
+            PathBuf::from("src/update.rs").as_path(),
+            include_str!("./update_replacable_state.txt"),
+        )
+        .expect("Couldn't update file");
+
+    process.has_updated().await;
+
+    process.send("test\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Received: test"]).await;
+    process.send("toggle\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Received: toggle"]).await;
+
+    process.send("test\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Input: test"]).await;
+    process.send("toggle\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Input: toggle"]).await;
+
+    process.send("test\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Got: test"]).await;
+
+    process.exit().await;
+}
+
 pub async fn run_tests() {
     let mut args = env::args();
     args.next();
@@ -710,6 +772,9 @@ pub async fn run_tests() {
         "update_reloadable_event" => {
             update_reloadable_event().await;
         }
+        "replacable_state" => {
+            replacable_state().await;
+        }
         "remote" => {
             println!("Can run remote");
             can_run_remote().await;
@@ -751,6 +816,7 @@ pub async fn run_tests() {
             println!("setup_on_reload");
             println!("setup_in_state");
             println!("update_reloadable_event");
+            println!("replacable_state");
             std::process::exit(1)
         }
     }

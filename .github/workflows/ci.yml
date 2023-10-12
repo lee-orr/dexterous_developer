@@ -186,8 +186,6 @@ jobs:
             hot,
             edit,
             launcher,
-            remote,
-            asset,
             initialize_resource,
             update_resource,
             reset_resource,
@@ -198,6 +196,9 @@ jobs:
             clear_on_reload,
             setup_on_reload,
             setup_in_state,
+            replacable_state,
+            remote,
+            asset,
           ]
     runs-on: ${{matrix.os}}
     steps:

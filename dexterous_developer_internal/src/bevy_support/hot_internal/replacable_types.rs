@@ -3,14 +3,14 @@ use bevy::{
     utils::HashMap,
 };
 
-use crate::{ReplacableComponent, ReplacableResource};
+use crate::{CustomReplacableResource, ReplacableComponent};
 
 #[derive(Resource, Default)]
 pub struct ReplacableResourceStore {
     map: HashMap<String, Vec<u8>>,
 }
 
-pub fn serialize_replacable_resource<R: ReplacableResource>(
+pub fn serialize_replacable_resource<R: CustomReplacableResource>(
     mut store: ResMut<ReplacableResourceStore>,
     resource: Option<Res<R>>,
     mut commands: Commands,
@@ -18,14 +18,14 @@ pub fn serialize_replacable_resource<R: ReplacableResource>(
     let Some(resource) = resource else {
         return;
     };
-    if let Ok(v) = rmp_serde::to_vec(resource.as_ref()) {
+    if let Ok(v) = resource.to_vec() {
         store.map.insert(R::get_type_name().to_string(), v);
     }
 
     commands.remove_resource::<R>();
 }
 
-pub fn deserialize_replacable_resource<R: ReplacableResource>(
+pub fn deserialize_replacable_resource<R: CustomReplacableResource>(
     store: Res<ReplacableResourceStore>,
     mut commands: Commands,
 ) {
@@ -34,7 +34,7 @@ pub fn deserialize_replacable_resource<R: ReplacableResource>(
     let v: R = store
         .map
         .get(name)
-        .and_then(|v| rmp_serde::from_slice(v.as_slice()).ok())
+        .and_then(|v| R::from_slice(v).ok())
         .unwrap_or_default();
 
     commands.insert_resource(v);
