@@ -69,4 +69,9 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
             .add_systems(OnExit(state), clear_marked_system::<C>);
         self
     }
+
+    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+        self.0.add_event::<T>();
+        self
+    }
 }

@@ -8,6 +8,9 @@ pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default 
 pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
+pub trait ReplacableEvent: Event + Serialize + DeserializeOwned + Default {
+    fn get_type_name() -> &'static str;
+}
 
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
@@ -31,6 +34,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
+    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {
