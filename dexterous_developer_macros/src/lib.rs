@@ -40,10 +40,12 @@ pub fn dexterous_developer_setup(attr: TokenStream, item: TokenStream) -> TokenS
 
         impl dexterous_developer::ReloadableSetup for #fn_name {
             fn setup_function_name() -> &'static str {
+                println!("Name: {}", #inner_fn_name_str);
                 #inner_fn_name_str
             }
 
             fn default_function(app: &mut ReloadableAppContents) {
+                println!("Run Func: {}", #inner_fn_name_str);
                 #inner_fn_name(app);
             }
         }

@@ -8,7 +8,7 @@ pub(crate) struct BuildSettings {
     pub watch_folders: Vec<PathBuf>,
     pub manifest: Option<PathBuf>,
     pub lib_path: PathBuf,
-    pub package: String,
+    pub package: PackageOrExample,
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
@@ -22,11 +22,23 @@ pub(crate) struct BuildSettings {
     pub watch_folders: Vec<PathBuf>,
     pub manifest: Option<PathBuf>,
     pub lib_path: PathBuf,
-    pub package: String,
+    pub package: PackageOrExample,
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
     pub build_target: Option<crate::Target>,
+}
+
+#[derive(Clone, Debug)]
+pub enum PackageOrExample {
+    Package(String),
+    Example(String),
+}
+
+impl Default for PackageOrExample {
+    fn default() -> Self {
+        Self::Package(String::default())
+    }
 }
 
 impl ToString for BuildSettings {
@@ -57,6 +69,10 @@ impl ToString for BuildSettings {
             .map(|v| v.to_string_lossy())
             .unwrap_or_default();
         let lib_path: std::borrow::Cow<'_, str> = lib_path.to_string_lossy();
+        let package = match package {
+            PackageOrExample::Package(v) => v.clone(),
+            PackageOrExample::Example(v) => format!("example:{v}"),
+        };
 
         format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}")
     }
@@ -79,7 +95,13 @@ impl TryFrom<&str> for BuildSettings {
         let manifest = split.next().filter(|v| !v.is_empty()).map(PathBuf::from);
         let package = split
             .next()
-            .map(|v| v.to_string())
+            .map(|v| {
+                if v.starts_with("example:") {
+                    PackageOrExample::Example(v.replace("example:", "").to_string())
+                } else {
+                    PackageOrExample::Package(v.to_string())
+                }
+            })
             .ok_or(Error::msg("no package"))?;
         let features = split
             .next()

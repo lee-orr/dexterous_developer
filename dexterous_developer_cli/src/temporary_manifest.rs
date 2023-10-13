@@ -9,7 +9,11 @@ use toml::{Table, Value};
 pub fn setup_temporary_manifest(
     dir: &Path,
     package: Option<&str>,
+    example: Option<&str>,
 ) -> anyhow::Result<Option<TemporaryManifest>> {
+    if example.is_some() {
+        return Ok(None);
+    }
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();
     get_metadata.current_dir(dir);
@@ -27,6 +31,7 @@ pub fn setup_temporary_manifest(
         }
         pkg.targets
             .iter()
+            .filter(|p| !(p.is_example() || p.is_bench() || p.is_test()))
             .find(|p| {
                 p.crate_types
                     .iter()

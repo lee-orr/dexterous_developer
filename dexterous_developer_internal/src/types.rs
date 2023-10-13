@@ -6,6 +6,7 @@ use anyhow::bail;
 pub struct HotReloadOptions {
     pub manifest_path: Option<PathBuf>,
     pub package: Option<String>,
+    pub example: Option<String>,
     pub lib_name: Option<String>,
     pub watch_folders: Vec<PathBuf>,
     pub target_folder: Option<PathBuf>,
