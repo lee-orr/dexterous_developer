@@ -26,6 +26,11 @@
 			"type": "shell",
 			"command": "cargo run -p ci",
 			"label": "CI Validate"
+		},
+		{
+			"type": "shell",
+			"command": "cargo install --path ./dexterous_developer_cli",
+			"label": "Install CLI"
 		}
 	]
 	

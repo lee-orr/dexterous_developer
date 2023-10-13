@@ -264,7 +264,7 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                     tokio::fs::write(&docker, docker_file).await?;
 
                     (
-                        format!("MACOS_SDK_DIR=./macos_sdk_dir"),
+                        "MACOS_SDK_DIR=./macos_sdk_dir".to_string(),
                         format!("MACOS_SDK_FILE={file_name}"),
                     )
                 }

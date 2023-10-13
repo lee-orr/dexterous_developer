@@ -1,5 +1,5 @@
 #[cfg(feature = "bevy")]
-pub use bevy::prelude::{debug, error, info, trace, warn};
+pub use bevy::prelude::*;
 
 #[cfg(all(not(feature = "bevy"), feature = "hot"))]
 pub use log::{debug, error, info, trace, warn};

@@ -61,7 +61,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             schedule.add_systems(systems);
         } else {
             debug!("Creating schedule with systems");
-            let mut new_schedule = Schedule::new();
+            let mut new_schedule = Schedule::new(schedule.clone());
             new_schedule.add_systems(systems);
             schedules.insert(schedule, new_schedule);
         }
@@ -194,8 +194,11 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     }
 
     fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<Events<T>>()
-            .add_systems(First, Events::<T>::update_system)
+        self.insert_replacable_resource::<Events<T>>().add_systems(
+            First,
+            bevy::ecs::event::event_update_system::<T>
+                .run_if(bevy::ecs::event::event_update_condition::<T>),
+        )
     }
 }
 

@@ -52,12 +52,12 @@ impl Plugin for HotReloadPlugin {
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
         );
-        let reload_schedule = Schedule::new();
-        let cleanup_reloaded_schedule = Schedule::new();
-        let cleanup_schedules_schedule = Schedule::new();
-        let serialize_schedule = Schedule::new();
-        let deserialize_schedule = Schedule::new();
-        let reload_complete = Schedule::new();
+        let reload_schedule = Schedule::new(SetupReload);
+        let cleanup_reloaded_schedule = Schedule::new(CleanupReloaded);
+        let cleanup_schedules_schedule = Schedule::new(CleanupSchedules);
+        let serialize_schedule = Schedule::new(SerializeReloadables);
+        let deserialize_schedule = Schedule::new(DeserializeReloadables);
+        let reload_complete = Schedule::new(OnReloadComplete);
 
         debug!("Schedules ready");
 
@@ -86,12 +86,12 @@ impl Plugin for HotReloadPlugin {
 
         debug!("Watcher set up triggered");
 
-        app.add_schedule(SetupReload, reload_schedule)
-            .add_schedule(CleanupReloaded, cleanup_reloaded_schedule)
-            .add_schedule(CleanupSchedules, cleanup_schedules_schedule)
-            .add_schedule(SerializeReloadables, serialize_schedule)
-            .add_schedule(DeserializeReloadables, deserialize_schedule)
-            .add_schedule(OnReloadComplete, reload_complete);
+        app.add_schedule(reload_schedule)
+            .add_schedule(cleanup_reloaded_schedule)
+            .add_schedule(cleanup_schedules_schedule)
+            .add_schedule(serialize_schedule)
+            .add_schedule(deserialize_schedule)
+            .add_schedule(reload_complete);
 
         debug!("scheduled attached");
 

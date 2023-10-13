@@ -39,7 +39,7 @@ cli = ["hot", "dep:tokio", "dep:serde", "blake3"]
 [dependencies]
 anyhow = { version = "1" }
 dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.0.12-pre.0" }
-bevy = { version = "0.11", default-features = false, features = [
+bevy = { git = "https://github.com/bevyengine/bevy", default-features = false, features = [
     "serialize",
 ], optional = true }
 libloading = { version = "0.8", optional = true }

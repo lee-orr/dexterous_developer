@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 
 #[allow(unused_imports)]
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
-#[allow(unused_imports)]
 use dexterous_developer::{
     dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
@@ -14,7 +12,6 @@ use serde::{Deserialize, Serialize};
 pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
-        .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>()
         .setup_reloadable_elements::<reloadable_2>()

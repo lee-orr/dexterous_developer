@@ -178,7 +178,7 @@ pub fn register_schedules(world: &mut World) {
         let label = ReloadableSchedule::new(original.clone());
         debug!("Adding {label:?} to schedule");
         inner.labels.insert(Box::new(label.clone()));
-        let exists = schedules.insert(label.clone(), schedule);
+        let exists = schedules.insert(schedule);
         if exists.is_none() {
             if let Some(root) = schedules.get_mut(&original) {
                 let label = label.clone();
@@ -187,11 +187,11 @@ pub fn register_schedules(world: &mut World) {
                 });
             } else {
                 let label = label.clone();
-                let mut root = Schedule::new();
+                let mut root = Schedule::new(original);
                 root.add_systems(move |w: &mut World| {
                     let _ = w.try_run_schedule(label.clone());
                 });
-                schedules.insert(original, root);
+                schedules.insert(root);
             }
         }
     }
@@ -206,7 +206,7 @@ pub fn cleanup_schedules(
 ) {
     for schedule in reloadable.labels.iter() {
         debug!("Attempting cleanup for {schedule:?}");
-        let clean = schedules.insert(schedule.clone(), Schedule::default());
+        let clean = schedules.insert(Schedule::new(schedule.clone()));
         debug!("Tried cleaning {schedule:?} was empty: {}", clean.is_none());
     }
     debug!("Cleanup almost complete");
