@@ -30,6 +30,10 @@ enum Commands {
         #[arg(short, long)]
         package: Option<String>,
 
+        /// Example to build
+        #[arg(short, long)]
+        example: Option<String>,
+
         /// Features to include
         #[arg(short, long)]
         features: Vec<String>,
@@ -43,6 +47,10 @@ enum Commands {
         /// Package to build (required in a workspace)
         #[arg(short, long)]
         package: Option<String>,
+
+        /// Example to build
+        #[arg(short, long)]
+        example: Option<String>,
 
         /// Features to include
         #[arg(short, long)]
@@ -92,6 +100,10 @@ enum Commands {
         #[arg(short, long)]
         package: Option<String>,
 
+        /// Example to build
+        #[arg(short, long)]
+        example: Option<String>,
+
         /// Features to include
         #[arg(short, long)]
         features: Vec<String>,
@@ -110,6 +122,7 @@ impl Default for Commands {
     fn default() -> Self {
         Self::Run {
             package: None,
+            example: None,
             features: vec![],
             watch: vec![],
         }
@@ -135,17 +148,19 @@ async fn main() {
     match command {
         Commands::Run {
             package,
+            example,
             features,
             watch,
         } => {
             println!("Running {package:?} with {features:?}");
 
-            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
                 .expect("Couldn't set up temporary manifest");
 
             let options = HotReloadOptions {
                 features,
                 package,
+                example,
                 watch_folders: watch,
                 ..Default::default()
             };
@@ -160,13 +175,14 @@ async fn main() {
         }
         Commands::Serve {
             package,
+            example,
             features,
             watch,
             port,
         } => {
             println!("Serving {package:?} on port {port}");
 
-            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
                 .expect("Couldn't set up temporary manifest");
             run_server(port, package, features, watch)
                 .await
@@ -198,11 +214,12 @@ async fn main() {
         }
         Commands::CompileLibs {
             package,
+            example,
             features,
             libs,
             target,
         } => {
-            let temporary = setup_temporary_manifest(&dir, package.as_deref())
+            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
                 .expect("Couldn't set up temporary manifest");
             let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
             if cross_config.exists() {

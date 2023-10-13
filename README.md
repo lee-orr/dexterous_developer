@@ -40,7 +40,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 bevy = "0.11"
-dexterous_developer = "0.0.12-pre.0"
+dexterous_developer = "0.0.11"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -83,3 +83,7 @@ fn reloadable(app: &mut ReloadableAppContents) {
 }
 
 ```
+
+## Bevy Main
+
+If you want to use the current bevy main, you should use the `main` branch of the github repository. Otherwise, all published versions of `dexterous_developer` currently only support bevy `0.11`.

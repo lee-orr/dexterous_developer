@@ -31,23 +31,6 @@ impl LibraryHolderInner {
 
         await_file(3, &new_path);
 
-        let _folder = new_path.parent();
-
-        crate::logger::debug!("Search Paths: ");
-        for path in cargo_path_utils::dylib_path() {
-            crate::logger::debug!("{path:?}");
-            if let Ok(dir) = std::fs::read_dir(&path) {
-                for entry in dir.flatten() {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if name.contains("libbevy_dylib") {
-                        crate::logger::debug!("Found bevy dylib at {:?}", entry.path());
-                    }
-                }
-            } else {
-                crate::logger::error!("THIS PATH DOES NOT EXIST - {path:?}");
-            }
-        }
-
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&new_path) } {
             Ok(lib) => {
@@ -98,8 +81,8 @@ fn await_file(iterations: usize, path: &PathBuf) {
     }
     if iterations > 0 {
         crate::logger::debug!("{path:?} doesn't exist yet...");
-        await_file(iterations.saturating_sub(1), path);
         std::thread::sleep(Duration::from_secs_f32(0.5));
+        await_file(iterations.saturating_sub(1), path);
     }
 }
 

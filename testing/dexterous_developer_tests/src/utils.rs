@@ -173,6 +173,20 @@ impl TestProject {
         self.run(cmd, ProcessHeat::Hot).await
     }
 
+    pub async fn run_example(&mut self, example: &str) -> anyhow::Result<RunningProcess> {
+        let Ok(cli_path) = rebuild_cli() else {
+            bail!("Couldn't get CLI");
+        };
+
+        let mut wd = self.path.clone();
+        let mut cmd: Command = Command::new(cli_path);
+        cmd.current_dir(&wd)
+            .arg("run")
+            .arg("--example")
+            .arg(example);
+        self.run(cmd, ProcessHeat::Hot).await
+    }
+
     pub async fn run_existing(&mut self) -> anyhow::Result<RunningProcess> {
         let Ok(cli_path) = rebuild_cli() else {
             bail!("Couldn't get CLI");

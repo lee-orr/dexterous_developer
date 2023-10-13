@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashSet},
     path::PathBuf,
     process::{Command, Stdio},
     sync::mpsc,
@@ -14,7 +14,10 @@ use log::{debug, error, info, trace};
 use notify::{RecursiveMode, Watcher};
 
 use crate::{
-    hot::singleton::{BUILD_SETTINGS, WATCHER},
+    hot::{
+        build_settings::PackageOrExample,
+        singleton::{BUILD_SETTINGS, WATCHER},
+    },
     internal_shared::cargo_path_utils,
     internal_shared::LibPathSet,
     HotReloadOptions,
@@ -33,6 +36,7 @@ pub(crate) fn setup_build_settings(
     let HotReloadOptions {
         manifest_path,
         package,
+        example,
         lib_name,
         watch_folders,
         target_folder,
@@ -100,15 +104,29 @@ pub(crate) fn setup_build_settings(
                 return None;
             }
         }
-        pkg.targets
-            .iter()
-            .find(|p| {
-                p.crate_types
-                    .iter()
-                    .map(|v| v.as_str())
-                    .any(|v| v == "dylib")
-            })
-            .map(|p| (pkg, p))
+        if let Some(example) = example.as_ref() {
+            pkg.targets
+                .iter()
+                .filter(|p| p.is_example() && p.name == example.as_str())
+                .find(|p| {
+                    p.crate_types
+                        .iter()
+                        .map(|v| v.as_str())
+                        .any(|v| v == "dylib")
+                })
+                .map(|p| (PackageOrExample::Example(p.name.clone()), p, pkg))
+        } else {
+            pkg.targets
+                .iter()
+                .filter(|p| !(p.is_example() || p.is_bench() || p.is_test()))
+                .find(|p| {
+                    p.crate_types
+                        .iter()
+                        .map(|v| v.as_str())
+                        .any(|v| v == "dylib")
+                })
+                .map(|p| (PackageOrExample::Package(pkg.name.clone()), p, pkg))
+        }
     });
 
     let libs: Vec<_> = if let Some(library) = lib_name.as_ref() {
@@ -121,7 +139,7 @@ pub(crate) fn setup_build_settings(
         bail!("Workspace contains multiple libraries - please set the one you want with the --package option");
     }
 
-    let Some((pkg, lib)) = libs.first() else {
+    let Some((pkg_or_example, lib, pkg)) = libs.first() else {
         bail!("Workspace contains no matching libraries");
     };
 
@@ -198,18 +216,30 @@ pub(crate) fn setup_build_settings(
     let settings = BuildSettings {
         lib_path: lib_path.clone(),
         watch_folders: if watch_folders.is_empty() {
-            vec![lib
-                .src_path
-                .clone()
-                .into_std_path_buf()
-                .parent()
-                .map(|v| v.to_path_buf())
-                .ok_or(Error::msg("Couldn't find source directory to watch"))?]
+            let set: HashSet<PathBuf> = [
+                lib.src_path
+                    .clone()
+                    .into_std_path_buf()
+                    .parent()
+                    .map(|v| v.to_path_buf())
+                    .ok_or(Error::msg("Couldn't find source directory to watch"))?,
+                pkg.manifest_path
+                    .clone()
+                    .into_std_path_buf()
+                    .parent()
+                    .ok_or(Error::msg("Couldn't find source directory to watch"))?
+                    .join("src"),
+            ]
+            .iter()
+            .map(|v| v.to_owned())
+            .collect();
+
+            set.into_iter().collect()
         } else {
             watch_folders.clone()
         },
         manifest: manifest_path.clone(),
-        package: pkg.name.clone().clone(),
+        package: pkg_or_example.clone(),
         features: features.into_iter().collect::<Vec<_>>().join(","),
         target_folder: target_folder.as_ref().cloned().map(|mut v| {
             if v.ends_with("debug") {
@@ -373,12 +403,18 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
 
     let mut command = Command::new(cargo);
     let build_command = super::env::set_envs(&mut command, build_target.as_ref())?;
+    command.args(build_command).arg("--profile").arg("dev");
+
+    match package {
+        crate::hot::build_settings::PackageOrExample::Package(package) => {
+            command.arg("-p").arg(package.as_str());
+        }
+        crate::hot::build_settings::PackageOrExample::Example(example) => {
+            command.arg("--example").arg(example.as_str());
+        }
+    }
+
     command
-        .args(build_command)
-        .arg("--profile")
-        .arg("dev")
-        .arg("-p")
-        .arg(package.as_str())
         .arg("--lib")
         .arg("--features")
         .arg(features)
@@ -482,8 +518,15 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
             let extension = extension.to_string_lossy().to_string();
             trace!("file has stem {stem} and extension {extension}");
 
-            if parent.to_string_lossy() != "deps" {
-                let deps = parent.join("deps");
+            let parent_str = parent.to_string_lossy();
+            trace!("File parent is: {parent_str}");
+
+            if !parent_str.contains("deps") {
+                let deps = if parent_str.ends_with("examples") {
+                    parent.to_path_buf()
+                } else {
+                    parent.join("deps")
+                };
                 let deps_path = deps.join(filename);
                 if deps_path.exists() {
                     trace!("{deps_path:?} exists - using it instead of {path:?}");
