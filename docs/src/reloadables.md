@@ -110,3 +110,28 @@ impl ReplacableState for AppState {
 Note that unlike `ReplacableResource` or `ReplacableComponent`, with `ReplacableState` you need to give it a name as well as giving a name for the `NextState<S>` resource it'll create.
 
 You can then add the state using `.add_state::<ReplacableComponent>()`.
+
+## Replacable Event
+
+You can also create replacable Events. Here you implement the `ReplacableEvent` trait:
+
+```rust
+#[derive(Event, Clone, Debug, Serialize, Deserialize)]
+pub enum AppEvent {
+    Text(String),
+    Shout(String)
+}
+
+
+impl ReplacableEvent for AppEvent {
+    fn get_type_name() -> &'static str {
+        "app-event"
+    }
+}
+
+
+```
+
+Note that when events get replaced it *resets the event queue* - so all existing events will be cleared! Since as a rule events only persist to the next frame generally, this shouldn't be too much of an issue - depending on when you trigger the reload.
+
+You can then add the state using `.add_event::<ReplacableEvent>()`.

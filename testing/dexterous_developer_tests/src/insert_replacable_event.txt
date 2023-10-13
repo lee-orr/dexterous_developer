@@ -1,0 +1,45 @@
+use bevy::prelude::*;
+use dexterous_developer::*;
+use serde::{Deserialize, Serialize};
+use crate::shared::{StdInput};
+
+fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
+    let text = input.0.as_str();
+    println!("Got: {text}");
+    event.send(AppEvent::Text(text.to_string()))
+}
+
+fn read(input: Res<StdInput>, mut event: EventReader<AppEvent>) {
+    for event in event.iter() {
+        let text = match event {
+           AppEvent::Text(s) => format!("Text - {s}"),
+        };
+        println!("Event: {text}");
+    }
+}
+
+
+
+fn startup() {
+    println!("Press Enter to Progress, or type 'exit' to exit");
+}
+
+#[derive(Event, Clone,  Debug, Serialize, Deserialize)]
+pub enum AppEvent {
+    Text(String),
+}
+
+
+impl ReplacableEvent for AppEvent {
+    fn get_type_name() -> &'static str {
+        "app-event"
+    }
+}
+
+#[dexterous_developer_setup]
+pub fn reloadable(app: &mut ReloadableAppContents) {
+    app
+        .add_event::<AppEvent>()
+        .add_systems(Startup, startup)
+        .add_systems(Update, (update, read).chain());
+}

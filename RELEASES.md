@@ -3,6 +3,7 @@
 ## UPCOMING
 
 - add support for hot re-loading states
+- add support for hot re-loading events
 
 ## Version 0.0.11
 
