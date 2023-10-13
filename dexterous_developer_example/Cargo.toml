@@ -10,8 +10,7 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-bevy = { version = "0.12.0-pre", git = "https://github.com/bevyengine/bevy" }
-bevy-inspector-egui = "*"
+bevy = { git = "https://github.com/bevyengine/bevy" }
 dexterous_developer = { path = "../dexterous_developer" }
 serde = "*"
 
