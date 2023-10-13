@@ -4,6 +4,7 @@
 
 - add support for hot re-loading states
 - add support for hot re-loading events
+- add support for running examples with the `dylib` crate type.
 
 ## Version 0.0.11
 
