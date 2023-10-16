@@ -572,7 +572,7 @@ async fn can_run_remote() {
 }
 
 async fn can_update_assets() {
-    let mut project = TestProject::new("simple_cli_test", "can_update_assets_host").unwrap();
+    let mut project = TestProject::new("asset_test", "can_update_assets_host").unwrap();
     let mut client = TestProject::new("remote_client", "can_update_assets_client").unwrap();
 
     let mut host_process = project.run_host_cli("2345").await.unwrap();
@@ -592,7 +592,9 @@ async fn can_update_assets() {
 
     process.send("\n").expect("Failed to send empty line");
 
-    process.wait_for_lines(&["Ran Update"]).await;
+    process
+        .wait_for_lines(&["Asset: another placeholder"])
+        .await;
 
     project
         .write_file(
@@ -602,6 +604,10 @@ async fn can_update_assets() {
         .expect("Couldn't update file");
 
     process.wait_for_lines(&["Downloaded Asset"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.wait_for_lines(&["Asset: changed content"]).await;
 
     process.exit().await;
     host_process.exit().await;

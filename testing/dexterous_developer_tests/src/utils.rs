@@ -625,6 +625,11 @@ impl RunningProcess {
                 }
 
                 Line::Err(line) => {
+                    if line == "No Asset" {
+                        println!("Waiting for asset...");
+                        tokio::time::sleep(Duration::from_secs_f32(5.)).await;
+                        self.send("\n").expect("Failed to send empty line");
+                    }
                     continue;
                 }
 

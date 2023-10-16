@@ -55,6 +55,11 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
     let lib_dir = dunce::canonicalize(lib_dir)?;
     let asset_dir = dunce::canonicalize(asset_dir)?;
 
+    println!("Paths:");
+    println!("Reload Dir: {reload_dir:?}");
+    println!("Lib Dir: {lib_dir:?}");
+    println!("Asset Dir: {asset_dir:?}");
+
     println!("Gettin Dynamic Library Search Paths");
 
     let env_paths = dylib_path();
@@ -252,7 +257,6 @@ async fn connect_to_build(
                 HotReloadMessage::UpdatedAssets(updated_assets) => {
                     println!("Got Asset List: {updated_assets:?}");
                     for (file, hash) in updated_assets.iter() {
-                        println!("Downloading Asset {file} - with {hash:?}");
                         if download_asset(root_url, file, hash, asset_folder)
                             .await
                             .is_err()
@@ -311,8 +315,10 @@ async fn download_asset(
     hash: &[u8; 32],
     target_folder: &Path,
 ) -> anyhow::Result<()> {
-    let file = file.trim_start_matches('/');
+    let file = file.trim_start_matches('/').trim_start_matches('\\');
+    println!("Downloading Asset {file} - with {hash:?}");
     let file_path = target_folder.join(file);
+    println!("Target path {file_path:?}");
     if file_path.exists() {
         println!("comparing hashes");
         if let Ok(f) = std::fs::read(file_path.as_path()) {
