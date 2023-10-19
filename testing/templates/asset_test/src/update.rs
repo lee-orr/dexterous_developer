@@ -1,9 +1,6 @@
 use std::{env, path::PathBuf};
 
-use bevy::{
-    asset::UpdateAssets,
-    prelude::{AssetServer, Assets, Commands, Res, Startup, Update},
-};
+use bevy::prelude::{AssetServer, Assets, Commands, Res};
 
 use crate::{Text, TextAsset};
 
