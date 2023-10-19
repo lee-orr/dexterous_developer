@@ -9,6 +9,9 @@ use dexterous_developer::*;
 use crate::{Text, TextAsset};
 
 fn update(text: Res<Text>, texts: Res<Assets<TextAsset>>) {
+    for (id, text) in texts.iter() {
+        println!("Got id: {id:?} and text {text:?}");
+    }
     let Some(text) = texts.get(&text.0) else {
         eprintln!("No Asset");
         return;

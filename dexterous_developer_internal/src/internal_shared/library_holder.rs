@@ -29,7 +29,8 @@ impl LibraryHolderInner {
         std::fs::rename(path, &new_path).ok()?;
         crate::logger::debug!("Copied file to new path");
 
-        await_file(3, &new_path);
+        await_file(10, &new_path);
+        let new_path = dunce::canonicalize(new_path).ok()?;
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&new_path) } {
@@ -38,7 +39,7 @@ impl LibraryHolderInner {
                 Some(Self(Some(lib), new_path))
             }
             Err(err) => {
-                crate::logger::error!("Error loading library: {err:?}");
+                crate::logger::error!("Error loading library - {new_path:?}: {err:?}");
 
                 crate::logger::error!("Search Paths: ");
                 for path in cargo_path_utils::dylib_path() {

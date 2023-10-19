@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Error};
+use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
 use log::{debug, error, info, trace};
@@ -76,6 +76,7 @@ pub(crate) fn setup_build_settings(
         .cloned()
         .chain([
             "bevy/dynamic_linking".to_string(),
+            "bevy/file_watcher".to_string(),
             "dexterous_developer/hot_internal".to_string(),
         ])
         .collect::<BTreeSet<_>>();
@@ -475,7 +476,8 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
 
     if result.success() && succeeded {
         debug!("Copying built files");
-        let mut moved = vec![];
+        let mut moved: Vec<PathBuf> = vec![];
+        let mut deps_paths = HashSet::new();
         for path in artifacts {
             trace!("Checking {path:?}");
             let path = if !path.exists() {
@@ -525,7 +527,12 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                 let deps = if parent_str.ends_with("examples") {
                     parent.to_path_buf()
                 } else {
-                    parent.join("deps")
+                    let p = parent.join("deps");
+                    if !p.exists() {
+                        continue;
+                    }
+                    deps_paths.insert(p.clone());
+                    p
                 };
                 let deps_path = deps.join(filename);
                 if deps_path.exists() {
@@ -595,6 +602,30 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        for path in deps_paths {
+            let files = std::fs::read_dir(&path)
+                .context(format!("Attempting to read directory: {path:?}"))?;
+            for file in files {
+                let Ok(file) = file else {
+                    bail!("Couldn't get next file in {path:?}");
+                };
+                let file_type = file.file_type()?;
+                let path = file.path();
+                let Some(extension) = path.extension() else {
+                    continue;
+                };
+                if file_type.is_file()
+                    && (extension == "dll" || extension == "so" || extension == "dylib")
+                {
+                    let out_path = out_target.join(file.file_name());
+                    if !out_path.exists() {
+                        moved.push(out_path.clone());
+                        std::fs::copy(path, out_path)?;
                     }
                 }
             }
