@@ -9,7 +9,6 @@ use bevy::{
     utils::BoxedFuture,
     MinimalPlugins,
 };
-use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 
 fn terminal_runner(mut app: App) {
     app.update();
@@ -26,15 +25,20 @@ fn terminal_runner(mut app: App) {
     }
 }
 
-#[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+pub fn bevy_main() {
     App::new()
-        .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
-        .add_plugins(AssetPlugin::default())
+        .add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin {
+            mode: AssetMode::Unprocessed,
+            watch_for_changes_override: Some(true),
+            ..default()
+        })
         .init_asset::<TextAsset>()
         .init_asset_loader::<TextAssetLoader>()
         .set_runner(terminal_runner)
-        .setup_reloadable_elements::<update::reloadable>()
+        .add_systems(Startup, update::startup)
+        .add_systems(Update, update::update)
+        .add_systems(UpdateAssets, update::asset_updates)
         .run();
 }
 

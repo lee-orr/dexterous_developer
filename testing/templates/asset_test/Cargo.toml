@@ -15,5 +15,5 @@ thiserror = "*"
 bevy = { git = "https://github.com/bevyengine/bevy", default_features = false, features = [
     "bevy_asset",
 ] }
-dexterous_developer = { path = "../../../dexterous_developer" }
+
 [workspace]
