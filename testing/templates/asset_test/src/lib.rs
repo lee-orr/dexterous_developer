@@ -1,5 +1,6 @@
 mod update;
 
+use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 use std::str::Utf8Error;
 use thiserror::Error;
 
@@ -25,9 +26,10 @@ fn terminal_runner(mut app: App) {
     }
 }
 
-pub fn bevy_main() {
+#[hot_bevy_main]
+pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     App::new()
-        .add_plugins(MinimalPlugins)
+        .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
         .add_plugins(AssetPlugin {
             mode: AssetMode::Unprocessed,
             watch_for_changes_override: Some(true),
@@ -36,9 +38,7 @@ pub fn bevy_main() {
         .init_asset::<TextAsset>()
         .init_asset_loader::<TextAssetLoader>()
         .set_runner(terminal_runner)
-        .add_systems(Startup, update::startup)
-        .add_systems(Update, update::update)
-        .add_systems(UpdateAssets, update::asset_updates)
+        .setup_reloadable_elements::<update::reloadable>()
         .run();
 }
 

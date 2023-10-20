@@ -17,5 +17,6 @@ bevy = { git = "https://github.com/bevyengine/bevy", default_features = false, f
     "multi-threaded",
     "file_watcher",
 ] }
+dexterous_developer = { path = "../../../dexterous_developer" }
 
 [workspace]

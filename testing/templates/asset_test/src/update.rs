@@ -1,8 +1,13 @@
 use std::{env, path::PathBuf};
 
-use bevy::prelude::{AssetServer, Assets, Commands, Res};
+use bevy::{
+    asset::UpdateAssets,
+    prelude::{AssetServer, Assets, Commands, Res, Startup, Update},
+};
 
 use crate::{Text, TextAsset};
+
+use dexterous_developer::*;
 
 pub fn update(text: Res<Text>, texts: Res<Assets<TextAsset>>) {
     for (id, text) in texts.iter() {
@@ -21,6 +26,13 @@ pub fn startup(asset_server: Res<AssetServer>, mut commands: Commands) {
     println!("Using assets at: {base_path:?}/assets");
     let text = asset_server.load("nesting/another_placeholder.txt");
     commands.insert_resource(Text(text))
+}
+
+#[dexterous_developer_setup]
+pub fn reloadable(app: &mut ReloadableAppContents) {
+    app.add_systems(Startup, startup)
+        .add_systems(Update, update)
+        .add_systems(UpdateAssets, asset_updates);
 }
 
 pub fn asset_updates() {
