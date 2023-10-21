@@ -61,7 +61,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             schedule.add_systems(systems);
         } else {
             debug!("Creating schedule with systems");
-            let mut new_schedule = Schedule::new(schedule.clone());
+            let mut new_schedule = Schedule::new(ReloadableSchedule::new(schedule.clone()));
             new_schedule.add_systems(systems);
             schedules.insert(schedule, new_schedule);
         }

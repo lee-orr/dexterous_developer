@@ -618,6 +618,10 @@ impl RunningProcess {
             println!("{} - Waiting for {c}", self.name);
             match self.read_next_line().await.expect("No Next Line") {
                 Line::Std(line) => {
+                    if line.contains("KeepAlive") {
+                        println!("Keepalive detected - probably need new input?");
+                        self.send("\n").expect("Failed to send empty line");
+                    }
                     if line.contains(c) {
                         println!("Got line {line} matching {c}");
                         current = iterator.next();
@@ -625,6 +629,11 @@ impl RunningProcess {
                 }
 
                 Line::Err(line) => {
+                    if line == "No Asset" {
+                        println!("Waiting for asset...");
+                        tokio::time::sleep(Duration::from_secs_f32(5.)).await;
+                        self.send("\n").expect("Failed to send empty line");
+                    }
                     continue;
                 }
 

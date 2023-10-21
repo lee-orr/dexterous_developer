@@ -6,6 +6,7 @@
     "./dexterous_developer_example/Cargo.toml",
     "./testing/templates/reloadables_test/Cargo.toml",
     "./testing/templates/no_cli_test/Cargo.toml",
+    "./testing/templates/asset_test/Cargo.toml",
     "./testing/templates/simple_cli_test/Cargo.toml",
   ],
   "rust-analyzer.cargo.features": "all"

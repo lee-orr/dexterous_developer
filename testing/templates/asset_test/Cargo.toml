@@ -1,0 +1,22 @@
+[package]
+name = "asset_test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "lib_asset_test"
+crate-type = ["rlib"]
+
+
+[dependencies]
+thiserror = "*"
+
+bevy = { git = "https://github.com/bevyengine/bevy", default_features = false, features = [
+    "bevy_asset",
+    "multi-threaded",
+    "file_watcher",
+] }
+dexterous_developer = { path = "../../../dexterous_developer" }
+
+[workspace]
