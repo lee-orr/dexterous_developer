@@ -76,7 +76,7 @@ pub(crate) fn setup_build_settings(
         .cloned()
         .chain([
             "bevy/dynamic_linking".to_string(),
-            "bevy/file_watcher".to_string(),
+            "bevy/embedded_watcher".to_string(),
             "dexterous_developer/hot_internal".to_string(),
         ])
         .collect::<BTreeSet<_>>();
