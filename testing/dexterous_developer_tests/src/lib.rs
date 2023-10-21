@@ -588,19 +588,13 @@ async fn can_update_assets() {
 
     let mut process = client.run_client_cli("2345").await.unwrap();
 
-    println!("WAITING FOR READY");
-
     process.is_ready().await;
 
     process.send("\n").expect("Failed to send empty line");
 
-    println!("WERE READY");
-
     process
         .wait_for_lines(&["Asset: another placeholder"])
         .await;
-
-    println!("GOT ANOTHER PLACEHOLDER");
 
     project
         .write_file(
@@ -609,7 +603,11 @@ async fn can_update_assets() {
         )
         .expect("Couldn't update file");
 
-    process.wait_for_lines(&["Downloaded Asset"]).await;
+    process.wait_for_lines(&["Completed Asset Update"]).await;
+
+    process.send("\n").expect("Failed to send empty line");
+
+    process.send("\n").expect("Failed to send empty line");
 
     process.send("\n").expect("Failed to send empty line");
 

@@ -121,9 +121,9 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
                 .to_owned()
         };
         println!("Connecting to {remote} for target{target}");
-        let (lib_name_tx, mut lib_name_rx) = mpsc::channel(1);
-        let (paths_ready_tx, mut paths_ready_rx) = mpsc::channel(1);
-        let (assets_ready_tx, mut assets_ready_rx) = mpsc::channel(1);
+        let (lib_name_tx, mut lib_name_rx) = mpsc::channel(100);
+        let (paths_ready_tx, mut paths_ready_rx) = mpsc::channel(100);
+        let (assets_ready_tx, mut assets_ready_rx) = mpsc::channel(100);
         {
             let target = target.clone();
             let remote = remote.clone();
@@ -164,6 +164,30 @@ pub async fn connect_to_remote(remote: Url, reload_dir_rel: Option<PathBuf>) -> 
             }
         }
         println!("Starting App - got {path:?}");
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    val = assets_ready_rx.recv() => {
+                        if val.is_none() {
+                            break;
+                        }
+                        println!("Completed Asset Update");
+                    }
+                    val = paths_ready_rx.recv() => {
+                        if val.is_none() {
+                            break;
+                        }
+                        println!("Completed path update");
+                    }
+                    val = lib_name_rx.recv() => {
+                        if val.is_none() {
+                            break;
+                        }
+                        println!("Completed path update");
+                    }
+                }
+            }
+        });
         dexterous_developer_internal::run_served_file(path).await?;
     }
     Ok(())
@@ -221,6 +245,7 @@ async fn connect_to_build(
     let assets_ready = &assets_ready;
 
     loop {
+        println!("Waiting for message");
         let Some(msg) = read.next().await else {
             println!("Closed websocket channel");
             break;
@@ -237,6 +262,8 @@ async fn connect_to_build(
 
                     println!("Got root lib - at path {root_path:?}");
                     let _ = lib_path_ref.send((root_lib, root_path)).await;
+
+                    println!("Updated root library");
                 }
                 HotReloadMessage::UpdatedLibs(updated_paths) => {
                     for (file, hash) in updated_paths.iter() {
@@ -253,6 +280,7 @@ async fn connect_to_build(
                     }
                     println!("Updated Files Downloaded");
                     let _ = paths_ready.send(()).await;
+                    println!("Done sending library update");
                 }
                 HotReloadMessage::UpdatedAssets(updated_assets) => {
                     println!("Got Asset List: {updated_assets:?}");
@@ -266,6 +294,7 @@ async fn connect_to_build(
                     }
                     println!("Updated Assets Downloaded");
                     let _ = assets_ready.send(()).await;
+                    println!("Done sending asset update");
                 }
                 HotReloadMessage::KeepAlive => println!("Received Keep Alive Message"),
             }

@@ -618,6 +618,10 @@ impl RunningProcess {
             println!("{} - Waiting for {c}", self.name);
             match self.read_next_line().await.expect("No Next Line") {
                 Line::Std(line) => {
+                    if line.contains("KeepAlive") {
+                        println!("Keepalive detected - probably need new input?");
+                        self.send("\n").expect("Failed to send empty line");
+                    }
                     if line.contains(c) {
                         println!("Got line {line} matching {c}");
                         current = iterator.next();
