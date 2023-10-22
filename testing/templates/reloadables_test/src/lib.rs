@@ -1,7 +1,7 @@
 pub mod shared;
 mod update;
 use bevy::{prelude::App, MinimalPlugins};
-use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
+use dexterous_developer::*;
 
 use crate::shared::AppState;
 
@@ -23,11 +23,11 @@ fn terminal_runner(mut app: App) {
 }
 
 #[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
-    App::new()
-        .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
-        .set_runner(terminal_runner)
-        .setup_reloadable_elements::<update::reloadable>()
+pub fn bevy_main<'a>(initial_plugins: impl InitializeApp<'a>) {
+    initial_plugins
+        .initialize::<MinimalPlugins>()
+        .app_with_runner(terminal_runner)
+        .add_plugins(update::MyPlugin)
         .init_resource::<shared::StdInput>()
         .add_state::<AppState>()
         .run();

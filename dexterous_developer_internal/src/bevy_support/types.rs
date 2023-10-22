@@ -1,8 +1,38 @@
-use super::ReloadableAppContents;
-use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, prelude::*};
+use std::marker::PhantomData;
+
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
-pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
+
+pub trait ReloadableElementLabel: 'static + std::hash::Hash {
+    fn get_element_name() -> &'static str;
+}
+
+impl ReloadableElementLabel for () {
+    fn get_element_name() -> &'static str {
+        "default_reloadable_element"
+    }
+}
+
+pub trait AttachReloadableElementLabel<T: ReloadableElementLabel> {}
+
+pub trait GetElementLabel<M> {
+    fn get_element_label() -> &'static str;
+}
+
+impl<T: ReloadableElementLabel, R: AttachReloadableElementLabel<T>> GetElementLabel<(T, R)> for R {
+    fn get_element_label() -> &'static str {
+        T::get_element_name()
+    }
+}
+
+pub trait ReplacableResource<T: ReloadableElementLabel = ()>:
+    Resource + Serialize + DeserializeOwned + Default
+{
     fn get_type_name() -> &'static str;
+
+    fn get_element_label() -> &'static str {
+        <() as ReloadableElementLabel>::get_element_name()
+    }
 }
 
 pub trait CustomReplacableResource: Resource + Default {
@@ -11,6 +41,16 @@ pub trait CustomReplacableResource: Resource + Default {
     fn to_vec(&self) -> anyhow::Result<Vec<u8>>;
 
     fn from_slice(val: &[u8]) -> anyhow::Result<Self>;
+
+    fn get_element_label() -> &'static str {
+        <() as ReloadableElementLabel>::get_element_name()
+    }
+}
+
+impl<T: CustomReplacableResource> GetElementLabel<(T, ())> for T {
+    fn get_element_label() -> &'static str {
+        T::get_element_label()
+    }
 }
 
 impl<T: ReplacableResource> CustomReplacableResource for T {
@@ -25,18 +65,52 @@ impl<T: ReplacableResource> CustomReplacableResource for T {
     fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
         Ok(rmp_serde::from_slice(val)?)
     }
+
+    fn get_element_label() -> &'static str {
+        T::get_element_label()
+    }
 }
 
 pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
+
+    fn get_element_label() -> &'static str {
+        <() as ReloadableElementLabel>::get_element_name()
+    }
+}
+
+impl<T: ReplacableComponent> GetElementLabel<(T, (), ())> for T {
+    fn get_element_label() -> &'static str {
+        T::get_element_label()
+    }
 }
 pub trait ReplacableEvent: Event + Serialize + DeserializeOwned {
     fn get_type_name() -> &'static str;
+
+    fn get_element_label() -> &'static str {
+        <() as ReloadableElementLabel>::get_element_name()
+    }
+}
+
+impl<T: ReplacableEvent> GetElementLabel<(T, (), T)> for T {
+    fn get_element_label() -> &'static str {
+        T::get_element_label()
+    }
 }
 
 pub trait ReplacableState: States + Serialize + DeserializeOwned {
     fn get_type_name() -> &'static str;
     fn get_next_type_name() -> &'static str;
+
+    fn get_element_label() -> &'static str {
+        <() as ReloadableElementLabel>::get_element_name()
+    }
+}
+
+impl<T: ReplacableState> GetElementLabel<(T, T, ())> for T {
+    fn get_element_label() -> &'static str {
+        T::get_element_label()
+    }
 }
 
 impl<S: ReplacableState> CustomReplacableResource for State<S> {
@@ -51,6 +125,10 @@ impl<S: ReplacableState> CustomReplacableResource for State<S> {
     fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
         let val = rmp_serde::from_slice(val)?;
         Ok(Self::new(val))
+    }
+
+    fn get_element_label() -> &'static str {
+        S::get_element_label()
     }
 }
 
@@ -67,6 +145,10 @@ impl<S: ReplacableState> CustomReplacableResource for NextState<S> {
         let val = rmp_serde::from_slice(val)?;
         Ok(Self(val))
     }
+
+    fn get_element_label() -> &'static str {
+        S::get_element_label()
+    }
 }
 
 impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
@@ -81,40 +163,35 @@ impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
     fn from_slice(_: &[u8]) -> anyhow::Result<Self> {
         Ok(Self::default())
     }
+
+    fn get_element_label() -> &'static str {
+        S::get_element_label()
+    }
 }
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
 
 pub trait ReloadableApp: private::ReloadableAppSealed {
-    fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
+    fn register_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self;
+    fn reset_resource<R: Resource + Default + GetElementLabel<L>, L>(&mut self) -> &mut Self;
+    fn reset_resource_to_value<R: Resource + Clone + GetElementLabel<L>, L>(
         &mut self,
-        schedule: L,
+        value: R,
+    ) -> &mut Self;
+    fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
+    fn clear_marked_on_reload<C: Component + GetElementLabel<L>, L>(&mut self) -> &mut Self;
+    fn reset_setup<C: Component + GetElementLabel<L>, M, L>(
+        &mut self,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
-
-    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self;
-    fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
-    fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
-    fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
-    fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
-    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
-    fn reset_setup_in_state<C: Component, S: States, M>(
+    fn reset_setup_in_state<C: Component + GetElementLabel<L>, S: States, M, L>(
         &mut self,
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
     fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self;
     fn add_reloadable_state<S: ReplacableState>(&mut self) -> &mut Self;
-}
-
-pub trait ReloadableSetup {
-    fn setup_function_name() -> &'static str;
-    fn default_function(app: &mut ReloadableAppContents);
-}
-
-pub trait ReloadableElementsSetup {
-    fn setup_reloadable_elements<T: ReloadableSetup>(&mut self) -> &mut Self;
 }
 
 pub fn clear_marked_system<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
@@ -131,38 +208,96 @@ pub fn get_minimal_plugins() -> PluginGroupBuilder {
 }
 
 pub trait InitializablePlugins: PluginGroup {
-    fn generate_reloadable_initializer() -> PluginGroupBuilder;
+    fn initialize_fence() -> PluginGroupBuilder;
+
+    fn initialize_app() -> PluginGroupBuilder;
+
+    fn initialize_hot_app() -> PluginGroupBuilder;
 }
 
 impl InitializablePlugins for DefaultPlugins {
-    fn generate_reloadable_initializer() -> PluginGroupBuilder {
+    fn initialize_fence() -> PluginGroupBuilder {
+        get_default_plugins()
+    }
+
+    fn initialize_app() -> PluginGroupBuilder {
+        get_default_plugins()
+    }
+
+    fn initialize_hot_app() -> PluginGroupBuilder {
         get_default_plugins()
     }
 }
 impl InitializablePlugins for MinimalPlugins {
-    fn generate_reloadable_initializer() -> PluginGroupBuilder {
+    fn initialize_fence() -> PluginGroupBuilder {
+        get_minimal_plugins()
+    }
+
+    fn initialize_app() -> PluginGroupBuilder {
+        get_minimal_plugins()
+    }
+
+    fn initialize_hot_app() -> PluginGroupBuilder {
         get_minimal_plugins()
     }
 }
 
-pub struct InitialPluginsEmpty;
+pub struct InitialPluginsEmpty<'a>(&'a mut App);
 
-impl InitialPlugins for InitialPluginsEmpty {
-    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
-        T::generate_reloadable_initializer()
+impl<'a> InitialPluginsEmpty<'a> {
+    pub fn new(app: &'a mut App) -> Self {
+        Self(app)
     }
 }
 
-impl<P: Plugin> InitialPlugins for P {
-    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
-        T::generate_reloadable_initializer().add(self)
+pub trait InitializeApp<'a> {
+    type PluginsReady<T: InitializablePlugins>: PluginsReady<'a, T>;
+
+    fn initialize<T: InitializablePlugins>(self) -> Self::PluginsReady<T>;
+}
+
+impl<'a> InitializeApp<'a> for InitialPluginsEmpty<'a> {
+    type PluginsReady<T: InitializablePlugins> = InitialPluginsReady<'a, T>;
+
+    fn initialize<T: InitializablePlugins>(self) -> Self::PluginsReady<T> {
+        let group = T::initialize_fence();
+        InitialPluginsReady::<T>(group, self.0, PhantomData)
     }
 }
 
-pub trait InitialPlugins {
-    fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder;
+pub struct InitialPluginsReady<'a, T: InitializablePlugins>(
+    PluginGroupBuilder,
+    &'a mut App,
+    PhantomData<T>,
+);
+
+impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for InitialPluginsReady<'a, T> {
+    fn adjust(mut self, adjust_fn: fn(PluginGroupBuilder) -> PluginGroupBuilder) -> Self {
+        self.0 = adjust_fn(self.0);
+        self
+    }
+
+    fn app(self) -> &'a mut App {
+        self.1.add_plugins(self.0)
+    }
 }
 
+pub trait SetPluginRunner<'a> {
+    fn app_with_runner<T: 'static + FnOnce(App) + Send>(self, runner: T) -> &'a mut App;
+}
+
+impl<'a, P: PluginsReady<'a, MinimalPlugins>> SetPluginRunner<'a> for P {
+    fn app_with_runner<T: 'static + FnOnce(App) + Send>(self, runner: T) -> &'a mut App {
+        let app = self.app();
+        app.set_runner(runner)
+    }
+}
+
+pub trait PluginsReady<'a, T: InitializablePlugins> {
+    fn adjust(self, adjust_fn: fn(PluginGroupBuilder) -> PluginGroupBuilder) -> Self;
+
+    fn app(self) -> &'a mut App;
+}
 /// These are dynamically adjustable settings for reloading. Ignored when not hot reloading.
 #[derive(Resource, Clone, Debug)]
 pub struct ReloadSettings {

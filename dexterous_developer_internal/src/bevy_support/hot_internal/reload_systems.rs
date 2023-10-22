@@ -5,20 +5,18 @@ use bevy::{
 };
 
 use crate::{
-    bevy_support::hot_internal::{
-        reloadable_app::ReloadableAppContents, schedules::CleanupSchedules,
+    bevy_support::hot_internal::schedules::CleanupSchedules,
+    internal_shared::update_lib::update_lib, ReloadSettings,
+};
+
+use super::{
+    super::hot_internal::{
+        hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
+        schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables,
+        ReloadableAppCleanupData, ReloadableSchedule, SerializeReloadables, SetupReload,
     },
-    internal_shared::update_lib::update_lib,
-    ReloadSettings,
+    HotReloadInnerApp,
 };
-
-use super::super::hot_internal::{
-    hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
-    schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables, ReloadableAppCleanupData,
-    ReloadableSchedule, SerializeReloadables, SetupReload,
-};
-
-use super::super::ReloadableSetup;
 
 pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
     internal.updated_this_frame = false;
@@ -30,6 +28,18 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
         internal.updated_this_frame = true;
         internal.last_update_time = Instant::now();
         internal.last_update_date_time = chrono::Local::now();
+    }
+}
+
+pub fn run_update(inner_app: Option<NonSendMut<HotReloadInnerApp>>) {
+    let Some(mut inner_app) = inner_app else {
+        return;
+    };
+    if inner_app.is_ready {
+        inner_app.app.update();
+    } else {
+        inner_app.is_ready = true;
+        inner_app.app.run();
     }
 }
 
@@ -91,20 +101,6 @@ pub fn reload(world: &mut World) {
     }
 }
 
-pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
-    if let Err(e) = setup_reloadable_app_inner(name, world) {
-        error!("Reloadable App Error: {e:?}");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
-            return;
-        };
-        info!("setup default");
-
-        let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
-
-        T::default_function(&mut inner_app);
-    }
-}
-
 #[derive(Debug, Clone)]
 enum ReloadableSetupCallError {
     InternalHotReloadStateMissing,
@@ -127,36 +123,6 @@ impl std::fmt::Display for ReloadableSetupCallError {
         };
         write!(f, "{v}")
     }
-}
-
-fn setup_reloadable_app_inner(
-    name: &'static str,
-    world: &mut World,
-) -> Result<(), ReloadableSetupCallError> {
-    info!("Setting up reloadables at {name}");
-    let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
-        return Err(ReloadableSetupCallError::InternalHotReloadStateMissing);
-    };
-
-    debug!("got internal reload state");
-
-    let Some(lib) = &internal_state.library else {
-        return Err(ReloadableSetupCallError::LibraryHolderNotSet);
-    };
-    let lib = lib.clone();
-
-    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
-        return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
-    };
-
-    let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
-
-    if let Err(_e) = lib.call(name, &mut inner_app) {
-        return Err(ReloadableSetupCallError::CallFailed);
-    }
-
-    info!("setup for {name} complete");
-    Ok(())
 }
 
 pub fn register_schedules(world: &mut World) {

@@ -16,74 +16,41 @@ pub struct ReloadableAppCleanupData {
 
 #[derive(Default, Resource)]
 pub struct ReloadableAppElements {
-    schedules: HashMap<Box<dyn ScheduleLabel>, Schedule>,
-    resources: HashSet<String>,
-    components: HashSet<String>,
+    resources: HashMap<&'static str, HashSet<&'static str>>,
+    components: HashMap<&'static str, HashSet<&'static str>>,
 }
 
 impl ReloadableAppElements {
     pub(crate) fn schedule_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
-        self.schedules.into_iter()
+        vec![].into_iter()
     }
 }
 
-pub struct ReloadableAppContents<'a> {
-    name: &'static str,
-    schedules: &'a mut HashMap<Box<dyn ScheduleLabel>, Schedule>,
-    resources: &'a mut HashSet<String>,
-    components: &'a mut HashSet<String>,
-}
+impl crate::private::ReloadableAppSealed for App {}
 
-impl<'a> ReloadableAppContents<'a> {
-    pub fn new(name: &'static str, elements: &'a mut ReloadableAppElements) -> Self {
-        Self {
-            name,
-            schedules: &mut elements.schedules,
-            resources: &mut elements.resources,
-            components: &mut elements.components,
-        }
-    }
-}
+impl crate::ReloadableApp for App {
+    fn register_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self {
+        self.init_resource::<R>();
 
-impl<'a> crate::private::ReloadableAppSealed for ReloadableAppContents<'a> {}
-
-impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
-    fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
-        &mut self,
-        schedule: L,
-        systems: impl IntoSystemConfigs<M>,
-    ) -> &mut Self {
-        let schedules = &mut self.schedules;
-        let schedule: Box<dyn ScheduleLabel> = Box::new(schedule);
-
-        if let Some(schedule) = schedules.get_mut(&schedule) {
-            debug!("Adding systems to schedule");
-            schedule.add_systems(systems);
-        } else {
-            debug!("Creating schedule with systems");
-            let mut new_schedule = Schedule::new(ReloadableSchedule::new(schedule.clone()));
-            new_schedule.add_systems(systems);
-            schedules.insert(schedule, new_schedule);
-        }
-
-        self
-    }
-
-    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self {
         let name = R::get_type_name();
-        if !self.resources.contains(name) {
-            self.resources.insert(name.to_string());
+        let element = R::get_element_label();
+
+        let mut elements = self
+            .world
+            .get_resource_or_insert_with(ReloadableAppElements::default);
+
+        let mut resource_registry = elements.resources.entry(element).or_default();
+
+        if !resource_registry.contains(name) {
+            resource_registry.insert(name);
             info!("adding resource {name}");
-            let reloadable_element_name = self.name;
             self.add_systems(
                 SerializeReloadables,
-                serialize_replacable_resource::<R>
-                    .run_if(element_selection_condition(reloadable_element_name)),
+                serialize_replacable_resource::<R>.run_if(element_selection_condition(element)),
             )
             .add_systems(
                 DeserializeReloadables,
-                deserialize_replacable_resource::<R>
-                    .run_if(element_selection_condition(reloadable_element_name)),
+                deserialize_replacable_resource::<R>.run_if(element_selection_condition(element)),
             );
         }
         self
@@ -91,79 +58,99 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
 
     fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self {
         let name = C::get_type_name();
-        if !self.components.contains(name) {
-            self.components.insert(name.to_string());
-            let reloadable_element_name = self.name;
+        let element = C::get_element_label();
+
+        let mut elements = self
+            .world
+            .get_resource_or_insert_with(ReloadableAppElements::default);
+
+        let mut component_registry = elements.components.entry(element).or_default();
+
+        if !component_registry.contains(name) {
+            component_registry.insert(name);
             self.add_systems(
                 SerializeReloadables,
-                serialize_replacable_component::<C>
-                    .run_if(element_selection_condition(reloadable_element_name)),
+                serialize_replacable_component::<C>.run_if(element_selection_condition(element)),
             )
             .add_systems(
                 DeserializeReloadables,
-                deserialize_replacable_component::<C>
-                    .run_if(element_selection_condition(reloadable_element_name)),
+                deserialize_replacable_component::<C>.run_if(element_selection_condition(element)),
             );
         }
         self
     }
 
-    fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self {
+    fn reset_resource<R: bevy::prelude::Resource + Default + GetElementLabel<L>, L>(
+        &mut self,
+    ) -> &mut Self {
         debug!("resetting resource");
-        let name = self.name;
+        let element = R::get_element_label();
         self.add_systems(
             OnReloadComplete,
             (move |mut commands: Commands| {
                 commands.insert_resource(R::default());
             })
-            .run_if(element_selection_condition(name)),
+            .run_if(element_selection_condition(element)),
         );
         self
     }
 
-    fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self {
+    fn reset_resource_to_value<R: bevy::prelude::Resource + Clone + GetElementLabel<L>, L>(
+        &mut self,
+        value: R,
+    ) -> &mut Self {
         debug!("resetting resource");
-        let name = self.name;
+        let element = R::get_element_label();
         self.add_systems(
             OnReloadComplete,
             (move |mut commands: Commands| {
                 commands.insert_resource(value.clone());
             })
-            .run_if(element_selection_condition(name)),
+            .run_if(element_selection_condition(element)),
         );
         self
     }
 
-    fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self {
-        let name = self.name;
+    fn clear_marked_on_reload<C: bevy::prelude::Component + GetElementLabel<L>, L>(
+        &mut self,
+    ) -> &mut Self {
+        let element = C::get_element_label();
         self.add_systems(
             CleanupReloaded,
-            clear_marked_system::<C>.run_if(element_selection_condition(name)),
+            clear_marked_system::<C>.run_if(element_selection_condition(element)),
         );
         self
     }
 
-    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self {
-        let name = self.name;
+    fn reset_setup<C: bevy::prelude::Component + GetElementLabel<L>, M, L>(
+        &mut self,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self {
+        let element = C::get_element_label();
         self.add_systems(
             CleanupReloaded,
-            clear_marked_system::<C>.run_if(element_selection_condition(name)),
+            clear_marked_system::<C>.run_if(element_selection_condition(element)),
         )
         .add_systems(
             OnReloadComplete,
-            systems.run_if(element_selection_condition(name)),
+            systems.run_if(element_selection_condition(element)),
         )
     }
 
-    fn reset_setup_in_state<C: Component, S: States, M>(
+    fn reset_setup_in_state<
+        C: bevy::prelude::Component + GetElementLabel<L>,
+        S: bevy::prelude::States,
+        M,
+        L,
+    >(
         &mut self,
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
-        let name = self.name;
+        let element = C::get_element_label();
         self.add_systems(
             CleanupReloaded,
-            clear_marked_system::<C>.run_if(element_selection_condition(name)),
+            clear_marked_system::<C>.run_if(element_selection_condition(element)),
         )
         .add_systems(OnExit(state.clone()), clear_marked_system::<C>)
         .add_systems(
@@ -171,7 +158,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             systems.run_if(
                 in_state(state).and_then(
                     dexterous_developer_occured
-                        .and_then(element_selection_condition(name))
+                        .and_then(element_selection_condition(element))
                         .or_else(resource_changed::<State<S>>()),
                 ),
             ),
@@ -179,8 +166,8 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     }
 
     fn add_reloadable_state<S: ReplacableState>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<State<S>>()
-            .insert_replacable_resource::<NextState<S>>()
+        self.register_replacable_resource::<State<S>>()
+            .register_replacable_resource::<NextState<S>>()
             .add_systems(
                 StateTransition,
                 ((
@@ -194,11 +181,12 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     }
 
     fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<Events<T>>().add_systems(
-            First,
-            bevy::ecs::event::event_update_system::<T>
-                .run_if(bevy::ecs::event::event_update_condition::<T>),
-        )
+        self.register_replacable_resource::<Events<T>>()
+            .add_systems(
+                First,
+                bevy::ecs::event::event_update_system::<T>
+                    .run_if(bevy::ecs::event::event_update_condition::<T>),
+            )
     }
 }
 

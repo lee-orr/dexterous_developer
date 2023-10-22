@@ -2,7 +2,7 @@ use std::{env, path::PathBuf};
 
 use bevy::{
     asset::UpdateAssets,
-    prelude::{AssetServer, Assets, Commands, Res, Startup, Update},
+    prelude::{App, AssetServer, Assets, Commands, Plugin, Res, Startup, Update},
 };
 
 use crate::{Text, TextAsset};
@@ -28,11 +28,14 @@ pub fn startup(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.insert_resource(Text(text))
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_systems(Startup, startup)
-        .add_systems(Update, update)
-        .add_systems(UpdateAssets, asset_updates);
+pub struct MyPlugin;
+
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, startup)
+            .add_systems(Update, update)
+            .add_systems(UpdateAssets, asset_updates);
+    }
 }
 
 pub fn asset_updates() {

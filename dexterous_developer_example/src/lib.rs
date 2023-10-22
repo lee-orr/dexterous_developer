@@ -2,19 +2,20 @@ use bevy::prelude::*;
 
 #[allow(unused_imports)]
 use dexterous_developer::{
-    dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
-    ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
+    hot_bevy_main, InitializeApp, ReloadableApp, ReplacableComponent, ReplacableResource,
 };
-use dexterous_developer::{ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState};
+use dexterous_developer::{
+    AttachReloadableElementLabel, PluginsReady, ReloadMode, ReloadSettings, ReloadableElementLabel,
+    ReplacableState,
+};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
-    App::new()
-        .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
+pub fn bevy_main<'a>(initial_plugins: impl InitializeApp<'a>) {
+    initial_plugins
+        .initialize::<DefaultPlugins>()
+        .app()
         .add_systems(Startup, setup)
-        .setup_reloadable_elements::<reloadable>()
-        .setup_reloadable_elements::<reloadable_2>()
         .insert_resource(ReloadSettings {
             display_update_time: true,
             manual_reload: Some(KeyCode::F2),
@@ -23,13 +24,13 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
             reloadable_element_policy: dexterous_developer::ReloadableElementPolicy::OneOfList(
                 KeyCode::F3,
                 vec![
-                    reloadable::setup_function_name(),
-                    reloadable_2::setup_function_name(),
+                    <() as ReloadableElementLabel>::get_element_name(),
+                    SecondaryReloadableElement::get_element_name(),
                 ],
             ),
             reloadable_element_selection: None,
         })
-        .run();
+        .add_plugins(MyPlugin);
 }
 
 #[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default, Serialize, Deserialize)]
@@ -50,26 +51,24 @@ impl ReplacableState for AppState {
     }
 }
 
-#[dexterous_developer_setup(first_reloadable)]
-fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_reloadable_state::<AppState>();
-    println!("Setting up reloadabless #1");
-    app.add_systems(Update, (move_cube, toggle));
-    println!("Reset Setup");
-    app.reset_setup::<Cube, _>(setup_cube);
-    println!("Reset Setup In State");
-    app.reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
-    app.reset_setup_in_state::<Sphere, AppState, _>(AppState::TwoSpheres, setup_two_spheres);
-    println!("Done");
-}
+struct MyPlugin;
 
-#[dexterous_developer_setup(second_reloadable)]
-fn reloadable_2(app: &mut ReloadableAppContents) {
-    println!("Setting up reloadabless #2");
-    app.add_systems(Update, advance_time);
-    println!("Reset Resource");
-    app.reset_resource::<VelocityMultiplier>();
-    println!("Done");
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_reloadable_state::<AppState>();
+        println!("Setting up reloadabless #1");
+        app.add_systems(Update, (move_cube, toggle));
+        println!("Reset Setup");
+        app.reset_setup::<Cube, _, _>(setup_cube);
+        println!("Reset Setup In State");
+        app.reset_setup_in_state::<Sphere, AppState, _, _>(AppState::AnotherState, setup_sphere);
+        app.reset_setup_in_state::<Sphere, AppState, _, _>(AppState::TwoSpheres, setup_two_spheres);
+        println!("Done");
+        app.add_systems(Update, advance_time);
+        println!("Reset Resource");
+        app.reset_resource::<VelocityMultiplier, _>();
+        println!("Done");
+    }
 }
 
 #[derive(Component, Serialize, Deserialize)]
@@ -87,8 +86,19 @@ impl ReplacableComponent for Cube {
     }
 }
 
+#[derive(Hash, Debug)]
+pub struct SecondaryReloadableElement;
+
+impl ReloadableElementLabel for SecondaryReloadableElement {
+    fn get_element_name() -> &'static str {
+        "secondary element"
+    }
+}
+
 #[derive(Component, Default)]
 pub struct Sphere;
+
+impl AttachReloadableElementLabel<SecondaryReloadableElement> for Sphere {}
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Debug)]
 struct VelocityMultiplier(Vec3, f32);
@@ -102,6 +112,10 @@ impl Default for VelocityMultiplier {
 impl ReplacableResource for VelocityMultiplier {
     fn get_type_name() -> &'static str {
         "VelocityMultiplier"
+    }
+
+    fn get_element_label() -> &'static str {
+        SecondaryReloadableElement::get_element_name()
     }
 }
 

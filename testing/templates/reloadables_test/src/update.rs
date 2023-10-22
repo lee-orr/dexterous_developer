@@ -1,4 +1,4 @@
-use bevy::prelude::{Component, Resource, Startup, Update};
+use bevy::prelude::{App, Component, Plugin, Resource, Startup, Update};
 use dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
@@ -10,10 +10,13 @@ fn startup() {
     println!("Press Enter to Progress, or type 'exit' to exit");
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_systems(Startup, startup)
-        .add_systems(Update, update);
+pub struct MyPlugin;
+
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, startup)
+            .add_systems(Update, update);
+    }
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]

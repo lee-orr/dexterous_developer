@@ -1,45 +1,26 @@
 use super::types::*;
 use bevy::prelude::{App, OnEnter, OnExit, Startup};
 
-pub struct ReloadableAppContents<'a>(&'a mut App);
+impl private::ReloadableAppSealed for App {}
 
-impl ReloadableElementsSetup for bevy::app::App {
-    fn setup_reloadable_elements<T: super::ReloadableSetup>(&mut self) -> &mut Self {
-        {
-            let mut contents = ReloadableAppContents(self);
-            T::default_function(&mut contents);
-        }
+impl ReloadableApp for App {
+    fn register_replacable_resource<R: super::CustomReplacableResource>(&mut self) -> &mut Self {
+        self.init_resource::<R>();
         self
     }
-}
 
-impl<'a> private::ReloadableAppSealed for ReloadableAppContents<'a> {}
-
-impl<'a> ReloadableApp for ReloadableAppContents<'a> {
-    fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
+    fn reset_resource<R: bevy::prelude::Resource + Default + GetElementLabel<L>, L>(
         &mut self,
-        schedule: L,
-        systems: impl bevy::prelude::IntoSystemConfigs<M>,
     ) -> &mut Self {
-        self.0.add_systems(schedule, systems);
+        self.init_resource::<R>();
         self
     }
 
-    fn insert_replacable_resource<R: super::CustomReplacableResource>(&mut self) -> &mut Self {
-        self.0.init_resource::<R>();
-        self
-    }
-
-    fn reset_resource<R: bevy::prelude::Resource + Default>(&mut self) -> &mut Self {
-        self.0.init_resource::<R>();
-        self
-    }
-
-    fn reset_resource_to_value<R: bevy::prelude::Resource + Clone>(
+    fn reset_resource_to_value<R: bevy::prelude::Resource + Clone + GetElementLabel<L>, L>(
         &mut self,
         value: R,
     ) -> &mut Self {
-        self.0.insert_resource(value);
+        self.insert_resource(value);
         self
     }
 
@@ -47,36 +28,42 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn clear_marked_on_reload<C: bevy::prelude::Component>(&mut self) -> &mut Self {
+    fn clear_marked_on_reload<C: bevy::prelude::Component + GetElementLabel<L>, L>(
+        &mut self,
+    ) -> &mut Self {
         self
     }
 
-    fn reset_setup<C: bevy::prelude::Component, M>(
+    fn reset_setup<C: bevy::prelude::Component + GetElementLabel<L>, M, L>(
         &mut self,
         systems: impl bevy::prelude::IntoSystemConfigs<M>,
     ) -> &mut Self {
-        self.0.add_systems(Startup, systems);
+        self.add_systems(Startup, systems);
         self
     }
 
-    fn reset_setup_in_state<C: bevy::prelude::Component, S: bevy::prelude::States, M>(
+    fn reset_setup_in_state<
+        C: bevy::prelude::Component + GetElementLabel<L>,
+        S: bevy::prelude::States,
+        M,
+        L,
+    >(
         &mut self,
         state: S,
         systems: impl bevy::prelude::IntoSystemConfigs<M>,
     ) -> &mut Self {
-        self.0
-            .add_systems(OnEnter(state.clone()), systems)
+        self.add_systems(OnEnter(state.clone()), systems)
             .add_systems(OnExit(state), clear_marked_system::<C>);
         self
     }
 
     fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self {
-        self.0.add_event::<T>();
+        self.add_event::<T>();
         self
     }
 
     fn add_reloadable_state<S: super::ReplacableState>(&mut self) -> &mut Self {
-        self.0.add_state::<S>();
+        self.add_state::<S>();
         self
     }
 }
