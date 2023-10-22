@@ -29,6 +29,6 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .set_runner(terminal_runner)
         .setup_reloadable_elements::<update::reloadable>()
         .init_resource::<shared::StdInput>()
-        .add_reloadable_state::<AppState>()
+        .add_state::<AppState>()
         .run();
 }
