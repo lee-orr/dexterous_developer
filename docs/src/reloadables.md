@@ -109,7 +109,7 @@ impl ReplacableState for AppState {
 
 Note that unlike `ReplacableResource` or `ReplacableComponent`, with `ReplacableState` you need to give it a name as well as giving a name for the `NextState<S>` resource it'll create.
 
-You can then add the state using `.add_state::<ReplacableComponent>()`.
+You can then add the state using `.add_reloadable_state::<ReplacableComponent>()`.
 
 ## Replacable Event
 
@@ -134,4 +134,4 @@ impl ReplacableEvent for AppEvent {
 
 Note that when events get replaced it *resets the event queue* - so all existing events will be cleared! Since as a rule events only persist to the next frame generally, this shouldn't be too much of an issue - depending on when you trigger the reload.
 
-You can then add the state using `.add_event::<ReplacableEvent>()`.
+You can then add the state using `.add_reloadable_event::<ReplacableEvent>()`.

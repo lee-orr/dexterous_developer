@@ -70,12 +70,12 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+    fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self {
         self.0.add_event::<T>();
         self
     }
 
-    fn add_state<S: super::ReplacableState>(&mut self) -> &mut Self {
+    fn add_reloadable_state<S: super::ReplacableState>(&mut self) -> &mut Self {
         self.0.add_state::<S>();
         self
     }

@@ -52,7 +52,7 @@ impl ReplacableState for AppState {
 
 #[dexterous_developer_setup(first_reloadable)]
 fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_state::<AppState>();
+    app.add_reloadable_state::<AppState>();
     println!("Setting up reloadabless #1");
     app.add_systems(Update, (move_cube, toggle));
     println!("Reset Setup");

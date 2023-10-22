@@ -104,8 +104,8 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self;
-    fn add_state<S: ReplacableState>(&mut self) -> &mut Self;
+    fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self;
+    fn add_reloadable_state<S: ReplacableState>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

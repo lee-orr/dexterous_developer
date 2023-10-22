@@ -178,7 +178,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         )
     }
 
-    fn add_state<S: ReplacableState>(&mut self) -> &mut Self {
+    fn add_reloadable_state<S: ReplacableState>(&mut self) -> &mut Self {
         self.insert_replacable_resource::<State<S>>()
             .insert_replacable_resource::<NextState<S>>()
             .add_systems(
@@ -193,7 +193,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+    fn add_reloadable_event<T: ReplacableEvent>(&mut self) -> &mut Self {
         self.insert_replacable_resource::<Events<T>>().add_systems(
             First,
             bevy::ecs::event::event_update_system::<T>
