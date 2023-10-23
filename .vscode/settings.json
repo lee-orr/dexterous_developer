@@ -4,3 +4,4 @@
     "./Cargo.toml",
   ],
   "rust-analyzer.cargo.features": "all"
+}
