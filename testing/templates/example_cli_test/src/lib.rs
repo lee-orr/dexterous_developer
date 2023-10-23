@@ -1,6 +1,5 @@
 pub mod update;
 use bevy::{prelude::App, MinimalPlugins};
-use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 
 pub fn terminal_runner(mut app: App) {
     app.update();
