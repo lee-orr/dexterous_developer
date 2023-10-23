@@ -2,6 +2,7 @@ mod hot_reload_internal;
 mod reload_systems;
 mod reloadable_app;
 mod replacable_types;
+mod resource_sync;
 mod schedules;
 
 use std::marker::PhantomData;
@@ -29,6 +30,8 @@ use crate::{InitializablePlugins, InitializeApp, PluginsReady};
 use reload_systems::{reload, update_lib_system};
 pub use reloadable_app::ReloadableAppElements;
 use schedules::*;
+
+use self::resource_sync::ResourceSync;
 
 pub struct HotReloadableAppInitializer<'a>(pub(crate) Option<&'a mut App>, pub(crate) &'a mut App);
 
@@ -85,6 +88,24 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
             self.4.push(Box::new(fence_fn));
         }
         self
+    }
+
+    fn sync_resource_from_fence<R: Resource + Clone>(self) -> Self {
+        self.modify_fence(|app| {
+            app.add_plugins(ResourceSync::<R>::from_fence());
+        })
+    }
+
+    fn sync_resource_from_app<R: Resource + Clone>(self) -> Self {
+        self.modify_fence(|app| {
+            app.add_plugins(ResourceSync::<R>::from_app());
+        })
+    }
+
+    fn sync_resource_bi_directional<R: Resource + Clone>(self) -> Self {
+        self.modify_fence(|app| {
+            app.add_plugins(ResourceSync::<R>::bi_directional());
+        })
     }
 }
 
