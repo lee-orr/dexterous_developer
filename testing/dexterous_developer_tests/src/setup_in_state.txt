@@ -40,12 +40,15 @@ fn setup(mut commands: Commands) {
     commands.spawn(TextComponent { content: "a_thing".to_string()});
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+pub struct MyPlugin;
+
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
     app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
         .reset_setup_in_state::<TextComponent, _, _, _>(AppState::AnotherState, setup);
+}
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]
