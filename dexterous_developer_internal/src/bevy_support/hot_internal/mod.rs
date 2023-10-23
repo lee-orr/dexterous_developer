@@ -26,7 +26,7 @@ use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 use crate::{InitializablePlugins, InitializeApp, PluginsReady};
-use reload_systems::{cleanup_schedules, reload, update_lib_system};
+use reload_systems::{reload, update_lib_system};
 pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppElements};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
@@ -99,7 +99,7 @@ pub fn build_reloadable_frame(
     let mut fence = App::new();
     let mut inner = App::new();
 
-    let mut initializer = HotReloadableAppInitializer(Some(&mut fence), &mut inner);
+    let initializer = HotReloadableAppInitializer(Some(&mut fence), &mut inner);
 
     initialize_app(initializer);
 
@@ -131,12 +131,6 @@ impl Plugin for HotReloadPlugin {
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
         );
-        let reload_schedule = Schedule::new(SetupReload);
-        let cleanup_reloaded_schedule = Schedule::new(CleanupReloaded);
-        let cleanup_schedules_schedule = Schedule::new(CleanupSchedules);
-        let serialize_schedule = Schedule::new(SerializeReloadables);
-        let deserialize_schedule = Schedule::new(DeserializeReloadables);
-        let reload_complete = Schedule::new(OnReloadComplete);
 
         debug!("Schedules ready");
 
@@ -165,13 +159,6 @@ impl Plugin for HotReloadPlugin {
 
         debug!("Watcher set up triggered");
 
-        app.add_schedule(reload_schedule)
-            .add_schedule(cleanup_reloaded_schedule)
-            .add_schedule(cleanup_schedules_schedule)
-            .add_schedule(serialize_schedule)
-            .add_schedule(deserialize_schedule)
-            .add_schedule(reload_complete);
-
         debug!("scheduled attached");
 
         app.init_resource::<ReloadableAppElements>()
@@ -182,7 +169,6 @@ impl Plugin for HotReloadPlugin {
         debug!("Added resources to app");
 
         app.add_systems(PreStartup, (watcher, reload))
-            .add_systems(CleanupSchedules, cleanup_schedules)
             .add_systems(First, (update_lib_system, reload).chain())
             .add_systems(
                 Update,
