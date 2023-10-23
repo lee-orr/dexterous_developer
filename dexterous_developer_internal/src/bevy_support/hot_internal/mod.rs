@@ -38,6 +38,7 @@ pub struct HotReloadablePluginsReady<'a, T>(
     &'a mut App,
     PluginGroupBuilder,
     &'a mut App,
+    Vec<Box<dyn FnOnce(&mut App)>>,
     PhantomData<T>,
 );
 
@@ -53,6 +54,7 @@ impl<'a> InitializeApp<'a> for HotReloadableAppInitializer<'a> {
             fence,
             T::initialize_hot_app(),
             app,
+            Vec::new(),
             PhantomData,
         )
     }
@@ -67,11 +69,16 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
 
     fn app(self) -> &'a mut App {
         self.1.add_plugins(self.0);
+
+        for mod_fn in self.4.into_iter() {
+            mod_fn(self.1);
+        }
+
         self.3.add_plugins(self.2)
     }
 
-    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self {
-        fence_fn(self.1);
+    fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {
+        self.4.push(Box::new(fence_fn));
         self
     }
 }

@@ -1,6 +1,9 @@
 use std::marker::PhantomData;
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{
+    app::{PluginGroupBuilder, ScheduleRunnerPlugin},
+    prelude::*,
+};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
@@ -204,7 +207,7 @@ pub fn get_default_plugins() -> PluginGroupBuilder {
 }
 
 pub fn get_minimal_plugins() -> PluginGroupBuilder {
-    MinimalPlugins.build()
+    MinimalPlugin.set(ScheduleRunnerPlugin::run_once())
 }
 
 pub trait InitializablePlugins: PluginGroup {
@@ -261,13 +264,14 @@ impl<'a> InitializeApp<'a> for InitialPluginsEmpty<'a> {
 
     fn initialize<T: InitializablePlugins>(self) -> Self::PluginsReady<T> {
         let group = T::initialize_fence();
-        InitialPluginsReady::<T>(group, self.0, PhantomData)
+        InitialPluginsReady::<T>(group, self.0, vec![], PhantomData)
     }
 }
 
 pub struct InitialPluginsReady<'a, T: InitializablePlugins>(
     PluginGroupBuilder,
     &'a mut App,
+    Vec<Box<dyn FnOnce(&mut App)>>,
     PhantomData<T>,
 );
 
@@ -278,11 +282,16 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for InitialPluginsReady<'a
     }
 
     fn app(self) -> &'a mut App {
-        self.1.add_plugins(self.0)
+        let app = self.1;
+        app.add_plugins(self.0);
+        for mod_fn in self.2.into_iter() {
+            mod_fn(app);
+        }
+        app
     }
 
-    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self {
-        fence_fn(self.1);
+    fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {
+        self.2.push(Box::new(fence_fn));
         self
     }
 }
@@ -303,7 +312,7 @@ impl<'a, P: PluginsReady<'a, MinimalPlugins>> SetPluginRunner<'a> for P {
 pub trait PluginsReady<'a, T: InitializablePlugins>: Sized {
     fn adjust<F: Fn(PluginGroupBuilder) -> PluginGroupBuilder>(self, adjust_fn: F) -> Self;
 
-    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self;
+    fn modify_fence<F: 'static + FnOnce(&mut App)>(self, fence_fn: F) -> Self;
 
     fn app(self) -> &'a mut App;
 
