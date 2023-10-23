@@ -15,9 +15,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = &ast.sig.inputs.first().expect("Should have an input");
     let input = match input {
         syn::FnArg::Receiver(_) => panic!("bevy main shouldn't have a self input"),
-        syn::FnArg::Typed(v) => {
-            &v.pat
-        },
+        syn::FnArg::Typed(v) => &v.pat,
     };
     let block = &ast.block;
 
@@ -39,7 +37,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     stream.push(
         quote! {
             pub fn #fn_name() {
-                fn dexterous_developer_internal_main_inner_function<'a>(#input: dexterous_developer::InitialPluginsEmpty<'a>) 
+                fn dexterous_developer_internal_main_inner_function<'a>(#input: dexterous_developer::InitialPluginsEmpty<'a>)
                 #block
 
                 let mut app = App::new();

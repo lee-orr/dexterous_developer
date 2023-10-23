@@ -17,12 +17,3 @@ pub struct CleanupSchedules;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct OnReloadComplete;
-
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct ReloadableSchedule<T: ScheduleLabel>(T);
-
-impl<T: ScheduleLabel> ReloadableSchedule<T> {
-    pub fn new(label: T) -> Self {
-        Self(label)
-    }
-}

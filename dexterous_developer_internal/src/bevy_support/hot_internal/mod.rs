@@ -27,7 +27,7 @@ use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 use crate::{InitializablePlugins, InitializeApp, PluginsReady};
 use reload_systems::{reload, update_lib_system};
-pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppElements};
+pub use reloadable_app::ReloadableAppElements;
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
@@ -162,7 +162,6 @@ impl Plugin for HotReloadPlugin {
         debug!("scheduled attached");
 
         app.init_resource::<ReloadableAppElements>()
-            .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
             .insert_resource(hot_reload);

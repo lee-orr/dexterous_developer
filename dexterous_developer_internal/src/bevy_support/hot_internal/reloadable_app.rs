@@ -1,6 +1,6 @@
 use bevy::{
     ecs::schedule::common_conditions::run_once,
-    ecs::schedule::{run_enter_schedule, ScheduleLabel},
+    ecs::schedule::run_enter_schedule,
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -9,21 +9,10 @@ use super::{super::types::*, reload_systems::dexterous_developer_occured};
 
 use super::{replacable_types::*, schedules::*};
 
-#[derive(Default, Resource, Clone, Debug)]
-pub struct ReloadableAppCleanupData {
-    pub labels: HashSet<Box<dyn ScheduleLabel>>,
-}
-
 #[derive(Default, Resource)]
 pub struct ReloadableAppElements {
     resources: HashMap<&'static str, HashSet<&'static str>>,
     components: HashMap<&'static str, HashSet<&'static str>>,
-}
-
-impl ReloadableAppElements {
-    pub(crate) fn schedule_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
-        vec![].into_iter()
-    }
 }
 
 impl crate::private::ReloadableAppSealed for App {}
