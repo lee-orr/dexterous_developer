@@ -41,10 +41,12 @@ impl ReplacableEvent for AppEvent {
         "app-event"
     }
 }
+pub struct MyPlugin;
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
     app.add_reloadable_event::<AppEvent>()
         .add_systems(Startup, startup)
         .add_systems(Update, (update, read).chain());
+}
 }

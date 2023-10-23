@@ -25,7 +25,7 @@ impl Plugin for MyPlugin {
     fn build(&self, app: &mut App) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update)
-        .reset_resource_to_value::<TextResource>(TextResource("Resource At Value".to_string()));
+        .reset_resource_to_value::<TextResource, _>(TextResource("Resource At Value".to_string()));
 }
 }
 

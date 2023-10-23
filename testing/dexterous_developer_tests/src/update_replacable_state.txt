@@ -50,13 +50,15 @@ impl ReplacableState for AppState {
         "next-app-state"
     }
 }
+pub struct MyPlugin;
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+impl Plugin for MyPlugin {
+    fn build(&self, app: &mut App) {
     app
         .add_reloadable_state::<AppState>()
         .add_systems(Startup, startup)
         .add_systems(Update, update_a.run_if(in_state(AppState::A)))
         .add_systems(Update, update_b.run_if(in_state(AppState::B)))
         .add_systems(Update, update_c.run_if(in_state(AppState::C)));
+}
 }

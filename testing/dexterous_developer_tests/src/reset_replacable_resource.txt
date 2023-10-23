@@ -25,7 +25,7 @@ impl Plugin for MyPlugin {
     fn build(&self, app: &mut App) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update)
-        .reset_resource::<TextResource>();
+        .reset_resource::<TextResource, _>();
 }
 }
 

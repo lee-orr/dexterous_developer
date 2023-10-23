@@ -35,7 +35,7 @@ impl Plugin for MyPlugin {
     app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
-        .clear_marked_on_reload::<TextComponent>();
+        .clear_marked_on_reload::<TextComponent, _>();
 }
 }
 

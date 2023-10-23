@@ -40,7 +40,7 @@ impl Plugin for MyPlugin {
     app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
-        .reset_setup::<TextComponent, _>(setup);
+        .reset_setup::<TextComponent, _, _>(setup);
 }
 }
 

@@ -45,7 +45,7 @@ pub fn reloadable(app: &mut ReloadableAppContents) {
     app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
-        .reset_setup_in_state::<TextComponent, _, _>(AppState::AnotherState, setup);
+        .reset_setup_in_state::<TextComponent, _, _, _>(AppState::AnotherState, setup);
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]
