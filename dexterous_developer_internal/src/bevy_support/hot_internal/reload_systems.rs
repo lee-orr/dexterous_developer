@@ -12,7 +12,6 @@ use super::{
         DeserializeReloadables, SerializeReloadables,
     },
     replacable_types::{ReplacableComponentStore, ReplacableResourceStore},
-    schedules::ApplyInitialReloadables,
     HotReloadInnerApp,
 };
 
