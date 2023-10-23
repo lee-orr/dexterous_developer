@@ -62,7 +62,7 @@ impl ReplacableResource {
 }
 ```
 
-Then, you can register it using `.insert_replacable_resource::<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
+Then, you can register it using `.register_replacable_resource::<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
 
 ## Replacable Components
 

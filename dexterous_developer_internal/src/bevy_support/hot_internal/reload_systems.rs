@@ -11,6 +11,8 @@ use super::{
         hot_reload_internal::InternalHotReload, schedules::OnReloadComplete, CleanupReloaded,
         DeserializeReloadables, SerializeReloadables,
     },
+    replacable_types::{ReplacableComponentStore, ReplacableResourceStore},
+    schedules::ApplyInitialReloadables,
     HotReloadInnerApp,
 };
 
@@ -85,6 +87,9 @@ pub fn reload(
         let mut app = inner_app.app.take().unwrap_or_default();
         let world = &mut app.world;
 
+        world.init_resource::<ReplacableResourceStore>();
+        world.init_resource::<ReplacableComponentStore>();
+
         if should_serialize {
             debug!("Serializing...");
             let _ = world.try_run_schedule(SerializeReloadables);
@@ -100,6 +105,10 @@ pub fn reload(
             debug!("Deserialize...");
             let _ = world.try_run_schedule(DeserializeReloadables);
         }
+
+        let _ = world.remove_resource::<ReplacableResourceStore>();
+        let _ = world.remove_resource::<ReplacableComponentStore>();
+
         if should_run_setups {
             info!("reload complete");
             let _ = world.try_run_schedule(OnReloadComplete);

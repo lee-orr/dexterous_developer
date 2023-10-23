@@ -28,7 +28,6 @@ pub use crate::types::*;
 use crate::{InitializablePlugins, InitializeApp, PluginsReady};
 use reload_systems::{reload, update_lib_system};
 pub use reloadable_app::ReloadableAppElements;
-use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
 pub struct HotReloadableAppInitializer<'a>(pub(crate) Option<&'a mut App>, pub(crate) &'a mut App);
@@ -162,8 +161,6 @@ impl Plugin for HotReloadPlugin {
         debug!("scheduled attached");
 
         app.init_resource::<ReloadableAppElements>()
-            .init_resource::<ReplacableResourceStore>()
-            .init_resource::<ReplacableComponentStore>()
             .insert_resource(hot_reload);
         debug!("Added resources to app");
 

@@ -7,13 +7,10 @@ pub struct SerializeReloadables;
 pub struct DeserializeReloadables;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct SetupReload;
-
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CleanupReloaded;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct CleanupSchedules;
+pub struct OnReloadComplete;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct OnReloadComplete;
+pub struct ApplyInitialReloadables;
