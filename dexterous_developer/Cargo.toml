@@ -22,6 +22,8 @@ hot_internal = [
     "dexterous_developer_dynamic",
 ]
 bevy = ["dexterous_developer_internal/bevy"]
+
+bevy_full = ["dexterous_developer_internal/bevy"]
 cli = ["dexterous_developer_internal/cli"]
 
 

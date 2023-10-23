@@ -33,6 +33,13 @@ hot_internal = [
     "dep:chrono",
 ]
 bevy = ["dep:bevy", "dep:serde", "dep:rmp-serde"]
+bevy_full = [
+    "bevy",
+    "bevy/bevy_winit",
+    "bevy/bevy_gilrs",
+    "bevy/bevy_asset",
+    "bevy/bevy_render",
+]
 cli = ["hot", "dep:tokio", "dep:serde", "blake3"]
 
 

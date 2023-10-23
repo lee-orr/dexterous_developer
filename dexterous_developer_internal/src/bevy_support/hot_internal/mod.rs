@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use bevy::app::PluginGroupBuilder;
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, First, Plugin, PreStartup, Update};
+use bevy::prelude::{App, First, Plugin, PreStartup, Startup, Update};
 
 use bevy::utils::Instant;
 
@@ -48,13 +48,14 @@ impl<'a> InitializeApp<'a> for HotReloadableAppInitializer<'a> {
     type PluginsReady<T: InitializablePlugins> = HotReloadablePluginsReady<'a, T>;
 
     fn initialize<T: InitializablePlugins>(self) -> Self::PluginsReady<T> {
+        println!("Initializing Hot Reload...");
         let fence = self.0;
         let app = self.1;
 
         HotReloadablePluginsReady(
             T::initialize_fence(),
             fence,
-            T::initialize_hot_app(),
+            T::initialize_hot_app(), // TODO: WHY IS THIS NOT HAPPENING?
             app,
             Vec::new(),
             PhantomData,
@@ -80,6 +81,10 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
 
         self.3
             .insert_resource(ReloadCount::new(0))
+            .add_systems(Startup, |world: &mut World| {
+                let _ = world.try_run_schedule(DeserializeReloadables);
+                let _ = world.try_run_schedule(OnReloadComplete);
+            })
             .add_plugins(self.2)
             .set_runner(|mut app| {
                 app.update();

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
@@ -217,15 +217,27 @@ pub trait InitializablePlugins: PluginGroup {
 
 impl InitializablePlugins for DefaultPlugins {
     fn initialize_fence() -> PluginGroupBuilder {
+        println!("Initializing Fence App");
         get_default_plugins()
     }
 
     fn initialize_app() -> PluginGroupBuilder {
+        println!("Initializing Normal App");
         get_default_plugins()
     }
 
     fn initialize_hot_app() -> PluginGroupBuilder {
-        get_default_plugins()
+        println!("Initializing Hot App");
+        let mut plugin = get_default_plugins().disable::<LogPlugin>();
+
+        #[cfg(feature = "bevy_full")]
+        {
+            use bevy::winit::WinitPlugin;
+            println!("Disable Winit Plugin");
+            plugin = plugin.disable::<WinitPlugin>().disable::<GilrsPlugin>();
+        }
+
+        plugin
     }
 }
 impl InitializablePlugins for MinimalPlugins {
