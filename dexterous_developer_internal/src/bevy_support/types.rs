@@ -1,9 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{
-    app::{PluginGroupBuilder, ScheduleRunnerPlugin},
-    prelude::*,
-};
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
@@ -207,7 +204,7 @@ pub fn get_default_plugins() -> PluginGroupBuilder {
 }
 
 pub fn get_minimal_plugins() -> PluginGroupBuilder {
-    MinimalPlugins.set(ScheduleRunnerPlugin::run_once())
+    MinimalPlugins.build()
 }
 
 pub trait InitializablePlugins: PluginGroup {

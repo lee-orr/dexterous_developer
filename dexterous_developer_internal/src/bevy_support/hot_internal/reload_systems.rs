@@ -35,12 +35,8 @@ pub fn run_update(inner_app: Option<NonSendMut<HotReloadInnerApp>>) {
     let Some(mut inner_app) = inner_app else {
         return;
     };
-    if inner_app.is_ready {
-        inner_app.app.update();
-    } else {
-        inner_app.is_ready = true;
-        inner_app.app.run();
-    }
+
+    inner_app.app.update();
 }
 
 #[derive(Resource, Clone, Debug, Default)]

@@ -74,7 +74,9 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
             mod_fn(self.1);
         }
 
-        self.3.add_plugins(self.2)
+        self.3.add_plugins(self.2).set_runner(|mut app| {
+            app.update();
+        })
     }
 
     fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {
@@ -122,10 +124,7 @@ impl HotReloadPlugin {
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        App::new()
-            .add_plugins(LogPlugin::default())
-            .set_runner(|_| {})
-            .run();
+        app.add_plugins(LogPlugin::default());
         debug!(
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
