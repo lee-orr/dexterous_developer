@@ -8,7 +8,6 @@ mod schedules;
 use std::marker::PhantomData;
 
 use bevy::app::PluginGroupBuilder;
-use bevy::ecs::component::Tick;
 use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup, Update};

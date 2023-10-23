@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{app::PluginGroupBuilder, ecs::component::Tick, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
