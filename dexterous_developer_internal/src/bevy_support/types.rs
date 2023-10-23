@@ -272,13 +272,18 @@ pub struct InitialPluginsReady<'a, T: InitializablePlugins>(
 );
 
 impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for InitialPluginsReady<'a, T> {
-    fn adjust(mut self, adjust_fn: fn(PluginGroupBuilder) -> PluginGroupBuilder) -> Self {
+    fn adjust<F: Fn(PluginGroupBuilder) -> PluginGroupBuilder>(mut self, adjust_fn: F) -> Self {
         self.0 = adjust_fn(self.0);
         self
     }
 
     fn app(self) -> &'a mut App {
         self.1.add_plugins(self.0)
+    }
+
+    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self {
+        fence_fn(self.1);
+        self
     }
 }
 
@@ -288,15 +293,31 @@ pub trait SetPluginRunner<'a> {
 
 impl<'a, P: PluginsReady<'a, MinimalPlugins>> SetPluginRunner<'a> for P {
     fn app_with_runner<T: 'static + FnOnce(App) + Send>(self, runner: T) -> &'a mut App {
-        let app = self.app();
-        app.set_runner(runner)
+        self.modify_fence(move |app| {
+            app.set_runner(runner);
+        })
+        .app()
     }
 }
 
-pub trait PluginsReady<'a, T: InitializablePlugins> {
-    fn adjust(self, adjust_fn: fn(PluginGroupBuilder) -> PluginGroupBuilder) -> Self;
+pub trait PluginsReady<'a, T: InitializablePlugins>: Sized {
+    fn adjust<F: Fn(PluginGroupBuilder) -> PluginGroupBuilder>(self, adjust_fn: F) -> Self;
+
+    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self;
 
     fn app(self) -> &'a mut App;
+
+    fn sync_resource_from_fence<R: Resource + Clone>(self) -> Self {
+        self
+    }
+
+    fn sync_resource_from_app<R: Resource + Clone>(self) -> Self {
+        self
+    }
+
+    fn sync_resource_bi_directional<R: Resource + Clone>(self) -> Self {
+        self
+    }
 }
 /// These are dynamically adjustable settings for reloading. Ignored when not hot reloading.
 #[derive(Resource, Clone, Debug)]

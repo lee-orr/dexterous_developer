@@ -23,12 +23,15 @@ fn terminal_runner(mut app: App) {
 }
 
 #[hot_bevy_main]
-pub fn bevy_main<'a>(initial_plugins: impl InitializeApp<'a>) {
+pub fn bevy_main(initial_plugins: InitializeApp) {
     initial_plugins
         .initialize::<MinimalPlugins>()
+        .modify_fence(|app| {
+            app.init_resource::<shared::StdInput>();
+        })
+        .sync_resource_from_fence::<shared::StdInput>()
         .app_with_runner(terminal_runner)
         .add_plugins(update::MyPlugin)
-        .init_resource::<shared::StdInput>()
         .add_state::<AppState>()
         .run();
 }

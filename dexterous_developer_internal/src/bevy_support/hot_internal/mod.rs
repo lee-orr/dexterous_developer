@@ -59,10 +59,7 @@ impl<'a> InitializeApp<'a> for HotReloadableAppInitializer<'a> {
 }
 
 impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsReady<'a, T> {
-    fn adjust(
-        mut self,
-        adjust_fn: fn(bevy::app::PluginGroupBuilder) -> bevy::app::PluginGroupBuilder,
-    ) -> Self {
+    fn adjust<F: Fn(PluginGroupBuilder) -> PluginGroupBuilder>(mut self, adjust_fn: F) -> Self {
         self.0 = adjust_fn(self.0);
         self.2 = adjust_fn(self.2);
         self
@@ -71,6 +68,11 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
     fn app(self) -> &'a mut App {
         self.1.add_plugins(self.0);
         self.3.add_plugins(self.2)
+    }
+
+    fn modify_fence<F: FnOnce(&mut App)>(self, fence_fn: F) -> Self {
+        fence_fn(self.1);
+        self
     }
 }
 

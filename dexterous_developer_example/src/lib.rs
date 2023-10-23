@@ -11,7 +11,7 @@ use dexterous_developer::{
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
-pub fn bevy_main<'a>(initial_plugins: impl InitializeApp<'a>) {
+pub fn bevy_main(initial_plugins: InitializeApp) {
     initial_plugins
         .initialize::<DefaultPlugins>()
         .app()

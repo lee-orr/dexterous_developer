@@ -1,4 +1,4 @@
-use bevy::prelude::{App, Plugin, Startup, Update};
+use bevy::prelude::*;
 use dexterous_developer::*;
 
 fn update() {

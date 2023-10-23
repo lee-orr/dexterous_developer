@@ -39,7 +39,7 @@ impl crate::ReloadableApp for App {
             .world
             .get_resource_or_insert_with(ReloadableAppElements::default);
 
-        let mut resource_registry = elements.resources.entry(element).or_default();
+        let resource_registry = elements.resources.entry(element).or_default();
 
         if !resource_registry.contains(name) {
             resource_registry.insert(name);
@@ -64,7 +64,7 @@ impl crate::ReloadableApp for App {
             .world
             .get_resource_or_insert_with(ReloadableAppElements::default);
 
-        let mut component_registry = elements.components.entry(element).or_default();
+        let component_registry = elements.components.entry(element).or_default();
 
         if !component_registry.contains(name) {
             component_registry.insert(name);
