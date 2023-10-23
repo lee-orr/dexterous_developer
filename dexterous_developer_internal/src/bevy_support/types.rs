@@ -207,7 +207,7 @@ pub fn get_default_plugins() -> PluginGroupBuilder {
 }
 
 pub fn get_minimal_plugins() -> PluginGroupBuilder {
-    MinimalPlugin.set(ScheduleRunnerPlugin::run_once())
+    MinimalPlugins.set(ScheduleRunnerPlugin::run_once())
 }
 
 pub trait InitializablePlugins: PluginGroup {
