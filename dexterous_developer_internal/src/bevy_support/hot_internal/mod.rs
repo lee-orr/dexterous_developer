@@ -8,6 +8,7 @@ mod schedules;
 use std::marker::PhantomData;
 
 use bevy::app::PluginGroupBuilder;
+use bevy::ecs::component::Tick;
 use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup, Update};
@@ -26,7 +27,7 @@ use crate::bevy_support::hot_internal::reload_systems::{
 use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
-use crate::{InitializablePlugins, InitializeApp, PluginsReady};
+use crate::{InitializablePlugins, InitializeApp, PluginsReady, ReloadCount};
 use reload_systems::{reload, update_lib_system};
 pub use reloadable_app::ReloadableAppElements;
 use schedules::*;
@@ -78,9 +79,12 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
             }
         }
 
-        self.3.add_plugins(self.2).set_runner(|mut app| {
-            app.update();
-        })
+        self.3
+            .insert_resource(ReloadCount::new(0))
+            .add_plugins(self.2)
+            .set_runner(|mut app| {
+                app.update();
+            })
     }
 
     fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {

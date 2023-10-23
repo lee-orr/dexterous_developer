@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{app::PluginGroupBuilder, ecs::component::Tick, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
@@ -386,5 +386,18 @@ impl ReloadMode {
 
     pub fn should_run_setups(&self) -> bool {
         *self == Self::Full || *self == Self::SystemAndSetup
+    }
+}
+
+#[derive(Resource)]
+pub struct ReloadCount(usize);
+
+impl ReloadCount {
+    pub fn new(tick: usize) -> Self {
+        Self(tick)
+    }
+
+    pub fn increment(&mut self) {
+        self.0 += 1;
     }
 }

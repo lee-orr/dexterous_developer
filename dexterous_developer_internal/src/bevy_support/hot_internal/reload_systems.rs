@@ -4,7 +4,10 @@ use bevy::{
     utils::Instant,
 };
 
-use crate::{internal_shared::update_lib::update_lib, HotReloadableAppInitializer, ReloadSettings};
+use crate::{
+    internal_shared::update_lib::update_lib, HotReloadableAppInitializer, ReloadCount,
+    ReloadSettings,
+};
 
 use super::{
     super::hot_internal::{
@@ -113,6 +116,9 @@ pub fn reload(
             let _ = world.try_run_schedule(OnReloadComplete);
         }
 
+        let mut count = world.get_resource_or_insert_with(|| ReloadCount::new(0));
+        count.increment();
+
         inner_app.app = Some(app);
     }
 
@@ -121,8 +127,11 @@ pub fn reload(
     }
 }
 
-pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
-    reload.updated_this_frame
+pub fn dexterous_developer_occured(reload: Option<Res<ReloadCount>>) -> bool {
+    let Some(reload) = reload else {
+        return false;
+    };
+    reload.is_changed()
 }
 
 pub fn toggle_reload_mode(
