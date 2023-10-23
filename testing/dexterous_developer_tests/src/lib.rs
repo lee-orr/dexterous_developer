@@ -588,7 +588,9 @@ async fn can_update_assets() {
 
     let mut process = client.run_client_cli("2345").await.unwrap();
 
+    println!("Awaiting client");
     process.is_ready().await;
+    println!("Ready");
 
     process.send("\n").expect("Failed to send empty line");
 

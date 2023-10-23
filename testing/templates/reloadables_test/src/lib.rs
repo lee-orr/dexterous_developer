@@ -32,6 +32,5 @@ pub fn bevy_main(initial_plugins: InitializeApp) {
         .sync_resource_from_fence::<shared::StdInput>()
         .app_with_runner(terminal_runner)
         .add_plugins(update::MyPlugin)
-        .add_state::<AppState>()
-        .run();
+        .add_state::<AppState>();
 }

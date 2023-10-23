@@ -38,8 +38,7 @@ pub fn bevy_main(initial_plugins: InitializeApp) {
         })
         .init_asset::<TextAsset>()
         .init_asset_loader::<TextAssetLoader>()
-        .add_plugins(update::MyPlugin)
-        .run();
+        .add_plugins(update::MyPlugin);
 }
 
 #[derive(Resource)]

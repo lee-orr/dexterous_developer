@@ -7,6 +7,5 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     initial_plugins
         .initialize::<MinimalPlugins>()
         .app_with_runner(terminal_runner)
-        .add_plugins(update::MyPlugin)
-        .run();
+        .add_plugins(update::MyPlugin);
 }
