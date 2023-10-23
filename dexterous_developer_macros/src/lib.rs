@@ -25,13 +25,14 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     #[cfg(feature = "hot_internal")]
     {
         stream.push(quote!{
+                #[no_mangle]
+                pub extern "system" fn dexterous_developer_internal_main_inner_function(#input:  dexterous_developer::bevy_support::HotReloadableAppInitializer) 
+                #block
 
                 #[no_mangle]
                 pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
-                    fn dexterous_developer_internal_main_inner_function<'a>(#input: dexterous_developer::bevy_support::HotReloadableAppInitializer<'a>) 
-                    #block
 
-                    dexterous_developer::bevy_support::build_reloadable_frame(library_paths, closure, dexterous_developer_internal_main_inner_function);
+                    dexterous_developer::bevy_support::build_reloadable_frame(library_paths, closure, |input| dexterous_developer_internal_main_inner_function(input));
                 }
             }.into());
     }

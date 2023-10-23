@@ -6,7 +6,7 @@ use bevy::{
 
 use crate::{
     bevy_support::hot_internal::schedules::CleanupSchedules,
-    internal_shared::update_lib::update_lib, ReloadSettings,
+    internal_shared::update_lib::update_lib, HotReloadableAppInitializer, ReloadSettings,
 };
 
 use super::{
@@ -31,24 +31,25 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
     }
 }
 
-pub fn run_update(inner_app: Option<NonSendMut<HotReloadInnerApp>>) {
-    let Some(mut inner_app) = inner_app else {
+pub fn run_update(mut inner_app: NonSendMut<HotReloadInnerApp>) {
+    let Some(mut inner_app) = inner_app.app.as_mut() else {
         return;
     };
 
-    inner_app.app.update();
+    inner_app.update();
 }
 
 #[derive(Resource, Clone, Debug, Default)]
 pub struct ReloadableElementList(pub Vec<&'static str>);
 
-pub fn reload(world: &mut World) {
+pub fn reload(
+    mut internal_state: ResMut<InternalHotReload>,
+    input: Option<Res<Input<KeyCode>>>,
+    settings: Option<Res<ReloadSettings>>,
+    mut inner_app: NonSendMut<HotReloadInnerApp>,
+) {
     {
-        let internal_state = world.resource::<InternalHotReload>();
-        let input = world.get_resource::<Input<KeyCode>>();
-
-        let (reload_mode, manual_reload) = world
-            .get_resource::<ReloadSettings>()
+        let (reload_mode, manual_reload) = settings
             .map(|v| (v.reload_mode, v.manual_reload))
             .unwrap_or_default();
 
@@ -64,8 +65,26 @@ pub fn reload(world: &mut World) {
             return;
         }
 
+        let mut app = App::new();
+        let Some(schedule) = internal_state.library.as_ref().and_then(|lib| {
+            let mut initializer = HotReloadableAppInitializer(None, &mut app);
+            lib.call_owned(
+                "dexterous_developer_internal_main_inner_function",
+                initializer,
+            );
+
+            let mut new_world = app.world;
+            new_world.remove_resource::<Schedules>()
+        }) else {
+            error!("Couldn't load schedule from app");
+            return;
+        };
+
         let should_serialize = reload_mode.should_serialize();
         let should_run_setups = reload_mode.should_run_setups();
+
+        let mut app = inner_app.app.take().unwrap_or_default();
+        let mut world = &mut app.world;
 
         if should_serialize {
             debug!("Serializing...");
@@ -75,12 +94,9 @@ pub fn reload(world: &mut World) {
             debug!("Cleanup Reloaded...");
             let _ = world.try_run_schedule(CleanupReloaded);
         }
-        debug!("Cleanup Schedules...");
-        let _ = world.try_run_schedule(CleanupSchedules);
-        debug!("Setup...");
-        let _ = world.try_run_schedule(SetupReload);
-        debug!("Set Schedules...");
-        register_schedules(world);
+
+        world.insert_resource(schedule);
+
         if should_serialize {
             debug!("Deserialize...");
             let _ = world.try_run_schedule(DeserializeReloadables);
@@ -89,10 +105,11 @@ pub fn reload(world: &mut World) {
             info!("reload complete");
             let _ = world.try_run_schedule(OnReloadComplete);
         }
+
+        inner_app.app = Some(app);
     }
 
     {
-        let mut internal_state = world.resource_mut::<InternalHotReload>();
         internal_state.last_update_date_time = chrono::Local::now();
     }
 }

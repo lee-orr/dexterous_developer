@@ -31,11 +31,11 @@ pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppElements};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
-pub struct HotReloadableAppInitializer<'a>(&'a mut App, &'a mut App);
+pub struct HotReloadableAppInitializer<'a>(pub(crate) Option<&'a mut App>, pub(crate) &'a mut App);
 
 pub struct HotReloadablePluginsReady<'a, T>(
     PluginGroupBuilder,
-    &'a mut App,
+    Option<&'a mut App>,
     PluginGroupBuilder,
     &'a mut App,
     Vec<Box<dyn FnOnce(&mut App)>>,
@@ -68,10 +68,12 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
     }
 
     fn app(self) -> &'a mut App {
-        self.1.add_plugins(self.0);
+        if let Some(fence) = self.1 {
+            fence.add_plugins(self.0);
 
-        for mod_fn in self.4.into_iter() {
-            mod_fn(self.1);
+            for mod_fn in self.4.into_iter() {
+                mod_fn(fence);
+            }
         }
 
         self.3.add_plugins(self.2).set_runner(|mut app| {
@@ -80,7 +82,9 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
     }
 
     fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {
-        self.4.push(Box::new(fence_fn));
+        if self.1.is_some() {
+            self.4.push(Box::new(fence_fn));
+        }
         self
     }
 }
@@ -88,19 +92,18 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
 pub fn build_reloadable_frame(
     libs: std::ffi::CString,
     watch_closure: fn() -> (),
-    initialize_app: fn(HotReloadableAppInitializer),
+    initialize_app: impl Fn(HotReloadableAppInitializer),
 ) {
     let plugin = HotReloadPlugin::new(libs, watch_closure);
 
     let mut fence = App::new();
     let mut inner = App::new();
 
-    initialize_app(HotReloadableAppInitializer(&mut fence, &mut inner));
+    let mut initializer = HotReloadableAppInitializer(Some(&mut fence), &mut inner);
 
-    fence.insert_non_send_resource(HotReloadInnerApp {
-        app: inner,
-        is_ready: false,
-    });
+    initialize_app(initializer);
+
+    fence.insert_non_send_resource(HotReloadInnerApp { app: Some(inner) });
 
     fence.add_plugins(plugin);
 
@@ -108,8 +111,7 @@ pub fn build_reloadable_frame(
 }
 
 struct HotReloadInnerApp {
-    pub app: App,
-    pub is_ready: bool,
+    pub app: Option<App>,
 }
 pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 
