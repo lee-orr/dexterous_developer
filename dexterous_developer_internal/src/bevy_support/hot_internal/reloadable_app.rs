@@ -74,6 +74,7 @@ impl crate::ReloadableApp for App {
     ) -> &mut Self {
         debug!("resetting resource");
         let element = R::get_element_label();
+        self.init_resource::<R>();
         self.add_systems(
             OnReloadComplete,
             (move |mut commands: Commands| {
@@ -90,6 +91,7 @@ impl crate::ReloadableApp for App {
     ) -> &mut Self {
         debug!("resetting resource");
         let element = R::get_element_label();
+        self.insert_resource(value.clone());
         self.add_systems(
             OnReloadComplete,
             (move |mut commands: Commands| {
