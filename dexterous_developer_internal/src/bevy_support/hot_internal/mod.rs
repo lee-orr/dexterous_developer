@@ -82,7 +82,6 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
         self.3
             .insert_resource(ReloadCount::new(0))
             .add_systems(Startup, |world: &mut World| {
-                let _ = world.try_run_schedule(DeserializeReloadables);
                 let _ = world.try_run_schedule(OnReloadComplete);
             })
             .add_plugins(self.2)
