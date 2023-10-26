@@ -1,8 +1,9 @@
+pub(crate) mod component_sync;
 mod hot_reload_internal;
 mod reload_systems;
 mod reloadable_app;
 mod replacable_types;
-mod resource_sync;
+pub(crate) mod resource_sync;
 mod schedules;
 
 use std::marker::PhantomData;
@@ -10,7 +11,7 @@ use std::marker::PhantomData;
 use bevy::app::PluginGroupBuilder;
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, First, Plugin, PreStartup, Startup, Update};
+use bevy::prelude::{App, First, Plugin, PostUpdate, PreStartup, PreUpdate, Startup, Update};
 
 use bevy::utils::Instant;
 
@@ -21,12 +22,12 @@ pub extern crate libloading;
 
 use crate::bevy_support::hot_internal::hot_reload_internal::draw_internal_hot_reload;
 use crate::bevy_support::hot_internal::reload_systems::{
-    toggle_reload_mode, toggle_reloadable_elements,
+    run_sync_from_app, run_sync_from_fence, toggle_reload_mode, toggle_reloadable_elements,
 };
 use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
-use crate::{InitializablePlugins, InitializeApp, PluginsReady, ReloadCount};
+use crate::{FenceAppSync, InitializablePlugins, InitializeApp, PluginsReady, ReloadCount};
 use reload_systems::{reload, update_lib_system};
 pub use reloadable_app::ReloadableAppElements;
 use schedules::*;
@@ -77,6 +78,15 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
             for mod_fn in self.4.into_iter() {
                 mod_fn(fence);
             }
+
+            // SAFETY: We remove the `HotReloadInnerApp` before we continue, thereby preventing leaking
+            // the reference.
+            unsafe {
+                let app: &'static mut App = std::mem::transmute_copy(&self.3);
+                fence.insert_non_send_resource(HotReloadInnerApp::Ref(app));
+                run_sync_from_fence(&mut fence.world);
+                fence.world.remove_non_send_resource::<HotReloadInnerApp>();
+            }
         }
 
         self.3
@@ -87,7 +97,9 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
             .add_plugins(self.2)
             .set_runner(|mut app| {
                 app.update();
-            })
+            });
+
+        self.3
     }
 
     fn modify_fence<F: 'static + FnOnce(&mut App)>(mut self, fence_fn: F) -> Self {
@@ -97,21 +109,27 @@ impl<'a, T: InitializablePlugins> PluginsReady<'a, T> for HotReloadablePluginsRe
         self
     }
 
-    fn sync_resource_from_fence<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_from_fence<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self.modify_fence(|app| {
-            app.add_plugins(ResourceSync::<R>::from_fence());
+            app.add_plugins(ResourceSync::<R, M>::from_fence());
         })
     }
 
-    fn sync_resource_from_app<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_from_app<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self.modify_fence(|app| {
-            app.add_plugins(ResourceSync::<R>::from_app());
+            app.add_plugins(ResourceSync::<R, M>::from_app());
         })
     }
 
-    fn sync_resource_bi_directional<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_bi_directional<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self.modify_fence(|app| {
-            app.add_plugins(ResourceSync::<R>::bi_directional());
+            app.add_plugins(ResourceSync::<R, M>::bi_directional());
         })
     }
 }
@@ -130,16 +148,42 @@ pub fn build_reloadable_frame(
 
     initialize_app(initializer);
 
-    fence.insert_non_send_resource(HotReloadInnerApp { app: Some(inner) });
-
     fence.add_plugins(plugin);
 
     fence.run();
 }
 
-struct HotReloadInnerApp {
-    pub app: Option<App>,
+enum HotReloadInnerApp {
+    None,
+    App(App),
+    Ref(&'static mut App),
 }
+
+impl HotReloadInnerApp {
+    pub fn get_app_mut(&mut self) -> Option<&mut App> {
+        match self {
+            HotReloadInnerApp::App(app) => Some(app),
+            HotReloadInnerApp::Ref(app) => Some(*app),
+            HotReloadInnerApp::None => None,
+        }
+    }
+    pub fn get_app(&self) -> Option<&App> {
+        match self {
+            HotReloadInnerApp::App(app) => Some(app),
+            HotReloadInnerApp::Ref(app) => Some(*app),
+            HotReloadInnerApp::None => None,
+        }
+    }
+
+    pub fn take(&mut self) -> Option<App> {
+        let old = std::mem::replace(self, HotReloadInnerApp::None);
+        match old {
+            HotReloadInnerApp::App(app) => Some(app),
+            _ => None,
+        }
+    }
+}
+
 pub struct HotReloadPlugin(LibPathSet, fn() -> ());
 
 impl HotReloadPlugin {
@@ -153,7 +197,9 @@ impl HotReloadPlugin {
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(LogPlugin::default());
+        if !app.is_plugin_added::<LogPlugin>() {
+            app.add_plugins(LogPlugin::default());
+        }
         debug!(
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
@@ -194,6 +240,7 @@ impl Plugin for HotReloadPlugin {
 
         app.add_systems(PreStartup, (watcher, reload))
             .add_systems(First, (update_lib_system, reload).chain())
+            .add_systems(PreUpdate, run_sync_from_fence)
             .add_systems(
                 Update,
                 (
@@ -202,7 +249,8 @@ impl Plugin for HotReloadPlugin {
                     toggle_reloadable_elements,
                     reload_systems::run_update,
                 ),
-            );
+            )
+            .add_systems(PostUpdate, run_sync_from_app);
         debug!("Finished build");
     }
 }

@@ -2,11 +2,20 @@ use std::marker::PhantomData;
 
 use bevy::{ecs::component::Tick, prelude::*};
 
-use super::HotReloadInnerApp;
+use crate::FenceAppSync;
 
-pub struct ResourceSync<T: Resource + Clone>(bool, bool, PhantomData<T>);
+use super::{
+    schedules::{SyncFromApp, SyncFromFence},
+    HotReloadInnerApp,
+};
 
-impl<T: Resource + Clone> ResourceSync<T> {
+pub struct ResourceSync<T: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+    bool,
+    bool,
+    PhantomData<(T, M)>,
+);
+
+impl<T: Resource + FenceAppSync<M>, M: Send + Sync + 'static> ResourceSync<T, M> {
     pub fn from_fence() -> Self {
         Self(true, false, PhantomData)
     }
@@ -19,14 +28,14 @@ impl<T: Resource + Clone> ResourceSync<T> {
     }
 }
 
-impl<T: Resource + Clone> Plugin for ResourceSync<T> {
+impl<T: Resource + FenceAppSync<M>, M: Send + Sync + 'static> Plugin for ResourceSync<T, M> {
     fn build(&self, app: &mut App) {
         app.insert_resource(ResourceTracker(Tick::new(0), PhantomData::<T>));
         if self.0 {
-            app.add_systems(PreUpdate, sync_from_fence::<T>);
+            app.add_systems(SyncFromFence, sync_from_fence::<T, M>);
         }
         if self.1 {
-            app.add_systems(PostUpdate, sync_from_app::<T>);
+            app.add_systems(SyncFromApp, sync_from_app::<T, M>);
         }
     }
 }
@@ -34,12 +43,12 @@ impl<T: Resource + Clone> Plugin for ResourceSync<T> {
 #[derive(Resource)]
 struct ResourceTracker<T: Resource>(Tick, PhantomData<T>);
 
-fn sync_from_fence<T: Resource + Clone>(
+fn sync_from_fence<T: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
     res: Option<Res<T>>,
     mut tracker: ResMut<ResourceTracker<T>>,
     mut inner: NonSendMut<HotReloadInnerApp>,
 ) {
-    let Some(inner) = &mut inner.app else {
+    let Some(inner) = inner.get_app_mut() else {
         return;
     };
     let Some(res) = res else {
@@ -48,18 +57,18 @@ fn sync_from_fence<T: Resource + Clone>(
     if res.is_changed() {
         let world_tick = inner.world.change_tick();
         if world_tick.is_newer_than(tracker.0, world_tick) {
-            inner.world.insert_resource(res.as_ref().clone());
+            inner.world.insert_resource(res.sync_from_fence());
             tracker.0 = world_tick;
         }
     }
 }
 
-fn sync_from_app<T: Resource + Clone>(
+fn sync_from_app<T: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
     mut commands: Commands,
     mut tracker: ResMut<ResourceTracker<T>>,
     inner: NonSend<HotReloadInnerApp>,
 ) {
-    let Some(inner) = inner.app.as_ref() else {
+    let Some(inner) = inner.get_app() else {
         return;
     };
     let world_tick = &inner.world.last_change_tick().clone();
@@ -72,7 +81,7 @@ fn sync_from_app<T: Resource + Clone>(
         return;
     };
     if world_tick.is_newer_than(tracker.0, *world_tick) {
-        commands.insert_resource(r.clone());
+        commands.insert_resource(r.sync_from_app());
         tracker.0 = *world_tick;
     }
 }

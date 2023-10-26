@@ -14,3 +14,9 @@ pub struct OnReloadComplete;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ApplyInitialReloadables;
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SyncFromFence;
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SyncFromApp;

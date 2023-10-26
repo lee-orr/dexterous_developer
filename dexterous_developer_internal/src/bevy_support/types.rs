@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
+use crate::bevy_support::default_plujgins::{FenceDefaultPlugins, HotDefaultPlugins};
+
 pub trait ReloadableElementLabel: 'static + std::hash::Hash {
     fn get_element_name() -> &'static str;
 }
@@ -218,7 +220,7 @@ pub trait InitializablePlugins: PluginGroup {
 impl InitializablePlugins for DefaultPlugins {
     fn initialize_fence() -> PluginGroupBuilder {
         println!("Initializing Fence App");
-        get_default_plugins()
+        FenceDefaultPlugins.build()
     }
 
     fn initialize_app() -> PluginGroupBuilder {
@@ -228,16 +230,7 @@ impl InitializablePlugins for DefaultPlugins {
 
     fn initialize_hot_app() -> PluginGroupBuilder {
         println!("Initializing Hot App");
-        let mut plugin = get_default_plugins().disable::<LogPlugin>();
-
-        #[cfg(feature = "bevy_full")]
-        {
-            use bevy::winit::WinitPlugin;
-            println!("Disable Winit Plugin");
-            plugin = plugin.disable::<WinitPlugin>().disable::<GilrsPlugin>();
-        }
-
-        plugin
+        HotDefaultPlugins.build()
     }
 }
 impl InitializablePlugins for MinimalPlugins {
@@ -325,15 +318,21 @@ pub trait PluginsReady<'a, T: InitializablePlugins>: Sized {
 
     fn app(self) -> &'a mut App;
 
-    fn sync_resource_from_fence<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_from_fence<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self
     }
 
-    fn sync_resource_from_app<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_from_app<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self
     }
 
-    fn sync_resource_bi_directional<R: Resource + Clone>(self) -> Self {
+    fn sync_resource_bi_directional<R: Resource + FenceAppSync<M>, M: Send + Sync + 'static>(
+        self,
+    ) -> Self {
         self
     }
 }
@@ -411,5 +410,21 @@ impl ReloadCount {
 
     pub fn increment(&mut self) {
         self.0 += 1;
+    }
+}
+
+pub trait FenceAppSync<M> {
+    fn sync_from_fence(&self) -> Self;
+
+    fn sync_from_app(&self) -> Self;
+}
+
+impl<R: Clone> FenceAppSync<((), ())> for R {
+    fn sync_from_fence(&self) -> Self {
+        self.clone()
+    }
+
+    fn sync_from_app(&self) -> Self {
+        self.clone()
     }
 }

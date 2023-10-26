@@ -15,6 +15,7 @@ use super::{
         DeserializeReloadables, SerializeReloadables,
     },
     replacable_types::{ReplacableComponentStore, ReplacableResourceStore},
+    schedules::{SyncFromApp, SyncFromFence},
     HotReloadInnerApp,
 };
 
@@ -32,11 +33,18 @@ pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
 }
 
 pub fn run_update(mut inner_app: NonSendMut<HotReloadInnerApp>) {
-    let Some(inner_app) = inner_app.app.as_mut() else {
+    let Some(inner_app) = inner_app.get_app_mut() else {
         return;
     };
 
     inner_app.update();
+}
+
+pub fn run_sync_from_fence(world: &mut World) {
+    let _ = world.try_run_schedule(SyncFromFence);
+}
+pub fn run_sync_from_app(world: &mut World) {
+    let _ = world.try_run_schedule(SyncFromApp);
 }
 
 #[derive(Resource, Clone, Debug, Default)]
@@ -83,10 +91,10 @@ pub fn reload(
             return;
         };
 
-        let should_serialize = reload_mode.should_serialize();
+        let should_serialize: bool = reload_mode.should_serialize();
         let should_run_setups = reload_mode.should_run_setups();
 
-        let mut app = inner_app.app.take().unwrap_or_default();
+        let mut app = inner_app.take().unwrap_or_default();
         let world = &mut app.world;
 
         world.init_resource::<ReplacableResourceStore>();
@@ -119,7 +127,7 @@ pub fn reload(
         let mut count = world.get_resource_or_insert_with(|| ReloadCount::new(0));
         count.increment();
 
-        inner_app.app = Some(app);
+        *inner_app = HotReloadInnerApp::App(app);
     }
 
     {
