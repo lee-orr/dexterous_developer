@@ -1,6 +1,6 @@
 mod update;
 
-use dexterous_developer::{bevy_support::*, hot_bevy_main};
+use dexterous_developer::{bevy_support::*, bevy_app_setup};
 use std::str::Utf8Error;
 use thiserror::Error;
 
@@ -26,7 +26,7 @@ fn terminal_runner(mut app: App) {
     }
 }
 
-#[hot_bevy_main]
+#[bevy_app_setup]
 pub fn bevy_main(initial_plugins: InitializeApp) {
     initial_plugins
         .initialize::<MinimalPlugins>()

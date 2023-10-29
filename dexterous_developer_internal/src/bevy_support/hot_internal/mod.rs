@@ -1,4 +1,5 @@
 pub(crate) mod component_sync;
+pub(crate) mod event_sync;
 mod hot_reload_internal;
 mod reload_systems;
 mod reloadable_app;
@@ -147,6 +148,8 @@ pub fn build_reloadable_frame(
     let initializer = HotReloadableAppInitializer(Some(&mut fence), &mut inner);
 
     initialize_app(initializer);
+
+    fence.insert_non_send_resource(HotReloadInnerApp::App(inner));
 
     fence.add_plugins(plugin);
 

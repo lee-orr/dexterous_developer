@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 #[allow(unused_imports)]
 use dexterous_developer::{
-    hot_bevy_main, InitializeApp, ReloadableApp, ReplacableComponent, ReplacableResource,
+    bevy_app_setup, InitializeApp, ReloadableApp, ReplacableComponent, ReplacableResource,
 };
 use dexterous_developer::{
     AttachReloadableElementLabel, PluginsReady, ReloadMode, ReloadSettings, ReloadableElementLabel,
@@ -10,7 +10,7 @@ use dexterous_developer::{
 };
 use serde::{Deserialize, Serialize};
 
-#[hot_bevy_main]
+#[bevy_app_setup]
 pub fn bevy_main(initial_plugins: InitializeApp) {
     initial_plugins
         .initialize::<DefaultPlugins>()

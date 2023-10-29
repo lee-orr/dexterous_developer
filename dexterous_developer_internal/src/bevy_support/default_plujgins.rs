@@ -29,13 +29,38 @@ impl PluginGroup for FenceDefaultPlugins {
             #[cfg(feature = "hot_internal")]
             {
                 use crate::bevy_support::hot_internal::component_sync::ComponentSync;
+                use crate::bevy_support::hot_internal::event_sync::EventSync;
                 use crate::bevy_support::hot_internal::resource_sync::ResourceSync;
-                use bevy::winit::WinitSettings;
+                use bevy::input::{keyboard::*, mouse::*, touch::*, touchpad::*};
+                use bevy::window::*;
+                use bevy::winit::*;
 
                 group = group.add(ResourceSync::<WinitSettings, _>::bi_directional());
                 group = group.add(ComponentSync::<bevy::window::Window, _>::bi_directional());
-                group =
-                    group.add(ComponentSync::<bevy::window::PrimaryWindow, _>::bi_directional());
+                group = group
+                    .add(ComponentSync::<bevy::window::PrimaryWindow, _>::bi_directional())
+                    .add(EventSync::<WindowResized, _>::from_fence())
+                    .add(EventSync::<WindowCloseRequested, _>::from_fence())
+                    .add(EventSync::<WindowScaleFactorChanged, _>::from_fence())
+                    .add(EventSync::<WindowBackendScaleFactorChanged, _>::from_fence())
+                    .add(EventSync::<WindowFocused, _>::from_fence())
+                    .add(EventSync::<WindowMoved, _>::from_fence())
+                    .add(EventSync::<WindowThemeChanged, _>::from_fence())
+                    .add(EventSync::<WindowDestroyed, _>::from_fence())
+                    .add(EventSync::<KeyboardInput, _>::from_fence())
+                    .add(EventSync::<ReceivedCharacter, _>::from_fence())
+                    .add(EventSync::<MouseButtonInput, _>::from_fence())
+                    .add(EventSync::<TouchpadMagnify, _>::from_fence())
+                    .add(EventSync::<TouchpadRotate, _>::from_fence())
+                    .add(EventSync::<MouseWheel, _>::from_fence())
+                    .add(EventSync::<TouchInput, _>::from_fence())
+                    .add(EventSync::<Ime, _>::from_fence())
+                    .add(EventSync::<FileDragAndDrop, _>::from_fence())
+                    .add(EventSync::<CursorMoved, _>::from_fence())
+                    .add(EventSync::<CursorEntered, _>::from_fence())
+                    .add(EventSync::<CursorLeft, _>::from_fence())
+                    // `winit` `DeviceEvent`s
+                    .add(EventSync::<MouseMotion, _>::from_fence());
             }
         }
 
@@ -58,16 +83,16 @@ impl FenceAppSync<()> for bevy::winit::WinitSettings {
     fn sync_from_fence(&self) -> Self {
         Self {
             return_from_run: self.return_from_run,
-            focused_mode: self.focused_mode.clone(),
-            unfocused_mode: self.unfocused_mode.clone(),
+            focused_mode: self.focused_mode,
+            unfocused_mode: self.unfocused_mode,
         }
     }
 
     fn sync_from_app(&self) -> Self {
         Self {
             return_from_run: self.return_from_run,
-            focused_mode: self.focused_mode.clone(),
-            unfocused_mode: self.unfocused_mode.clone(),
+            focused_mode: self.focused_mode,
+            unfocused_mode: self.unfocused_mode,
         }
     }
 }

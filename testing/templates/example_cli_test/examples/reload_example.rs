@@ -2,7 +2,7 @@ use bevy::{prelude::App, MinimalPlugins};
 use dexterous_developer::*;
 use lib_simple_cli_test::*;
 
-#[hot_bevy_main]
+#[bevy_app_setup]
 pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     initial_plugins
         .initialize::<MinimalPlugins>()

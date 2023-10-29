@@ -17,7 +17,7 @@ fn terminal_runner(mut app: App) {
     }
 }
 
-#[hot_bevy_main]
+#[bevy_app_setup]
 pub fn bevy_main(initial_plugins: InitializeApp) {
     initial_plugins
         .initialize::<MinimalPlugins>()
