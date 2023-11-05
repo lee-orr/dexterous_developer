@@ -15,7 +15,7 @@ use crate::{
 use super::super::hot_internal::{
     hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
     schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables, ReloadableAppCleanupData,
-    ReloadableSchedule, SerializeReloadables, SetupReload,
+    SerializeReloadables, SetupReload,
 };
 
 use super::super::ReloadableSetup;
@@ -174,21 +174,22 @@ pub fn register_schedules(world: &mut World) {
 
     let mut inner = ReloadableAppCleanupData::default();
 
-    for (original, schedule) in reloadable.schedule_iter() {
-        let label = ReloadableSchedule::new(original.clone());
+    for (original, schedule, label) in reloadable.schedule_iter() {
         debug!("Adding {label:?} to schedule");
-        inner.labels.insert(Box::new(label.clone()));
+        inner.labels.insert(label.clone());
         let exists = schedules.insert(schedule);
         if exists.is_none() {
-            if let Some(root) = schedules.get_mut(&original) {
+            if let Some(root) = schedules.get_mut(original.clone()) {
                 let label = label.clone();
                 root.add_systems(move |w: &mut World| {
+                    debug!("Running {label:?}");
                     let _ = w.try_run_schedule(label.clone());
                 });
             } else {
                 let label = label.clone();
                 let mut root = Schedule::new(original);
                 root.add_systems(move |w: &mut World| {
+                    debug!("Running {label:?}");
                     let _ = w.try_run_schedule(label.clone());
                 });
                 schedules.insert(root);
