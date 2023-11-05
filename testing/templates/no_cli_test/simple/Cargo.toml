@@ -10,5 +10,5 @@ crate-type = ["rlib", "dylib"]
 
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", default_features = false }
+bevy = { version = "0.12", default_features = false }
 dexterous_developer = { path = "../../../../dexterous_developer" }

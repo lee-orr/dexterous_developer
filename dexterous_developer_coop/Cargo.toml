@@ -27,10 +27,10 @@ default_coop = ["coop"]
 
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", default-features = false, optional = true }
+bevy = { version = "0.12", default-features = false, optional = true }
 rkyv = { version = "0.7" }
 rkyv_dyn = "0.7"
 rkyv_typename = "0.7"
 
 [dev-dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy" }
+bevy = { version = "0.12" }
