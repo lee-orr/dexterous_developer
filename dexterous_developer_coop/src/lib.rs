@@ -1,5 +1,6 @@
 pub mod app;
 pub mod coop;
+pub mod types;
 
 #[cfg(test)]
 mod tests {

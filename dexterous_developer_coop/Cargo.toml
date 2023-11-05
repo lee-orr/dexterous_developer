@@ -23,6 +23,8 @@ coop = []
 app = []
 cli_coop = ["coop"]
 winit_coop = ["coop"]
+default_coop = ["coop"]
+
 
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy", default-features = false, optional = true }
