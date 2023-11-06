@@ -55,7 +55,7 @@ In your app, you can treat these similarly to plugins, and have more than one of
 
 ```rust
 
-#[hot_bevy_main]
+#[bevy_app_setup]
 pub fn bevy_main(initial_plugins: impl InitialPlugins) {
     App::new()
     ...

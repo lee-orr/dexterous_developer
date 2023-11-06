@@ -7,22 +7,16 @@ pub struct SerializeReloadables;
 pub struct DeserializeReloadables;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct SetupReload;
-
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CleanupReloaded;
-
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct CleanupSchedules;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct OnReloadComplete;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct ReloadableSchedule<T: ScheduleLabel>(T);
+pub struct ApplyInitialReloadables;
 
-impl<T: ScheduleLabel> ReloadableSchedule<T> {
-    pub fn new(label: T) -> Self {
-        Self(label)
-    }
-}
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SyncFromFence;
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SyncFromApp;

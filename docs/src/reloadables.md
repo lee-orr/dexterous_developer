@@ -62,7 +62,7 @@ impl ReplacableResource {
 }
 ```
 
-Then, you can register it using `.insert_replacable_resource::<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
+Then, you can register it using `.register_replacable_resource::<ReplacableResource>()`. This will cause the resource to be serialized before the library is reloaded, and replaced with a new version after reload. Since serialization is done using msgpack, it should be able to cope with adding new fields or removing old ones - but keep in mind the way serde handles that kind of stuff.
 
 ## Replacable Components
 
@@ -109,7 +109,7 @@ impl ReplacableState for AppState {
 
 Note that unlike `ReplacableResource` or `ReplacableComponent`, with `ReplacableState` you need to give it a name as well as giving a name for the `NextState<S>` resource it'll create.
 
-You can then add the state using `.add_state::<ReplacableComponent>()`.
+You can then add the state using `.add_reloadable_state::<ReplacableComponent>()`.
 
 ## Replacable Event
 
@@ -134,4 +134,4 @@ impl ReplacableEvent for AppEvent {
 
 Note that when events get replaced it *resets the event queue* - so all existing events will be cleared! Since as a rule events only persist to the next frame generally, this shouldn't be too much of an issue - depending on when you trigger the reload.
 
-You can then add the state using `.add_event::<ReplacableEvent>()`.
+You can then add the state using `.add_reloadable_event::<ReplacableEvent>()`.

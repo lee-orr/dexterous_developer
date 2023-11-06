@@ -64,7 +64,26 @@ impl LibraryHolderInner {
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(&mut T)> =
+            let func: libloading::Symbol<unsafe extern "system" fn(&mut T)> = lib
+                .get(name.as_bytes())
+                .context(format!("Couldn't load function {name}"))?;
+            crate::logger::debug!("Got symbol");
+            func(args);
+            crate::logger::debug!("Call complete");
+        };
+        Ok(())
+    }
+
+    pub fn call_owned<T>(&self, name: &str, args: T) -> anyhow::Result<()> {
+        let Some(lib) = &self.0 else {
+            bail!("Library Unavailable")
+        };
+
+        crate::logger::debug!("Preparing to call {name}");
+
+        // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
+        unsafe {
+            let func: libloading::Symbol<unsafe extern "system" fn(T)> =
                 lib.get(name.as_bytes())
                     .context(format!("Couldn't load function {name}"))?;
             crate::logger::debug!("Got symbol");
@@ -101,5 +120,9 @@ impl LibraryHolder {
 
     pub fn call<T>(&self, name: &str, args: &mut T) -> anyhow::Result<()> {
         self.0.call(name, args)
+    }
+
+    pub fn call_owned<T>(&self, name: &str, args: T) -> anyhow::Result<()> {
+        self.0.call_owned(name, args)
     }
 }
