@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::bevy_support::default_plujgins::{FenceDefaultPlugins, HotDefaultPlugins};

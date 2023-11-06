@@ -4,12 +4,11 @@ extern crate quote;
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{parse_macro_input, Ident, ItemFn};
+use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
 #[allow(clippy::needless_return)]
-pub fn bevy_app_setup(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let attr: Ident = parse_macro_input!(attr as Ident);
+pub fn bevy_app_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: ItemFn = parse_macro_input!(item as ItemFn);
 
     let fn_name: &proc_macro2::Ident = &ast.sig.ident;

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{ecs::component::Tick, prelude::*};
+use bevy::prelude::*;
 
 use crate::FenceAppSync;
 
