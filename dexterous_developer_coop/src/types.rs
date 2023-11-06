@@ -1,100 +1,72 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
-use self::sealed::CoopSharedBlackboardInner;
-
-pub trait Coop: CoopCommunicationProtocol {
-    fn set_running_app(&mut self, app: impl CoopedApp);
-
-    fn pause_app(&mut self);
-
-    fn clear_app(&mut self);
-}
-
-pub trait CoopedApp {
-    fn build<T: CoopCommunicationProtocol>(&mut self, comms: T)
-    where
-        Self: Sized;
-
-    fn run_frame(&mut self);
-}
-
+use bevy::{
+    prelude::App,
+    reflect::{FromReflect, Reflect},
+};
+use thiserror::Error;
 pub trait CoopValue<S: rkyv::Fallible>:
-    rkyv::Serialize<S> + rkyv::Deserialize<Self, S> + Clone
+    rkyv::Serialize<S> + rkyv::Deserialize<Self, S> + Clone + Reflect + FromReflect + Sized
 {
     fn coop_type_name() -> &'static str;
 }
 
-#[derive(Clone, bevy::prelude::Event)]
-pub struct CoopIncomingEvent<T: CoopValue<S>, S: rkyv::Fallible>(T, PhantomData<S>);
+pub trait CoopPlugin {
+    fn name() -> &'static str;
 
-#[derive(Clone, bevy::prelude::Event)]
-pub struct CoopOutgoingEvent<T: CoopValue<S>, S: rkyv::Fallible>(T, PhantomData<S>);
-
-pub(crate) mod sealed {
-    pub trait CoopSharedBlackboardInner {}
-
-    pub trait CoopMessageBusSender {}
-
-    pub trait CoopMessageBusReceiver {}
-
-    pub trait CoopCommunicationProtocol {}
+    fn setup_app(app: &mut App);
+    fn setup_coop(coop: &mut impl CoopCommunicationProtocol);
 }
 
-pub trait CoopSharedBlackboardReader<T: CoopValue<S>, S: rkyv::Fallible>:
-    sealed::CoopSharedBlackboardInner
-{
-    fn get(&self) -> &T;
-}
+pub trait CoopCommunicationManagerInApp {
+    fn setup_incoming_events<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
 
-pub trait CoopSharedBlackboardWriter<T: CoopValue<S>, S: rkyv::Fallible>:
-    CoopSharedBlackboardReader<T, S>
-{
-    fn get_mut(&mut self) -> &mut T;
-    fn set(&mut self, value: T);
-}
+    fn setup_outgoing_events<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
 
-#[derive(Clone, bevy::prelude::Resource)]
-pub struct CoopSharedBlackboardResource<T: CoopValue<S>, S: rkyv::Fallible>(
-    Arc<dyn CoopSharedBlackboardReader<T, S>>,
-    PhantomData<S>,
-);
+    fn setup_read_blackboard<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
 
-#[derive(Clone, bevy::prelude::Resource)]
-pub struct CoopSharedBlackboardResourceWriter<T: CoopValue<S>, S: rkyv::Fallible>(
-    Arc<dyn CoopSharedBlackboardWriter<T, S>>,
-    PhantomData<S>,
-);
-
-pub trait CoopMessageBusSender<T: CoopValue<S>, S: rkyv::Fallible>:
-    sealed::CoopMessageBusSender
-{
-    fn send_event(&self, value: T);
-}
-
-pub trait CoopMessageBusReceiver<T: CoopValue<S>, S: rkyv::Fallible>:
-    sealed::CoopMessageBusReceiver
-{
-    fn recv(&self) -> Option<T>;
+    fn setup_write_blackboard<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
 }
 
 pub trait CoopCommunicationProtocol {
-    fn get_outgoing_event_bus<T: CoopValue<S>, S: rkyv::Fallible>(
+    fn send_event<T: CoopValue<S>, S: rkyv::Fallible>(
         &self,
-    ) -> Arc<dyn CoopMessageBusSender<T, S>>;
+        value: T,
+    ) -> Result<(), CoopProtocolError>;
 
-    fn get_incoming_event_bus<T: CoopValue<S>, S: rkyv::Fallible>(
-        &self,
-    ) -> Arc<dyn CoopMessageBusSender<T, S>>;
+    fn get_app_events<T: CoopValue<S>, S: rkyv::Fallible>(
+        &mut self,
+    ) -> Result<Arc<[T]>, CoopProtocolError>;
 
     fn get_shared_blackboard_writer<T: CoopValue<S>, S: rkyv::Fallible>(
-        &self,
-    ) -> Arc<dyn CoopSharedBlackboardWriter<T, S>>;
+        &mut self,
+    ) -> Result<&mut T, CoopProtocolError>;
 
     fn get_shared_blackboard_reader<T: CoopValue<S>, S: rkyv::Fallible>(
-        &self,
-    ) -> Arc<dyn CoopSharedBlackboardReader<T, S>>;
+        &mut self,
+    ) -> Result<&T, CoopProtocolError>;
+}
 
-    fn get_bidirectional_shared_blackboard<T: CoopValue<S>, S: rkyv::Fallible>(
-        &self,
-    ) -> Arc<dyn CoopSharedBlackboardWriter<T, S>>;
+#[derive(Error, Debug)]
+pub enum CoopProtocolError {
+    #[error("Couldn't get incoming message bus")]
+    CouldntGetIncomingBus(Box<dyn std::error::Error>),
+    #[error("Couldn't get incoming message bus")]
+    CouldntGetOutgoingBus(Box<dyn std::error::Error>),
+
+    #[error("Couldn't get blackboard reader")]
+    CouldntGetBlackboardReader(Box<dyn std::error::Error>),
+    #[error("Couldn't get blackboard writer")]
+    CouldntGetBlackboardWriter(Box<dyn std::error::Error>),
+
+    #[error("Couldn't send message")]
+    CouldntSendMessage(Box<dyn std::error::Error>),
+    #[error("Couldn't receive message")]
+    CouldntReceiveMessage(Box<dyn std::error::Error>),
+
+    #[error("Couldn't get object from reflect")]
+    CouldntGetObjectFromReflect,
+
+    #[error("Couldn't get ref from blackboard")]
+    CouldntGetRefFromBlackboard(Box<dyn std::error::Error>),
 }

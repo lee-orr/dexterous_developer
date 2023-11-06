@@ -1,1 +1,3 @@
-pub mod default_coop;
+#[cfg(feature = "direct_memory")]
+pub mod direct_memory;
+pub mod types;

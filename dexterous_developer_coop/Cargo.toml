@@ -17,7 +17,14 @@ description = "a hot-reload library for bevy"
 [features]
 default = ["full"]
 
-full = ["coop", "app", "cli_coop", "winit_coop"]
+full = [
+    "coop",
+    "app",
+    "cli_coop",
+    "winit_coop",
+    "direct_memory",
+    "memory_mapped_file",
+]
 
 coop = []
 app = []
@@ -25,12 +32,16 @@ cli_coop = ["coop"]
 winit_coop = ["coop"]
 default_coop = ["coop"]
 
+direct_memory = ["coop", "app"]
+memory_mapped_file = []
 
 [dependencies]
 bevy = { version = "0.12", default-features = false, optional = true }
 rkyv = { version = "0.7" }
 rkyv_dyn = "0.7"
 rkyv_typename = "0.7"
+crossbeam = "0.8"
+thiserror = "1"
 
 [dev-dependencies]
 bevy = { version = "0.12" }
