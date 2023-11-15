@@ -2,71 +2,74 @@ use std::sync::Arc;
 
 use bevy::{
     prelude::App,
-    reflect::{FromReflect, Reflect},
+    reflect::{FromReflect, Reflect, TypePath},
 };
 use thiserror::Error;
-pub trait CoopValue<S: rkyv::Fallible>:
-    rkyv::Serialize<S> + rkyv::Deserialize<Self, S> + Clone + Reflect + FromReflect + Sized
-{
-    fn coop_type_name() -> &'static str;
-}
+pub trait CoopValue: Clone + Reflect + FromReflect + TypePath + Sized + 'static {}
+
+impl<T: Clone + Reflect + FromReflect + TypePath + Sized> CoopValue for T {}
 
 pub trait CoopPlugin {
     fn name() -> &'static str;
 
     fn setup_app(app: &mut App);
     fn setup_coop(coop: &mut impl CoopCommunicationProtocol);
+
+    fn instantiate() -> Option<Self>
+    where
+        Self: std::marker::Sized;
 }
 
 pub trait CoopCommunicationManagerInApp {
-    fn setup_incoming_events<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
+    fn get_incoming_events<T: CoopValue>(&self) -> Arc<[T]>;
 
-    fn setup_outgoing_events<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
+    fn register_incoming_events<T: CoopValue>(&mut self);
 
-    fn setup_read_blackboard<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
+    fn send_outgoing_events<T: CoopValue>(&self, value: Arc<[T]>);
 
-    fn setup_write_blackboard<T: CoopValue<S>, S: rkyv::Fallible>(&mut self, app: &mut App);
+    fn register_outgoig_events<T: CoopValue>(&mut self);
+
+    fn get_blackboard_value<T: CoopValue>(&self, blackboard: &mut Option<Arc<T>>);
+
+    fn register_blackboard_read_value<T: CoopValue>(&mut self);
+
+    fn set_blackboard_value<T: CoopValue>(&self, blackboard: Option<&T>);
+
+    fn register_blackboard_write_value<T: CoopValue>(&mut self);
+
+    fn request_coop_plugin<T: CoopPlugin>(&mut self);
 }
 
 pub trait CoopCommunicationProtocol {
-    fn send_event<T: CoopValue<S>, S: rkyv::Fallible>(
-        &self,
-        value: T,
-    ) -> Result<(), CoopProtocolError>;
+    fn send_event<T: CoopValue>(&self, value: T) -> Result<(), CoopProtocolError>;
 
-    fn get_app_events<T: CoopValue<S>, S: rkyv::Fallible>(
-        &mut self,
-    ) -> Result<Arc<[T]>, CoopProtocolError>;
+    fn get_app_events<T: CoopValue>(&mut self) -> Result<&[T], CoopProtocolError>;
 
-    fn get_shared_blackboard_writer<T: CoopValue<S>, S: rkyv::Fallible>(
-        &mut self,
-    ) -> Result<&mut T, CoopProtocolError>;
+    fn get_shared_blackboard_writer<T: CoopValue>(&mut self) -> Result<&mut T, CoopProtocolError>;
 
-    fn get_shared_blackboard_reader<T: CoopValue<S>, S: rkyv::Fallible>(
-        &mut self,
-    ) -> Result<&T, CoopProtocolError>;
+    fn get_shared_blackboard_reader<T: CoopValue>(&mut self) -> Result<&T, CoopProtocolError>;
 }
 
 #[derive(Error, Debug)]
 pub enum CoopProtocolError {
     #[error("Couldn't get incoming message bus")]
-    CouldntGetIncomingBus(Box<dyn std::error::Error>),
+    CouldntGetIncomingBus,
     #[error("Couldn't get incoming message bus")]
-    CouldntGetOutgoingBus(Box<dyn std::error::Error>),
+    CouldntGetOutgoingBus,
 
     #[error("Couldn't get blackboard reader")]
-    CouldntGetBlackboardReader(Box<dyn std::error::Error>),
+    CouldntGetBlackboardReader,
     #[error("Couldn't get blackboard writer")]
-    CouldntGetBlackboardWriter(Box<dyn std::error::Error>),
+    CouldntGetBlackboardWriter,
 
     #[error("Couldn't send message")]
-    CouldntSendMessage(Box<dyn std::error::Error>),
+    CouldntSendMessage,
     #[error("Couldn't receive message")]
-    CouldntReceiveMessage(Box<dyn std::error::Error>),
+    CouldntReceiveMessage,
 
     #[error("Couldn't get object from reflect")]
     CouldntGetObjectFromReflect,
 
     #[error("Couldn't get ref from blackboard")]
-    CouldntGetRefFromBlackboard(Box<dyn std::error::Error>),
+    CouldntGetRefFromBlackboard,
 }
