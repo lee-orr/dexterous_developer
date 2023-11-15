@@ -9,3 +9,5 @@ Cargo.lock
 
 /testing/tmp*
 **/target
+
+.idea
