@@ -9,29 +9,27 @@ use super::{super::types::*, reload_systems::dexterous_developer_occured};
 
 use super::{replacable_types::*, schedules::*};
 
-#[derive(Default, Resource, Debug)]
+#[derive(Default, Resource, Clone, Debug)]
 pub struct ReloadableAppCleanupData {
-    pub labels: HashSet<DynamicScheduleLabel>,
+    pub labels: HashSet<Box<dyn ScheduleLabel>>,
 }
 
 #[derive(Default, Resource)]
 pub struct ReloadableAppElements {
-    schedules: HashMap<DynamicScheduleLabel, (Schedule, DynamicScheduleLabel)>,
+    schedules: HashMap<Box<dyn ScheduleLabel>, Schedule>,
     resources: HashSet<String>,
     components: HashSet<String>,
 }
 
 impl ReloadableAppElements {
-    pub(crate) fn schedule_iter(
-        self,
-    ) -> impl Iterator<Item = (DynamicScheduleLabel, Schedule, DynamicScheduleLabel)> {
-        self.schedules.into_iter().map(|(a, (b, c))| (a, b, c))
+    pub(crate) fn schedule_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
+        self.schedules.into_iter()
     }
 }
 
 pub struct ReloadableAppContents<'a> {
     name: &'static str,
-    schedules: &'a mut HashMap<DynamicScheduleLabel, (Schedule, DynamicScheduleLabel)>,
+    schedules: &'a mut HashMap<Box<dyn ScheduleLabel>, Schedule>,
     resources: &'a mut HashSet<String>,
     components: &'a mut HashSet<String>,
 }
@@ -56,22 +54,16 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
         let schedules = &mut self.schedules;
-        let key = DynamicScheduleLabel::new(schedule.clone());
+        let schedule: Box<dyn ScheduleLabel> = Box::new(schedule);
 
-        if let Some((schedule, _)) = schedules.get_mut(&key) {
-            debug!("Adding systems to schedule {key:?}");
+        if let Some(schedule) = schedules.get_mut(&schedule) {
+            debug!("Adding systems to schedule");
             schedule.add_systems(systems);
         } else {
-            debug!("Creating schedule {schedule:?} with systems");
+            debug!("Creating schedule with systems");
             let mut new_schedule = Schedule::new(ReloadableSchedule::new(schedule.clone()));
             new_schedule.add_systems(systems);
-            schedules.insert(
-                key,
-                (
-                    new_schedule,
-                    DynamicScheduleLabel::new(ReloadableSchedule::new(schedule.clone())),
-                ),
-            );
+            schedules.insert(schedule, new_schedule);
         }
 
         self

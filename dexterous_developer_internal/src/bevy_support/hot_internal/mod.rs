@@ -24,6 +24,8 @@ use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 
+pub use reloadable_app_setup::*;
+
 use reload_systems::{cleanup_schedules, reload, update_lib_system};
 pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents, ReloadableAppElements};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};

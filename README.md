@@ -39,8 +39,8 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-bevy = "0.12"
-dexterous_developer = "0.0.12"
+bevy = "0.11"
+dexterous_developer = "0.0.11"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -84,9 +84,6 @@ fn reloadable(app: &mut ReloadableAppContents) {
 
 ```
 
-## Bevy Versions
+## Bevy Main
 
-| Bevy | Dexterous Developer |
-| --- | --- |
-| 0.12 | 0.0.12 |
-| 0.11 | 0.0.1 - 0.0.11 |
+If you want to use the current bevy main, you should use the `main` branch of the github repository. Otherwise, all published versions of `dexterous_developer` currently only support bevy `0.11`.
