@@ -11,6 +11,7 @@ edition = "2021"
 readme = "../README.md"
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
 description = "A CLI for hot reloadable apps in bevy, using the dexterous_developer crate"
+publish = true
 
 [lib]
 crate-type = ["rlib"]

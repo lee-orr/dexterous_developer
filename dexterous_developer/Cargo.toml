@@ -12,6 +12,7 @@ documentation.workspace = true
 edition = "2021"
 readme = "../README.md"
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
+publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
