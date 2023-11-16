@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_dynamic/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_internal/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_macros/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_example/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/launcher/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/simple/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/dexterous_developer_example/target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

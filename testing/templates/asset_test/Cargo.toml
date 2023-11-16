@@ -12,7 +12,7 @@ crate-type = ["rlib"]
 [dependencies]
 thiserror = "*"
 
-bevy = { git = "https://github.com/bevyengine/bevy", default_features = false, features = [
+bevy = { version = "0.12", default_features = false, features = [
     "bevy_asset",
     "multi-threaded",
     "file_watcher",
