@@ -87,6 +87,6 @@ fn reloadable(app: &mut ReloadableAppContents) {
 ## Bevy Version Support
 
 | Bevy | Dexterous Developer |
-| --- | --- |
-| 0.12 | 0.12 |
-| 0.11 | <= 0.11 |
+| --- |---------------------|
+| 0.12 | 0.0.12              |
+| 0.11 | <= 0.0.11           |

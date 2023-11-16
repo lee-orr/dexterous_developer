@@ -1,7 +1,8 @@
 # Release Notes
 
-## UPCOMING
+## Version 0.0.12
 
+- add support for `Bevy 0.12`
 - add support for hot re-loading states
 - add support for hot re-loading events
 - add support for running examples with the `dylib` crate type.

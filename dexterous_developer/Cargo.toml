@@ -12,7 +12,6 @@ documentation.workspace = true
 edition = "2021"
 readme = "../README.md"
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
-publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
@@ -27,5 +26,5 @@ cli = ["dexterous_developer_internal/cli"]
 
 
 [dependencies]
-dexterous_developer_internal = { version = "0.0.12-pre.0", path = "../dexterous_developer_internal", default-features = false }
-dexterous_developer_dynamic = { version = "0.0.12-pre.0", path = "../dexterous_developer_dynamic", optional = true }
+dexterous_developer_internal = { version = "0.0.12", path = "../dexterous_developer_internal", default-features = false }
+dexterous_developer_dynamic = { version = "0.0.12", path = "../dexterous_developer_dynamic", optional = true }
