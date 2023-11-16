@@ -9,7 +9,7 @@ members = [
 ]
 
 exclude = [
-    "testing/*",
+    "testing",
     "dexterous_developer_example",
     "no_cli_launcher",
     "tools/ci",

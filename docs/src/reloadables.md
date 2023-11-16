@@ -53,7 +53,7 @@ If you want to be able to iterate on the structure of a resource, but maintain i
 
 ```rust
 #[derive(Resource, Serialize, Deserialize, Default)]
-struct MyResource
+struct MyResource;
 
 impl ReplacableResource {
     fn get_type_name() -> &'static str {
@@ -70,7 +70,7 @@ You can also set up replacable components. These function like replacable resour
 
 ```rust
 #[derive(Component, Serialize, Deserialize, Default)]
-struct MyComponent
+struct MyComponent;
 
 impl ReplacableComponent {
     fn get_type_name() -> &'static str {
