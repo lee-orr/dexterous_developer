@@ -9,3 +9,4 @@ Cargo.lock
 
 /testing/tmp*
 **/target
+**/.fuse**

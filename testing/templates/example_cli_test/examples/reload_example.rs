@@ -1,6 +1,6 @@
 use bevy::{prelude::App, MinimalPlugins};
-use dexterous_developer::*;
-use lib_simple_cli_test::*;
+use dexterous_developer::{bevy_app_setup, InitialPlugins, ReloadableElementsSetup};
+use lib_example_cli_test::*;
 
 #[bevy_app_setup]
 pub fn bevy_main(initial_plugins: impl InitialPlugins) {

@@ -3,8 +3,6 @@ use bevy::{prelude::*, window::PrimaryWindow};
 pub use crate::hot_internal::hot_reload_internal::InternalHotReload;
 use crate::{ReloadMode, ReloadSettings};
 
-impl Resource for InternalHotReload {}
-
 pub fn draw_internal_hot_reload(
     internal: Res<InternalHotReload>,
     settings: Option<Res<ReloadSettings>>,

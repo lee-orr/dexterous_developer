@@ -1,11 +1,11 @@
 [package]
-name = "simple_cli_test"
+name = "example_cli_test"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "lib_simple_cli_test"
+name = "lib_example_cli_test"
 crate-type = ["rlib"]
 
 
