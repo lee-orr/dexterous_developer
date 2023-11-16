@@ -174,22 +174,20 @@ pub fn register_schedules(world: &mut World) {
 
     let mut inner = ReloadableAppCleanupData::default();
 
-    for (original, schedule) in reloadable.schedule_iter() {
-        let label = ReloadableSchedule::new(original.clone());
-        debug!("Adding {label:?} to schedule");
-        inner.labels.insert(Box::new(label.clone()));
+    for (original, schedule, reloadable_schedule_label) in reloadable.schedule_iter() {
+        debug!("Adding {original:?} to schedule");
+        inner.labels.insert(reloadable_schedule_label.clone());
         let exists = schedules.insert(schedule);
         if exists.is_none() {
-            if let Some(root) = schedules.get_mut(&original) {
-                let label = label.clone();
+            if let Some(root) = schedules.get_mut(original.clone()) {
+                let label = reloadable_schedule_label.clone();
                 root.add_systems(move |w: &mut World| {
                     let _ = w.try_run_schedule(label.clone());
                 });
             } else {
-                let label = label.clone();
                 let mut root = Schedule::new(original);
                 root.add_systems(move |w: &mut World| {
-                    let _ = w.try_run_schedule(label.clone());
+                    let _ = w.try_run_schedule(reloadable_schedule_label.clone());
                 });
                 schedules.insert(root);
             }

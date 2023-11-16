@@ -10,3 +10,6 @@ pub struct InternalHotReload {
     pub last_update_date_time: chrono::DateTime<Local>,
     pub libs: LibPathSet,
 }
+
+#[cfg(feature = "bevy")]
+impl bevy::prelude::Resource for InternalHotReload {}

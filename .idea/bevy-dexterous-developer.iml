@@ -9,13 +9,19 @@
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_macros/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_example/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/asset_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/example_cli_test/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/example_cli_test/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/launcher/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/simple/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/dexterous_developer_example/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dexterous_developer_internal/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/templates/asset_test/target" />
+      <excludeFolder url="file://$MODULE_DIR$/testing/templates/example_cli_test/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/target" />
