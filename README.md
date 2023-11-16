@@ -16,9 +16,9 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - Serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
 - Mark entities to get removed on hot reload
 - Run systems after hot-reload
-- Create functions to set-up & tear down upon either entering/exiting a state or on hot reload
+- Create functions to set up & tear down upon either entering/exiting a state or on hot reload
 - Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
-- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a linux-based development container, but it can be configured to work directly on windows or mac as well - albiet less reliably. Support for cross-compilation directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.
+- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a Linux-based development container, but it can be configured to work directly on windows or mac as well - albeit less reliably. Support for cross-compilation directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.
 
 ## Known issues
 
@@ -28,7 +28,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 Grab the CLI by running: ```cargo install dexterous_developer_cli```.
 
-You'll be able to run the dexterous verion of your code by running `dexterous_developer_cli run` in your terminal.
+You'll be able to run the dexterous version of your code by running `dexterous_developer_cli run` in your terminal.
 
 In your `Cargo.toml` add the following:
 
@@ -39,8 +39,8 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-bevy = "0.11"
-dexterous_developer = "0.0.11"
+bevy = "0.12"
+dexterous_developer = "0.0.12"
 serde = "1" # If you want the serialization capacities
 ```
 
@@ -84,6 +84,9 @@ fn reloadable(app: &mut ReloadableAppContents) {
 
 ```
 
-## Bevy Main
+## Bevy Version Support
 
-If you want to use the current bevy main, you should use the `main` branch of the github repository. Otherwise, all published versions of `dexterous_developer` currently only support bevy `0.11`.
+| Bevy | Dexterous Developer |
+| --- | --- |
+| 0.12 | 0.12 |
+| 0.11 | <= 0.11 |

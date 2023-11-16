@@ -9,7 +9,7 @@ This library provides an experimental hot reload system for Bevy.
 - serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
 - mark entities to get removed on hot reload
 - run systems after hot-reload
-- create functions to set-up & tear down upon either entering/exiting a state or on hot reload
+- create functions to set up & tear down upon either entering/exiting a state or on hot reload
 - only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
 
 ## Additional Resources

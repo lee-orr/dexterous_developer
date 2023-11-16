@@ -27,7 +27,7 @@ In the background, the plugin runs `cargo watch` on the source directory of the 
 
 ### Systems
 
-The simplest, and most versitile, type of reloadable is a simple system. This can be any system - we just register it in a special way allowing us to remove them when thge library is replaced.
+The simplest, and most versatile, type of reloadable is a simple system. This can be any system - we just register it in a special way allowing us to remove them when thge library is replaced.
 
 These are added using `.add_systems`, exactly like you would add a system to a normal bevy app!
 
@@ -35,7 +35,7 @@ These are added using `.add_systems`, exactly like you would add a system to a n
 
 These are special systems, that are supposed to set things up - which might need to be re-done upon a reload. The classic example is a game UI, which you might want to re-build after a reload. There are a few helpers for these types of systems
 
-First, we can clear all entites that have a marker component and then run our setup function using `.reset_setup::<Component>(systems_go_here)`.
+First, we can clear all entities that have a marker component and then run our setup function using `.reset_setup::<Component>(systems_go_here)`.
 And if we want it to only happen on entering a specific state (or re-loading while within that state), we can use `.reset_setup_in_state::<Component>(state, systems)`.
 Alternatively, if we just want to clear stuff out on a reload, we can use a marker component and call `.clear_marked_on_reload::<Component>()`.
 
@@ -45,7 +45,7 @@ Reloading resources is a little more complex - so we have a few variations
 
 ### Reset on Reload
 
-If you want to reset a resource when the library reloads, you can use either `.reset_resource::<Resource>()` which uses it's default value, or `.reset_resource_to_value(value)` which uses a value you provide.
+If you want to reset a resource when the library reloads, you can use either `.reset_resource::<Resource>()` which uses its default value, or `.reset_resource_to_value(value)` which uses a value you provide.
 
 ### Replaceable Resources
 

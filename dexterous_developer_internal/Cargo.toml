@@ -1,17 +1,16 @@
 [package]
 name = "dexterous_developer_internal"
-version = "0.0.12-pre.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
 readme = "../README.md"
-categories = ["games", "game-development"]
-keywords = ["bevy"]
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
-authors = ["Lee-Orr"]
-homepage = "https://lee-orr.github.io/dexterous_developer/"
-repository = "https://github.com/lee-orr/dexterous_developer"
-documentation = "https://lee-orr.github.io/dexterous_developer/"
-description = "a hot-reload library for bevy"
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]

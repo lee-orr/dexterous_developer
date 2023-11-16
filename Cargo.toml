@@ -15,6 +15,18 @@ exclude = [
     "tools/ci",
 ]
 
+[workspace.package]
+version = "0.0.12"
+authors = ["Lee-Orr"]
+description = "An experimental hot reload system for the bevy game engine. "
+license = "MIT OR Apache-2.0"
+categories = ["games", "game-development"]
+keywords = ["bevy"]
+homepage = "https://lee-orr.github.io/dexterous_developer/"
+repository = "https://github.com/lee-orr/dexterous_developer"
+documentation = "https://lee-orr.github.io/dexterous_developer/"
+
+
 # Enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
