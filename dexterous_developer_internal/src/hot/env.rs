@@ -136,7 +136,7 @@ mod linux_host {
     #[cfg(target_arch = "aarch64")]
     const LINKER_VAR: &str = "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER";
 
-    #[cfg(not(target_arch))]
+    #[cfg(not(target_arch = "aarch64"))]
     const LINKER_VAR: &str = "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER";
 
     impl BuildArgsProvider for DefaultProvider {

@@ -124,13 +124,13 @@ jobs:
           path: ${{github.workspace}}/bins
       - name: Mock Versions In Cargo.toml
         run: |
-          sed -i -e 's/version.workspace = true/version = "0.0.12"/g' ./dexterous_developer/Cargo.toml
+          sed -i -e 's/version.workspace = true/version = "0.1.0"/g' ./dexterous_developer/Cargo.toml
           sed -i -e 's/.*workspace = true//g' ./dexterous_developer/Cargo.toml
-          sed -i -e 's/version.workspace = true/version = "0.0.12"/g' ./dexterous_developer_dynamic/Cargo.toml
+          sed -i -e 's/version.workspace = true/version = "0.1.0"/g' ./dexterous_developer_dynamic/Cargo.toml
           sed -i -e 's/.*workspace = true//g' ./dexterous_developer_dynamic/Cargo.toml
-          sed -i -e 's/version.workspace = true/version = "0.0.12"/g' ./dexterous_developer_internal/Cargo.toml
+          sed -i -e 's/version.workspace = true/version = "0.1.0"/g' ./dexterous_developer_internal/Cargo.toml
           sed -i -e 's/.*workspace = true//g' ./dexterous_developer_internal/Cargo.toml
-          sed -i -e 's/version.workspace = true/version = "0.0.12"/g' ./dexterous_developer_macros/Cargo.toml
+          sed -i -e 's/version.workspace = true/version = "0.1.0"/g' ./dexterous_developer_macros/Cargo.toml
           sed -i -e 's/.*workspace = true//g' ./dexterous_developer_macros/Cargo.toml
       - name: Set Executable
         run: chmod +x ./bins/*
