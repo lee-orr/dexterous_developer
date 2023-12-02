@@ -3,6 +3,8 @@
 ## Version 0.1.0
 
 - fix cli compilation error on Apple Silicone - <https://github.com/lee-orr/dexterous_developer/issues/38>
+- fix ci install of LLVM for mac
+- temporary fix for segfault on Apple Silicone devices - <https://github.com/bevyengine/bevy/issues/10524>
 
 ## Version 0.0.12
 
