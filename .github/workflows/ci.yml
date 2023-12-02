@@ -68,7 +68,7 @@ jobs:
         run: rustup component add llvm-tools-preview
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Install LLVM
-        run: brew install llvm
+        run: brew install --force --overwrite llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
@@ -236,7 +236,7 @@ jobs:
         run: rustup component add llvm-tools-preview
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Install LLVM
-        run: brew install llvm
+        run: brew install --force --overwrite llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
