@@ -42,7 +42,7 @@ jobs:
   build-tester:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-13, ubuntu-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
@@ -66,9 +66,9 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os == 'macos-latest' }}
+      - if: ${{ matrix.os == 'macos-13' }}
         name: Install LLVM
-        run: brew install --force --ignore-dependencies z3 llvm
+        run: brew install --force --overwrite python@3.11 z3 llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
@@ -95,7 +95,7 @@ jobs:
         builder:
           - ubuntu-latest
         target:
-          - os: macos-latest
+          - os: macos-13
             target: mac
           - os: windows-latest
             target: windows
@@ -152,7 +152,7 @@ jobs:
         builder:
           - ubuntu-latest
         target:
-          - os: macos-latest
+          - os: macos-13
             target: mac
           - os: windows-latest
             target: windows
@@ -189,7 +189,7 @@ jobs:
     needs: build-tester
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-13, ubuntu-latest]
         test:
           [
             cold,
@@ -234,9 +234,9 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os == 'macos-latest' }}
+      - if: ${{ matrix.os == 'macos-13' }}
         name: Install LLVM
-        run: brew install --force --ignore-dependencies z3 llvm
+        run: brew install --force --overwrite python@3.11 z3 llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
