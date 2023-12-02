@@ -42,7 +42,7 @@ jobs:
   build-tester:
     strategy:
       matrix:
-        os: [windows-latest, macos-13, ubuntu-latest]
+        os: [windows-latest, macos-13, macos-13-xlarge, ubuntu-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os == 'macos-13' }}
+      - if: ${{ matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge' }}
         name: Install LLVM
         run: brew install --force --overwrite python@3.11 z3 llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -97,6 +97,8 @@ jobs:
         target:
           - os: macos-13
             target: mac
+          - os: macos-13-xlarge
+            target: mac-arm
           - os: windows-latest
             target: windows
     runs-on: ${{matrix.builder}}
@@ -154,6 +156,8 @@ jobs:
         target:
           - os: macos-13
             target: mac
+          - os: macos-13-xlarge
+            target: mac-arm
           - os: windows-latest
             target: windows
     runs-on: ${{matrix.target.os}}
@@ -189,7 +193,7 @@ jobs:
     needs: build-tester
     strategy:
       matrix:
-        os: [windows-latest, macos-13, ubuntu-latest]
+        os: [windows-latest, macos-13, macos-13-xlarge, ubuntu-latest]
         test:
           [
             cold,
@@ -234,7 +238,7 @@ jobs:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Add llvm
         run: rustup component add llvm-tools-preview
-      - if: ${{ matrix.os == 'macos-13' }}
+      - if: ${{ matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge'}}
         name: Install LLVM
         run: brew install --force --overwrite python@3.11 z3 llvm
       - if: ${{ matrix.os == 'ubuntu-latest' }}

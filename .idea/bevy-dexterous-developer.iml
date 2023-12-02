@@ -25,6 +25,7 @@
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/no_cli_test/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/target" />
       <excludeFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dexterous_developer/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
