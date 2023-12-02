@@ -123,6 +123,18 @@ impl TestProject {
             .arg(path.as_os_str())
             .output()?;
 
+        let target_dir = path.join("target");
+
+        if target_dir.exists() {
+            std::fs::remove_dir_all(target_dir);
+        }
+
+        let lock = path.join("Cargo.lock");
+
+        if lock.exists() {
+            std::fs::remove_file(lock);
+        }
+
         Ok(Self {
             path,
             name,
