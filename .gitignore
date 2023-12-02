@@ -10,3 +10,5 @@ Cargo.lock
 /testing/tmp*
 **/target
 **/.fuse**
+
+**/.DS_Store

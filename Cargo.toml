@@ -16,7 +16,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.0.12"
+version = "0.1.0"
 authors = ["Lee-Orr"]
 description = "An experimental hot reload system for the bevy game engine. "
 license = "MIT OR Apache-2.0"

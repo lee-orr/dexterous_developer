@@ -1,5 +1,9 @@
 # Release Notes
 
+## Version 0.1.0
+
+- fix cli compilation error on Apple Silicone - <https://github.com/lee-orr/dexterous_developer/issues/38>
+
 ## Version 0.0.12
 
 - add support for `Bevy 0.12`
