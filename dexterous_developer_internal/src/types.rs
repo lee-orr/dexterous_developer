@@ -22,6 +22,8 @@ pub enum Target {
     Windows,
     Mac,
     MacArm,
+    Android,
+    IOS
 }
 
 #[cfg(any(feature = "cli", feature = "bevy"))]
@@ -69,6 +71,8 @@ impl Target {
             }
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
+            Target::Android => "aarch64-linux-android",
+            Target::IOS => "aarch64-apple-ios"
         }
     }
 
@@ -98,6 +102,8 @@ impl FromStr for Target {
         let s = s.trim().to_lowercase();
         if s.contains("windows") {
             Ok(Self::Windows)
+        } else if s.contains("android") {
+            Ok(Self::Android)
         } else if s.contains("linux") {
             if s.contains("arm") || s.contains("aarch") {
                 Ok(Self::LinuxArm)
@@ -110,6 +116,8 @@ impl FromStr for Target {
             } else {
                 Ok(Self::Mac)
             }
+        } else if s.contains("ios") {
+            Ok(Self::IOS)
         } else {
             bail!("Invalid Target");
         }

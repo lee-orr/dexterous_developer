@@ -79,10 +79,14 @@ enum Commands {
     InstallCross {
         // /// Macos SDK Tarball File Path
         // #[arg(long)]
-        // macos_sdk_file: Option<PathBuf>,
-        /// Macos SDK Tarball Download URL - only used if macos_sdk_dir is not provided
+        // macos_sdk_url: Option<PathBuf>,
         #[arg(long)]
         macos_sdk_url: Option<Url>,
+        // /// iOS SDK Tarball File Path
+        // #[arg(long)]
+        // ios_sdk_url: Option<PathBuf>,
+        #[arg(long)]
+        ios_sdk_url: Option<Url>,
 
         /// The targets you want to install. Options are: linux, linux-arm, windows, mac, mac-arm
         #[arg(required = true)]
@@ -200,11 +204,13 @@ async fn main() {
         }
         Commands::InstallCross {
             macos_sdk_url,
+            ios_sdk_url,
             targets,
         } => {
             let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);
+            let ios_sdk_url = ios_sdk_url.map(AppleSDKPath::Url);
             println!("Setup cross compiling");
-            cross::install_cross(&targets, macos_sdk)
+            cross::install_cross(&targets, macos_sdk,ios_sdk_url)
                 .await
                 .expect("Failed to install cross");
         }

@@ -94,7 +94,11 @@ pub(crate) fn setup_build_settings(
         get_metadata.env("CARGO_BUILD_TARGET_DIR", target.as_os_str());
     }
 
+    debug!("Getting metadata...");
+
     let metadata = get_metadata.exec()?;
+
+    debug!("Got metadata");
 
     let packages = metadata.packages.iter();
 
@@ -157,6 +161,7 @@ pub(crate) fn setup_build_settings(
     let out_target = target_path.join("hot");
     target_path.push("debug");
 
+    debug!("Setting up rustc request");
     let mut rustc = Command::new("rustc");
     rustc
         .env_remove("LD_DEBUG")

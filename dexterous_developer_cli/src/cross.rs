@@ -2,15 +2,18 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{bail, Context};
 
-use dexterous_developer_internal::Target;
+use dexterous_developer_internal::{Target, debug, info};
 
+use tokio::process::Command;
 use url::Url;
+use which::which;
 
-use crate::paths::{get_paths, CliPaths};
+use crate::{paths::{get_paths, CliPaths}, cross};
 
 pub async fn install_cross(
     targets: &[Target],
     macos_sdk: Option<AppleSDKPath>,
+    ios_sdk: Option<AppleSDKPath>,
 ) -> anyhow::Result<()> {
     let CliPaths { data, cross_config } = get_paths()?;
 
@@ -33,27 +36,33 @@ pub async fn install_cross(
         commands.contains("binstall")
     };
 
-    println!("Installing cross");
-    let status = tokio::process::Command::new("cargo")
-        .arg("+nightly")
-        .args({
-            let args: &'static [&'static str] = if binstall {
-                &["binstall", "-y"]
-            } else {
-                &["install"]
-            };
-            args
-        })
-        .arg("cross")
-        .status()
-        .await?;
+    if which("cross").is_err() {
+        println!("Installing cross");
+        let status = tokio::process::Command::new("cargo")
+            .arg("+nightly")
+            .args({
+                let args: &'static [&'static str] = if binstall {
+                    &["binstall", "-y"]
+                } else {
+                    &["install"]
+                };
+                args
+            })
+            .arg("cross")
+            .status()
+            .await?;
 
-    if !status.success() {
-        bail!("Failed to install cross-rs");
+
+
+        if !status.success() {
+            bail!("Failed to install cross-rs");
+        }
+    } else {
+        println!("Cross already exists");
     }
 
     println!("Setting up custom images");
-    setup_custom_images(&data, &cross_config, targets, macos_sdk).await?;
+    setup_custom_images(&data, &cross_config, targets, macos_sdk, ios_sdk).await?;
 
     Ok(())
 }
@@ -105,6 +114,7 @@ const CROSS_TARGETS: &[Target] = &[
     Target::Windows,
     Target::Mac,
     Target::MacArm,
+    Target::Android,
 ];
 
 #[allow(clippy::single_match)]
@@ -117,6 +127,7 @@ pub async fn setup_custom_images(
     cross_toml_path: &Path,
     targets: &[Target],
     macos_sdk: Option<AppleSDKPath>,
+    ios_sdk: Option<AppleSDKPath>,
 ) -> anyhow::Result<()> {
     let cross_dir = data.join("cross");
 
@@ -132,6 +143,15 @@ pub async fn setup_custom_images(
         if !cloned.success() {
             bail!("Failed to clone cross-rs");
         }
+        let submodule = tokio::process::Command::new("git")
+            .args(["submodule", "update", "--init", "--remote"])
+            .current_dir(&cross_dir)
+            .status()
+            .await
+            .context("Cloning cross-rs repository")?;
+        if !submodule.success() {
+            bail!("Failed to update submodules for cross-rs");
+        }
     } else {
         println!("Cloning cross-rs repository");
         let cloned = tokio::process::Command::new("git")
@@ -144,9 +164,29 @@ pub async fn setup_custom_images(
         if !cloned.success() {
             bail!("Failed to clone cross-rs");
         }
+        let submodule = tokio::process::Command::new("git")
+            .args(["submodule", "update", "--init", "--remote"])
+            .current_dir(&cross_dir)
+            .status()
+            .await
+            .context("Cloning cross-rs repository")?;
+        if !submodule.success() {
+            bail!("Failed to update submodules for cross-rs");
+        }
     }
 
-    tokio::fs::remove_file(cross_dir.join("Cargo.lock")).await?;
+    debug!("Updated cross repo");
+
+    {
+
+        let lock = cross_dir.join("Cargo.lock");
+
+        if lock.exists() {
+            info!("Removing lock");
+            tokio::fs::remove_file(cross_dir.join("Cargo.lock")).await?;
+        }
+
+    }
 
     println!("Initializing submodules");
     let submodules = tokio::process::Command::new("git")
@@ -173,6 +213,7 @@ pub async fn setup_custom_images(
             Target::Windows => format!("{image}"),
             Target::Linux => format!("{image}"),
             Target::LinuxArm => format!("{image}"),
+            Target::Android => format!("{image}"),
             _ => format!("{image}-cross"),
         };
 
@@ -218,7 +259,9 @@ pub async fn setup_custom_images(
                     let sdk = client.execute(req).await.context("Downloading MacOS Sdk")?;
 
                     let sdk_path_folder = cross_dir.join("docker/macos_sdk_dir");
+                    if !sdk_path_folder.exists() {
                     tokio::fs::create_dir_all(&sdk_path_folder).await?;
+                    }
 
                     let sdk_path = sdk_path_folder.join(file_name);
 
@@ -271,6 +314,135 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
             };
 
             build_command.args(["--build-arg", &macos_sdk.0, "--build-arg", &macos_sdk.1]);
+        } else if *image == Target::IOS{
+            let Some(ios_sdk) = ios_sdk.as_ref() else {
+                bail!("Building the ios image requires a URL to a packaged ios sdk. Please look at here for more info: https://github.com/cross-rs/cross-toolchains#ios-targets");
+            };
+
+            let ios_sdk = match ios_sdk {
+                AppleSDKPath::Url(url) => {
+                    println!("Downloading iOS SDK from {url}");
+                    let ios_sdk = url.as_str();
+                    let version_number = {
+                        let mut split = ios_sdk.split("OS");
+                        let val = split
+                            .nth(1)
+                            .context("File name doesn't have format of *OS{version}.sdk*")?;
+                        let mut split = val.split(".sdk");
+                        split
+                            .next()
+                            .context("File name doesn't have format of *OS{version}.sdk*")?
+                    };
+                    let file_name = url.path_segments().context("URL isn't a download url")?;
+                    let file_name = file_name.last().context("No file name in url")?;
+
+                    let client = reqwest::Client::default();
+                    let req = client
+                        .get(ios_sdk)
+                        .header("User-Agent", "dexterous_developer_cli")
+                        .build()
+                        .context("Constructing SDK Download Request")?;
+                    let sdk = client.execute(req).await.context("Downloading iOS Sdk")?;
+                    info!("Downloaded...");
+                    let sdk_path_folder = cross_dir.join("docker/ios_sdk_dir");
+                    if !sdk_path_folder.exists() {
+                        tokio::fs::create_dir_all(&sdk_path_folder).await?;
+                    }
+                    info!("SDK Path Ready");
+                    let sdk_path = sdk_path_folder.join(file_name);
+                    info!("Wrote SDK to {sdk_path:?}");
+                    tokio::fs::write(&sdk_path, sdk.bytes().await?).await?;
+
+                    let file_name = match file_name.split(".").last() {
+                        Some("zip") => {
+                            let extracted_path = sdk_path_folder.join("extracted");
+
+                            if extracted_path.exists() {
+                                info!("extraction path exists - removing it. {extracted_path:?}");
+                                tokio::fs::remove_dir_all(&extracted_path).await?;
+                            }
+
+{
+    info!("Extracting zip file");{
+                            let zip_file = std::fs::File::open(&sdk_path)?;
+                            let mut archive = zip::ZipArchive::new(zip_file)?;
+                            info!("Loaded Archive");
+                            archive.extract(&extracted_path)?;
+                            info!("Extracted file");
+    }
+                            tokio::fs::remove_file(sdk_path).await?;
+                            info!("Removed original archive");
+}
+
+                            let file_name = file_name.replace(".zip", ".tgz");
+                            let sdk_path = sdk_path_folder.join(&file_name);
+                            info!("Tar file path: {sdk_path:?}");
+
+                            let tar_file = std::fs::File::create(sdk_path)?;
+                            let enc = flate2::write::GzEncoder::new(tar_file, Default::default());
+                            let mut tar_builder = tar::Builder::new(enc);
+                            info!("Setup tar file builder");
+
+                            for entry in extracted_path.read_dir()? {
+                                if let Ok(entry) = entry {
+                                    let file_type = entry.file_type()?;
+                                    if file_type.is_dir() {
+                                        tar_builder.append_dir_all(entry.file_name(), entry.path())?;
+                                    } else if file_type.is_file() {
+                                        tar_builder.append_path_with_name(entry.path(), entry.file_name())?;
+                                    }
+                                }
+                            }
+
+                            info!("added files to tar");
+
+                            tokio::fs::remove_dir_all(extracted_path).await?;
+
+                            info!("Removed extraction directory");
+
+                            file_name
+                        }
+                        _ => {
+                            file_name.to_owned()
+                        }
+                    };
+
+                    println!("Setting up ios.sh");
+
+                    let backap_ios =
+                        cross_dir.join("docker/cross-toolchains/docker/ios_back");
+                    let ios = cross_dir.join("docker/cross-toolchains/docker/ios.sh");
+
+                    if !backap_ios.exists() {
+                        tokio::fs::copy(&ios, &backap_ios).await?;
+                    }
+
+                    let docker_name = format!(
+                        "docker/cross-toolchains/docker/Dockerfile.aarch64-apple-ios-cross"
+                    );
+                    let docker = cross_dir.join(docker_name);
+                    let backap_docker = docker.with_extension("backup");
+
+                    if !backap_docker.exists() {
+                        tokio::fs::copy(&docker, &backap_docker).await?;
+                    }
+
+                    let docker_file = tokio::fs::read_to_string(&backap_docker).await?;
+                    let docker_file = format!(
+                        r#"{docker_file}
+ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
+"#
+                    );
+                    tokio::fs::write(&docker, docker_file).await?;
+
+                    (
+                        "IOS_SDK_DIR=./ios_sdk_dir".to_string(),
+                        format!("IOS_SDK_FILE={file_name}"),
+                    )
+                }
+            };
+
+            build_command.args(["--build-arg", &ios_sdk.0, "--build-arg", &ios_sdk.1]);
         }
 
         let build_image = build_command

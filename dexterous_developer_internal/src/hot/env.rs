@@ -44,7 +44,7 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
-    use crate::Target;
+    use crate::{Target, debug};
 
     use super::{BuildArgsProvider, GetBuildArgProvider};
     use std::process::Command;
@@ -98,6 +98,7 @@ mod default_host {
                 let output = std::str::from_utf8(&targets.stdout)?;
 
                 if output.lines().any(|v| {
+                    debug!("Checking {v}");
                     if let Ok(v) = v.parse::<Target>() {
                         v == *target
                     } else {
@@ -174,6 +175,8 @@ mod cross_host {
                 Target::Windows => Ok(Box::new(WindowsProvider)),
                 Target::Mac => Ok(Box::new(AppleDarwinProvider)),
                 Target::MacArm => Ok(Box::new(AppleDarwinArmProvider)),
+                Target::Android => Ok(Box::new(AndroidProvider)),
+                Target::IOS => Ok(Box::new(AppleIOSProvider))
             }
         }
     }
@@ -193,6 +196,18 @@ mod cross_host {
     struct WindowsProvider;
 
     impl BuildArgsProvider for WindowsProvider {
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
+        fn set_env_vars(&self, command: &mut Command) {
+            command.env("RUSTFLAGS", "-Zshare-generics=n");
+        }
+    }
+
+    struct AndroidProvider;
+
+    impl BuildArgsProvider for AndroidProvider {
         fn get_cargo(&self) -> &'static str {
             "cross"
         }
@@ -231,6 +246,24 @@ mod cross_host {
         fn set_env_vars(&self, command: &mut Command) {
             command
                 .env("CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER", "clang")
+                .env("RUSTC_LINKER", "clang")
+                .env(
+                    "RUSTFLAGS",
+                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                )
+                .env("SYSTEM_VERSION_COMPAT", "0");
+        }
+    }
+    struct AppleIOSProvider;
+
+    impl BuildArgsProvider for AppleIOSProvider {
+        fn get_cargo(&self) -> &'static str {
+            "cross"
+        }
+
+        fn set_env_vars(&self, command: &mut Command) {
+            command
+                .env("CARGO_TARGET_AARCH64_APPLE_IOS_LINKER", "clang")
                 .env("RUSTC_LINKER", "clang")
                 .env(
                     "RUSTFLAGS",
