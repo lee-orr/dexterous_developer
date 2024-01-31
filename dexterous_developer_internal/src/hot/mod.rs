@@ -233,9 +233,9 @@ pub fn compile_reloadable_libraries(
     use anyhow::Context;
 
     tracing_subscriber::registry()
-    .with(fmt::layer())
-    .with(EnvFilter::from_default_env())
-    .init();
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     let (mut settings, paths) = setup_build_settings(&options)?;
     let lib_path = settings.lib_path.clone();
 

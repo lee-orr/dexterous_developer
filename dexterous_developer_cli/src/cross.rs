@@ -4,13 +4,10 @@ use anyhow::{bail, Context};
 
 use dexterous_developer_internal::{debug, info, Target};
 
-
 use url::Url;
 use which::which;
 
-use crate::{
-    paths::{get_paths, CliPaths},
-};
+use crate::paths::{get_paths, CliPaths};
 
 pub async fn install_cross(
     targets: &[Target],
@@ -351,7 +348,7 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                     info!("Wrote SDK to {sdk_path:?}");
                     tokio::fs::write(&sdk_path, sdk.bytes().await?).await?;
 
-                    let file_name = match file_name.split(".").last() {
+                    let file_name = match file_name.split('.').last() {
                         Some("zip") => {
                             let extracted_path = sdk_path_folder.join("extracted");
 
@@ -382,18 +379,13 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                             let mut tar_builder = tar::Builder::new(enc);
                             info!("Setup tar file builder");
 
-                            for entry in extracted_path.read_dir()? {
-                                if let Ok(entry) = entry {
-                                    let file_type = entry.file_type()?;
-                                    if file_type.is_dir() {
-                                        tar_builder
-                                            .append_dir_all(entry.file_name(), entry.path())?;
-                                    } else if file_type.is_file() {
-                                        tar_builder.append_path_with_name(
-                                            entry.path(),
-                                            entry.file_name(),
-                                        )?;
-                                    }
+                            for entry in (extracted_path.read_dir()?).flatten() {
+                                let file_type = entry.file_type()?;
+                                if file_type.is_dir() {
+                                    tar_builder.append_dir_all(entry.file_name(), entry.path())?;
+                                } else if file_type.is_file() {
+                                    tar_builder
+                                        .append_path_with_name(entry.path(), entry.file_name())?;
                                 }
                             }
 
@@ -417,9 +409,9 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                         tokio::fs::copy(&ios, &backap_ios).await?;
                     }
 
-                    let docker_name = format!(
+                    let docker_name =
                         "docker/cross-toolchains/docker/Dockerfile.aarch64-apple-ios-cross"
-                    );
+                            .to_string();
                     let docker = cross_dir.join(docker_name);
                     let backap_docker = docker.with_extension("backup");
 

@@ -26,8 +26,6 @@ pub enum Target {
     IOS,
 }
 
-
-
 mod serialize {
     use super::*;
     use serde::{

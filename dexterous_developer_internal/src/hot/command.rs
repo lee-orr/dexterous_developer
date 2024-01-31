@@ -10,8 +10,8 @@ use std::{
 use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
-use tracing::{debug, error, info, trace};
 use notify::{RecursiveMode, Watcher};
+use tracing::{debug, error, info, trace};
 
 use crate::{
     hot::{
