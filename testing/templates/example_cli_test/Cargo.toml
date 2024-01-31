@@ -19,3 +19,6 @@ dexterous_developer = { path = "../../../dexterous_developer" }
 name = "reload_example"
 path = "examples/reload_example.rs"
 crate-type = ["dylib"]
+
+
+bevy = { git = "https://github.com/bevyengine/bevy" }

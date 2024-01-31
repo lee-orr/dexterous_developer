@@ -20,3 +20,5 @@ bevy = { version = "0.12", default_features = false, features = [
 dexterous_developer = { path = "../../../dexterous_developer" }
 
 [workspace]
+
+bevy = { git = "https://github.com/bevyengine/bevy" }

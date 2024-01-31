@@ -1,3 +1,6 @@
 [workspace]
 members = ["launcher", "simple"]
 resolver = "2"
+
+
+bevy = { git = "https://github.com/bevyengine/bevy" }

@@ -14,3 +14,6 @@ dexterous_developer = { path = "../../../dexterous_developer" }
 serde = { version = "1", features = ["derive"] }
 
 [workspace]
+
+
+bevy = { git = "https://github.com/bevyengine/bevy" }
