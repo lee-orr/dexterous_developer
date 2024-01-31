@@ -34,7 +34,7 @@ pub trait ReplacableEvent: Event + Serialize + DeserializeOwned {
     fn get_type_name() -> &'static str;
 }
 
-pub trait ReplacableState: States + Serialize + DeserializeOwned {
+pub trait ReplacableState: States + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
     fn get_next_type_name() -> &'static str;
 }
