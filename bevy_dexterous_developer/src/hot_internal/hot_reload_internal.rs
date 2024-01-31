@@ -26,7 +26,8 @@ pub fn draw_internal_hot_reload(
         .unwrap_or("all reloadables")
         .replace("_dexterous_developered_inner_", "_");
 
-    let update = internal.0
+    let update = internal
+        .0
         .last_update_date_time
         .format("%H:%M:%S")
         .to_string();

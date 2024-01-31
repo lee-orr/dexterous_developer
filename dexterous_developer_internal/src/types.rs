@@ -23,7 +23,7 @@ pub enum Target {
     Mac,
     MacArm,
     Android,
-    IOS
+    IOS,
 }
 
 pub use serialize::*;
@@ -70,7 +70,7 @@ impl Target {
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
             Target::Android => "aarch64-linux-android",
-            Target::IOS => "aarch64-apple-ios"
+            Target::IOS => "aarch64-apple-ios",
         }
     }
 

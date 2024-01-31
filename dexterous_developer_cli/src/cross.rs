@@ -2,13 +2,16 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{bail, Context};
 
-use dexterous_developer_internal::{Target, debug, info};
+use dexterous_developer_internal::{debug, info, Target};
 
 use tokio::process::Command;
 use url::Url;
 use which::which;
 
-use crate::{paths::{get_paths, CliPaths}, cross};
+use crate::{
+    cross,
+    paths::{get_paths, CliPaths},
+};
 
 pub async fn install_cross(
     targets: &[Target],
@@ -51,8 +54,6 @@ pub async fn install_cross(
             .arg("cross")
             .status()
             .await?;
-
-
 
         if !status.success() {
             bail!("Failed to install cross-rs");
@@ -178,14 +179,12 @@ pub async fn setup_custom_images(
     debug!("Updated cross repo");
 
     {
-
         let lock = cross_dir.join("Cargo.lock");
 
         if lock.exists() {
             info!("Removing lock");
             tokio::fs::remove_file(cross_dir.join("Cargo.lock")).await?;
         }
-
     }
 
     println!("Initializing submodules");
@@ -260,7 +259,7 @@ pub async fn setup_custom_images(
 
                     let sdk_path_folder = cross_dir.join("docker/macos_sdk_dir");
                     if !sdk_path_folder.exists() {
-                    tokio::fs::create_dir_all(&sdk_path_folder).await?;
+                        tokio::fs::create_dir_all(&sdk_path_folder).await?;
                     }
 
                     let sdk_path = sdk_path_folder.join(file_name);
@@ -314,7 +313,7 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
             };
 
             build_command.args(["--build-arg", &macos_sdk.0, "--build-arg", &macos_sdk.1]);
-        } else if *image == Target::IOS{
+        } else if *image == Target::IOS {
             let Some(ios_sdk) = ios_sdk.as_ref() else {
                 bail!("Building the ios image requires a URL to a packaged ios sdk. Please look at here for more info: https://github.com/cross-rs/cross-toolchains#ios-targets");
             };
@@ -362,17 +361,18 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                                 tokio::fs::remove_dir_all(&extracted_path).await?;
                             }
 
-{
-    info!("Extracting zip file");{
-                            let zip_file = std::fs::File::open(&sdk_path)?;
-                            let mut archive = zip::ZipArchive::new(zip_file)?;
-                            info!("Loaded Archive");
-                            archive.extract(&extracted_path)?;
-                            info!("Extracted file");
-    }
-                            tokio::fs::remove_file(sdk_path).await?;
-                            info!("Removed original archive");
-}
+                            {
+                                info!("Extracting zip file");
+                                {
+                                    let zip_file = std::fs::File::open(&sdk_path)?;
+                                    let mut archive = zip::ZipArchive::new(zip_file)?;
+                                    info!("Loaded Archive");
+                                    archive.extract(&extracted_path)?;
+                                    info!("Extracted file");
+                                }
+                                tokio::fs::remove_file(sdk_path).await?;
+                                info!("Removed original archive");
+                            }
 
                             let file_name = file_name.replace(".zip", ".tgz");
                             let sdk_path = sdk_path_folder.join(&file_name);
@@ -387,9 +387,13 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                                 if let Ok(entry) = entry {
                                     let file_type = entry.file_type()?;
                                     if file_type.is_dir() {
-                                        tar_builder.append_dir_all(entry.file_name(), entry.path())?;
+                                        tar_builder
+                                            .append_dir_all(entry.file_name(), entry.path())?;
                                     } else if file_type.is_file() {
-                                        tar_builder.append_path_with_name(entry.path(), entry.file_name())?;
+                                        tar_builder.append_path_with_name(
+                                            entry.path(),
+                                            entry.file_name(),
+                                        )?;
                                     }
                                 }
                             }
@@ -402,15 +406,12 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
 
                             file_name
                         }
-                        _ => {
-                            file_name.to_owned()
-                        }
+                        _ => file_name.to_owned(),
                     };
 
                     println!("Setting up ios.sh");
 
-                    let backap_ios =
-                        cross_dir.join("docker/cross-toolchains/docker/ios_back");
+                    let backap_ios = cross_dir.join("docker/cross-toolchains/docker/ios_back");
                     let ios = cross_dir.join("docker/cross-toolchains/docker/ios.sh");
 
                     if !backap_ios.exists() {

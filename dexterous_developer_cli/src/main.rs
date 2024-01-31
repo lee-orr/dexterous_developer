@@ -148,7 +148,7 @@ async fn main() {
     let dir = std::env::current_dir().expect("No current directory - nothing to run");
     println!("Current directory: {:?}", &dir);
     std::env::set_var("CARGO_MANIFEST_DIR", &dir);
-    std::env::set_var("BEVY_ASSET_ROOT", &dir); // TODO: Remove Bevy Reference 
+    std::env::set_var("BEVY_ASSET_ROOT", &dir); // TODO: Remove Bevy Reference
 
     match command {
         Commands::Run {
@@ -210,7 +210,7 @@ async fn main() {
             let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);
             let ios_sdk_url = ios_sdk_url.map(AppleSDKPath::Url);
             println!("Setup cross compiling");
-            cross::install_cross(&targets, macos_sdk,ios_sdk_url)
+            cross::install_cross(&targets, macos_sdk, ios_sdk_url)
                 .await
                 .expect("Failed to install cross");
         }

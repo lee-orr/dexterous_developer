@@ -3,9 +3,15 @@ use bevy::{
     prelude::*,
     utils::Instant,
 };
-use dexterous_developer_internal::{ internal_shared::update_lib::update_lib};
+use dexterous_developer_internal::internal_shared::update_lib::update_lib;
 
-use crate::{hot_internal::{CleanupReloaded, CleanupSchedules, DeserializeReloadables, OnReloadComplete, ReloadableAppCleanupData, ReloadableAppElements, SerializeReloadables, SetupReload}, ReloadSettings, ReloadableAppContents};
+use crate::{
+    hot_internal::{
+        CleanupReloaded, CleanupSchedules, DeserializeReloadables, OnReloadComplete,
+        ReloadableAppCleanupData, ReloadableAppElements, SerializeReloadables, SetupReload,
+    },
+    ReloadSettings, ReloadableAppContents,
+};
 
 use super::super::ReloadableSetup;
 

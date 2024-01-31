@@ -9,7 +9,7 @@ mod hot_internal;
 pub use types::*;
 
 #[cfg(feature = "hot_internal")]
-pub use hot_internal::{ReloadableAppContents, HotReloadPlugin};
+pub use hot_internal::{HotReloadPlugin, ReloadableAppContents};
 
 #[cfg(not(feature = "hot_internal"))]
 pub use cold::*;

@@ -1,4 +1,4 @@
-use bevy::ecs::schedule::{ScheduleLabel, InternedScheduleLabel};
+use bevy::ecs::schedule::{InternedScheduleLabel, ScheduleLabel};
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct SerializeReloadables;
@@ -27,7 +27,7 @@ impl<T: ScheduleLabel> ReloadableSchedule<T> {
     }
 }
 
-#[derive( Clone)]
+#[derive(Clone)]
 pub struct WrappedSchedule(InternedScheduleLabel, std::sync::Arc<dyn ScheduleLabel>);
 
 impl WrappedSchedule {
@@ -42,9 +42,7 @@ impl std::fmt::Debug for WrappedSchedule {
     }
 }
 
-impl Eq for WrappedSchedule {
-
-}
+impl Eq for WrappedSchedule {}
 
 impl PartialEq for WrappedSchedule {
     fn eq(&self, other: &Self) -> bool {
@@ -59,22 +57,22 @@ impl std::hash::Hash for WrappedSchedule {
 }
 
 impl ScheduleLabel for WrappedSchedule {
-    
-fn dyn_clone(&self) ->  ::std::boxed::Box<dyn ScheduleLabel> {
+    fn dyn_clone(&self) -> ::std::boxed::Box<dyn ScheduleLabel> {
         self.1.dyn_clone()
     }
 
-    
-fn as_dyn_eq(&self) ->  &dyn bevy::utils::label::DynEq {
+    fn as_dyn_eq(&self) -> &dyn bevy::utils::label::DynEq {
         self.1.as_dyn_eq()
     }
 
-    
-fn dyn_hash(&self,state: &mut dyn ::std::hash::Hasher) {
+    fn dyn_hash(&self, state: &mut dyn ::std::hash::Hasher) {
         self.1.dyn_hash(state)
     }
 
-    fn intern(&self) -> InternedScheduleLabel where Self: Sized {
+    fn intern(&self) -> InternedScheduleLabel
+    where
+        Self: Sized,
+    {
         self.0.clone()
     }
 }
