@@ -16,12 +16,11 @@ use bevy::log::{debug, info, LogPlugin};
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
-use crate::bevy_support::hot_internal::hot_reload_internal::draw_internal_hot_reload;
-use crate::bevy_support::hot_internal::reload_systems::{
-    toggle_reload_mode, toggle_reloadable_elements,
+use crate::hot_internal::hot_reload_internal::draw_internal_hot_reload;
+use crate::hot_internal::reload_systems::{
+    toggle_reload_mode, toggle_reloadable_elements, InternalHotReload
 };
-use crate::hot_internal::hot_reload_internal::InternalHotReload;
-use crate::internal_shared::lib_path_set::LibPathSet;
+use dexterous_developer_internal::internal_shared::lib_path_set::LibPathSet;
 pub use crate::types::*;
 
 pub use reloadable_app_setup::*;
@@ -65,7 +64,7 @@ impl Plugin for HotReloadPlugin {
 
         debug!("Got lib path");
 
-        let hot_reload = InternalHotReload {
+        let hot_reload = dexterous_developer_internal::hot_internal::InternalHotReload {
             library: None,
             last_lib: None,
             updated_this_frame: true,
@@ -99,7 +98,7 @@ impl Plugin for HotReloadPlugin {
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
-            .insert_resource(hot_reload);
+            .insert_resource(InternalHotReload(hot_reload));
         debug!("Added resources to app");
 
         app.add_systems(PreStartup, (watcher, reload))

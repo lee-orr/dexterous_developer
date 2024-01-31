@@ -17,6 +17,6 @@ bevy = { version = "0.12", default_features = false, features = [
     "multi-threaded",
     "file_watcher",
 ] }
-dexterous_developer = { path = "../../../dexterous_developer" }
+dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"]}
 
 [workspace]

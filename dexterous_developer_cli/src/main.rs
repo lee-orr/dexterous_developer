@@ -148,7 +148,7 @@ async fn main() {
     let dir = std::env::current_dir().expect("No current directory - nothing to run");
     println!("Current directory: {:?}", &dir);
     std::env::set_var("CARGO_MANIFEST_DIR", &dir);
-    std::env::set_var("BEVY_ASSET_ROOT", &dir);
+    std::env::set_var("BEVY_ASSET_ROOT", &dir); // TODO: Remove Bevy Reference 
 
     match command {
         Commands::Run {

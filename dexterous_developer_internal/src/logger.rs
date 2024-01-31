@@ -1,10 +1,7 @@
-#[cfg(feature = "bevy")]
-pub use bevy::prelude::*;
-
-#[cfg(all(not(feature = "bevy"), feature = "hot"))]
+#[cfg(feature = "hot")]
 pub use log::{debug, error, info, trace, warn};
 
-#[cfg(all(not(feature = "bevy"), not(feature = "hot")))]
+#[cfg(not(feature = "hot"))]
 pub use crate::{debug, error, info, trace, warn};
 
 mod print_logger {

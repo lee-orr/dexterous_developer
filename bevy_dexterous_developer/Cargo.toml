@@ -1,5 +1,5 @@
 [package]
-name = "dexterous_developer_internal"
+name = "bevy_dexterous_developer"
 edition = "2021"
 readme = "../README.md"
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
@@ -15,39 +15,26 @@ version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = []
 hot = [
-    "dep:libloading",
-    "dep:uuid",
-    "dep:cargo_metadata",
-    "dep:notify",
-    "dep:debounce",
-    "dep:which",
-    "dep:log",
-    "dep:env_logger",
+    "dexterous_developer_internal/hot"
 ]
 hot_internal = [
-    "dexterous_developer_macros/hot_internal",
+    "dexterous_developer_internal/hot_internal",
     "dep:libloading",
     "dep:uuid",
     "dep:chrono",
 ]
-cli = ["hot", "dep:tokio", "blake3"]
 
 
 [dependencies]
 anyhow = { version = "1" }
+dexterous_developer_internal = { version = "0.1.0", path = "../dexterous_developer_internal"}
 dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.1.0" }
+bevy = { version = "0.12", default-features = false, features = [
+    "serialize",
+]}
+serde = { version = "1", features = ["derive"] }
+rmp-serde = { version = "1" }
+chrono = { version = "0.4", optional = true }
 libloading = { version = "0.8", optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }
-cargo_metadata = { version = "0.18", optional = true }
-notify = { version = "6", optional = true }
-debounce = { version = "0.2", optional = true }
-which = { version = "5", optional = true }
-log = { version = "0.4", optional = true }
-env_logger = { version = "0.10", optional = true }
-tokio = { version = "1", features = ["full"], optional = true }
-blake3 = { version = "1", optional = true }
-chrono = { version = "0.4", optional = true }
-dunce = "1"
-serde = { version = "1"}

@@ -513,14 +513,14 @@ impl RunningProcess {
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
                         Line::Std(v) => {
-                            println!("Got a line while waiting {v}");
+                            println!("Got a line while waiting {v} for \"reload complete\"");
                         }
 
                         Line::Err(line) => {
                             if line.contains("reload complete") {
                                 break;
                             }
-                            println!("got an err while waiting {line}");
+                            println!("got an err while waiting {line} for \"reload complete\"");
                         }
 
                         Line::Ended(v) => {
@@ -555,14 +555,14 @@ impl RunningProcess {
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
                         Line::Std(v) => {
-                            println!("Got a line while waiting {v}");
+                            println!("Got a line while waiting {v} for \"reload complete\"");
                         }
 
                         Line::Err(line) => {
                             if line.contains("reload complete") {
                                 break;
                             }
-                            println!("got an err while waiting {line}");
+                            println!("got an err while waiting {line} for \"reload complete\"");
                         }
 
                         Line::Ended(v) => {

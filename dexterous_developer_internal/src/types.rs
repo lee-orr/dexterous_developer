@@ -26,10 +26,8 @@ pub enum Target {
     IOS
 }
 
-#[cfg(any(feature = "cli", feature = "bevy"))]
 pub use serialize::*;
 
-#[cfg(any(feature = "cli", feature = "bevy"))]
 mod serialize {
     use super::*;
     use serde::{

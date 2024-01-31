@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 dexterous_developer = { path = "../../../../dexterous_developer", default-features = false, features = [
     "hot",
+    "bevy"
 ] }
 env_logger = "*"
 log = "*"

@@ -75,7 +75,7 @@ pub(crate) fn setup_build_settings(
         .iter()
         .cloned()
         .chain([
-            "bevy/dynamic_linking".to_string(),
+            "bevy/dynamic_linking".to_string(), // TODO add ways to embed features for a shell
             "bevy/embedded_watcher".to_string(),
             "dexterous_developer/hot_internal".to_string(),
         ])

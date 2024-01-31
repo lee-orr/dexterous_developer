@@ -69,7 +69,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #[no_mangle]
                 pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
                     #ast
-                    #fn_name(dexterous_developer::bevy_support::HotReloadPlugin::new(library_paths, closure));
+                    #fn_name(dexterous_developer::HotReloadPlugin::new(library_paths, closure));
                 }
             }.into());
     }
