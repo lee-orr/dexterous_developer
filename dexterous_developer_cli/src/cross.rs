@@ -4,12 +4,11 @@ use anyhow::{bail, Context};
 
 use dexterous_developer_internal::{debug, info, Target};
 
-use tokio::process::Command;
+
 use url::Url;
 use which::which;
 
 use crate::{
-    cross,
     paths::{get_paths, CliPaths},
 };
 
@@ -322,7 +321,7 @@ ENV COREAUDIO_SDK_PATH=/opt/osxcross/SDK/latest
                 AppleSDKPath::Url(url) => {
                     println!("Downloading iOS SDK from {url}");
                     let ios_sdk = url.as_str();
-                    let version_number = {
+                    let _version_number = {
                         let mut split = ios_sdk.split("OS");
                         let val = split
                             .nth(1)

@@ -26,7 +26,7 @@ pub enum Target {
     IOS,
 }
 
-pub use serialize::*;
+
 
 mod serialize {
     use super::*;
