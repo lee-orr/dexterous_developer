@@ -1,5 +1,5 @@
 mod update;
-use bevy::{prelude::App, MinimalPlugins};
+use bevy::{log::info, prelude::App, MinimalPlugins};
 use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
 
 fn terminal_runner(mut app: App) {
@@ -11,6 +11,7 @@ fn terminal_runner(mut app: App) {
             println!("Exiting");
             return;
         }
+        info!("Running The Update With Bevy Logs");
         println!("Running Update");
         app.update();
         println!("Update Ended");

@@ -11,7 +11,7 @@ use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
 use bevy::utils::Instant;
 
-use bevy::log::{debug, info, LogPlugin};
+use bevy::log::{debug, info};
 
 pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
@@ -43,10 +43,6 @@ impl HotReloadPlugin {
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        App::new()
-            .add_plugins(LogPlugin::default())
-            .set_runner(|_| {})
-            .run();
         debug!(
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()

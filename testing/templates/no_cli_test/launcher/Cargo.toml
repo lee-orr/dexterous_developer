@@ -10,5 +10,5 @@ dexterous_developer = { path = "../../../../dexterous_developer", default-featur
     "hot",
     "bevy"
 ] }
-env_logger = "*"
-log = "*"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"]}

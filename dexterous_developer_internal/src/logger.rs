@@ -1,5 +1,5 @@
 #[cfg(feature = "hot")]
-pub use log::{debug, error, info, trace};
+pub use tracing::{debug, error, info, trace};
 
 #[cfg(not(feature = "hot"))]
 pub use crate::{debug, error, info, trace, warn};

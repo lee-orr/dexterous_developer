@@ -1,8 +1,12 @@
 use dexterous_developer::HotReloadOptions;
-use log::info;
+use tracing::info;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() {
-    env_logger::init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     info!("Env logger working...");
     dexterous_developer::run_reloadabe_app(HotReloadOptions {
         package: Some("simple".to_string()),

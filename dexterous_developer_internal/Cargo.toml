@@ -23,8 +23,8 @@ hot = [
     "dep:notify",
     "dep:debounce",
     "dep:which",
-    "dep:log",
-    "dep:env_logger",
+    "dep:tracing",
+    "dep:tracing-subscriber"
 ]
 hot_internal = [
     "dexterous_developer_macros/hot_internal",
@@ -44,8 +44,8 @@ cargo_metadata = { version = "0.18", optional = true }
 notify = { version = "6", optional = true }
 debounce = { version = "0.2", optional = true }
 which = { version = "5", optional = true }
-log = { version = "0.4", optional = true }
-env_logger = { version = "0.10", optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"], optional = true }
 blake3 = { version = "1", optional = true }
 chrono = { version = "0.4", optional = true }

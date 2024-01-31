@@ -248,7 +248,7 @@ impl TestProject {
             .stderr(Stdio::piped())
             .env(
                 "RUST_LOG",
-                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace",
+                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace,bevy_dexterous_developer=trace",
             )
             .kill_on_drop(true);
         println!("Running:{cmd:?}");
@@ -383,19 +383,7 @@ impl RunningProcess {
                 let mut reload_complete = false;
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(line) => {
-                            if line.contains("Executing first run") {
-                                reload_complete = true;
-                            }
-                            if line.contains("Watching...") {
-                                is_watching = true;
-                            }
-                            if reload_complete && is_watching {
-                                break;
-                            }
-                        }
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Executing first run") {
                                 reload_complete = true;
                             }
@@ -415,13 +403,7 @@ impl RunningProcess {
             }
             ProcessHeat::Cold => loop {
                 match self.read_next_line().await.expect("no Next Line") {
-                    Line::Std(line) => {
-                        if line.contains("Running") {
-                            break;
-                        }
-                    }
-
-                    Line::Err(line) => {
+                    Line::Std(line) | Line::Err(line) => {
                         if line.contains("Running") {
                             break;
                         }
@@ -437,19 +419,7 @@ impl RunningProcess {
                 let mut reload_complete = false;
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(line) => {
-                            if line.contains("Executing first run") {
-                                reload_complete = true;
-                            }
-                            if line.contains("Calling Watch Function") {
-                                is_watching = true;
-                            }
-                            if reload_complete && is_watching {
-                                break;
-                            }
-                        }
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Executing first run") {
                                 reload_complete = true;
                             }
@@ -471,9 +441,7 @@ impl RunningProcess {
                 self.send("\n").expect("Failed to send empty line");
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(_) => {}
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Build completed") {
                                 break;
                             }
@@ -496,9 +464,7 @@ impl RunningProcess {
                 self.send("\n").expect("Failed to send empty line");
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(_) => {}
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Build completed") {
                                 break;
                             }
@@ -512,15 +478,11 @@ impl RunningProcess {
                 self.send("\n").expect("Failed to send empty line");
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(v) => {
-                            println!("Got a line while waiting {v} for \"reload complete\"");
-                        }
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("reload complete") {
                                 break;
                             }
-                            println!("got an err while waiting {line} for \"reload complete\"");
+                            println!("got while waiting {line} for \"reload complete\"");
                         }
 
                         Line::Ended(v) => {
@@ -533,13 +495,7 @@ impl RunningProcess {
             ProcessHeat::Remote => {
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(line) => {
-                            if line.contains("Updated Files Downloaded") {
-                                break;
-                            }
-                        }
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Updated Files Downloaded") {
                                 break;
                             }
@@ -575,9 +531,7 @@ impl RunningProcess {
                 self.send("\n").expect("Failed to send empty line");
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(_) => {}
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("Build completed") {
                                 break;
                             }
