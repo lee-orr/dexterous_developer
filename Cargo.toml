@@ -15,7 +15,9 @@ members = [
 
 exclude = [
     "tools/ci",
-    "testing/templates/remote_client"
+    "testing/templates/remote_client",
+    "testing/tmp/tmp_can_run_remote_client",
+    "testing/tmp/tmp_can_update_assets_client",
 ]
 
 [workspace.package]

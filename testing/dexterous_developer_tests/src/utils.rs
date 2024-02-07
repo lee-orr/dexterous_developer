@@ -132,10 +132,11 @@ impl TestProject {
             std::fs::remove_file(lock);
         }
 
-        {
-            let file = std::fs::read_to_string(path.join("Cargo.toml"))?;
+        if path.join("Cargo.toml").exists() {
+            let path =  path.join("Cargo.toml");
+            let file = std::fs::read_to_string(&path)?;
             let file = file.lines().map(|line| if line.starts_with("name") { format!("name = \"{package}\"")} else { line.to_string() }).collect::<Vec<_>>().join("\n");
-            std::fs::write(path.join("Cargo.toml"), file)?;
+            std::fs::write(path, file)?;
         }
 
         
