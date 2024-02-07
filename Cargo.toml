@@ -6,7 +6,8 @@ members = [
     "dexterous_developer_cli",
     "dexterous_developer_internal",
     "dexterous_developer_dynamic",
-    "bevy_dexterous_developer"
+    "bevy_dexterous_developer",
+    "dexterous_developer_example"
 ]
 
 exclude = [
