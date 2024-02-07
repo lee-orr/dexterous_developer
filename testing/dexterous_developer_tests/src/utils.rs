@@ -1,10 +1,7 @@
 #![allow(unused)]
 
 use std::{
-    path::{Path, PathBuf},
-    process::ExitStatus,
-    sync::{Arc, OnceLock},
-    time::Duration,
+    fs, path::{Path, PathBuf}, process::ExitStatus, sync::{Arc, OnceLock}, time::Duration
 };
 
 use std::process::Stdio;
@@ -44,10 +41,8 @@ fn rebuild_cli() -> anyhow::Result<&'static PathBuf> {
             }
 
             let mut cwd = std::env::current_dir()?;
-            cwd.pop();
 
             let mut root = cwd.clone();
-            root.pop();
 
             let mut cli_path = root.clone();
 
@@ -80,7 +75,6 @@ fn template_path() -> anyhow::Result<&'static PathBuf> {
             }
 
             let mut cwd = std::env::current_dir()?;
-            cwd.pop();
             Ok(cwd)
         })
         .as_ref()
@@ -91,9 +85,9 @@ impl TestProject {
     pub fn new(template: &'static str, test: &'static str) -> anyhow::Result<Self> {
         let mut cwd = template_path()?;
 
-        let package = template.to_string();
 
         let mut template_path = cwd.clone();
+        template_path.push("testing");
         template_path.push("templates");
         template_path.push(template);
 
@@ -102,7 +96,10 @@ impl TestProject {
         }
 
         let name = test.to_string();
+        
+        let package = format!("tmp_{name}");
         let mut path = cwd.clone();
+        path.push("testing");
         path.push("tmp");
 
         if !path.exists() {
@@ -135,6 +132,20 @@ impl TestProject {
             std::fs::remove_file(lock);
         }
 
+        {
+            let file = std::fs::read_to_string(path.join("Cargo.toml"))?;
+            let file = file.lines().map(|line| if line.starts_with("name") { format!("name = \"{package}\"")} else { line.to_string() }).collect::<Vec<_>>().join("\n");
+            std::fs::write(path.join("Cargo.toml"), file)?;
+        }
+
+        
+        if path.join("src").join("main.rs").exists() {
+            let path =  path.join("src").join("main.rs");
+            let file = std::fs::read_to_string(&path)?;
+            let file = file.lines().map(|line| if line.contains("::bevy_main();") { format!("{package}::bevy_main();")} else { line.to_string() }).collect::<Vec<_>>().join("\n");
+            std::fs::write(path, file)?;
+        }
+
         Ok(Self {
             path,
             name,
@@ -165,13 +176,6 @@ impl TestProject {
         let mut cmd = Command::new("cargo");
         cmd.current_dir(wd).arg("run");
         self.run(cmd, ProcessHeat::Cold).await
-    }
-
-    pub async fn run_hot_launcher(&mut self, lib_name: &str) -> anyhow::Result<RunningProcess> {
-        let wd = self.path.as_path();
-        let mut cmd = Command::new("cargo");
-        cmd.current_dir(wd).arg("run").arg("-p").arg("launcher");
-        self.run(cmd, ProcessHeat::Hot).await
     }
 
     pub async fn run_hot_cli(&mut self) -> anyhow::Result<RunningProcess> {

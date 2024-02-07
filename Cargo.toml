@@ -7,14 +7,15 @@ members = [
     "dexterous_developer_internal",
     "dexterous_developer_dynamic",
     "bevy_dexterous_developer",
-    "dexterous_developer_example"
+    "dexterous_developer_example",
+    "testing/dexterous_developer_tests",
+    "testing/templates/*",
+    "testing/tmp/*"
 ]
 
 exclude = [
-    "testing",
-    "no_cli_launcher",
     "tools/ci",
-    "dexterous_developer_example",
+    "testing/templates/remote_client"
 ]
 
 [workspace.package]

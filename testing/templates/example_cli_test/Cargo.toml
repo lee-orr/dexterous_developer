@@ -13,8 +13,6 @@ crate-type = ["rlib"]
 bevy = { version = "0.12", default_features = false }
 dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"] }
 
-[workspace]
-
 [[example]]
 name = "reload_example"
 path = "examples/reload_example.rs"

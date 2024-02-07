@@ -13,5 +13,3 @@ anyhow = "1"
 [[bin]]
 name = "run_tests"
 path = "src/main.rs"
-
-[workspace]

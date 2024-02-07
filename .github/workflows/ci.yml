@@ -75,8 +75,7 @@ jobs:
       - name: Build CLI
         run: cargo build -p dexterous_developer_cli
       - name: Build Tester
-        run: cargo build
-        working-directory: ./testing/dexterous_developer_tests
+        run: cargo build -p dexterous_developer_tests
       - name: Store CLI
         uses: actions/upload-artifact@v3
         with:
@@ -86,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{matrix.os}}-tester
-          path: testing/dexterous_developer_tests/target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: target/debug/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
   cross-builds:
     needs: build-tester
@@ -135,8 +134,7 @@ jobs:
       - name: Set Executable
         run: chmod +x ./bins/*
       - run: ${{github.workspace}}/bins/dexterous_developer_cli install-cross ${{matrix.target.target}} --macos-sdk-url ${{secrets.MAC_SDK_URL}}
-      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --target ${{matrix.target.target}} ${{github.workspace}}/libs
-        working-directory: testing/templates/simple_cli_test
+      - run: ${{github.workspace}}/bins/dexterous_developer_cli compile-libs --package simple_cli_test --target ${{matrix.target.target}} ${{github.workspace}}/libs
         env:
           RUST_LOG: dexterous_developer_internal=trace
       - name: Store Libs
@@ -182,7 +180,6 @@ jobs:
         run: bins/run_tests${{ matrix.target.os == 'windows-latest' && '.exe' || '' }} existing ${{github.workspace}}/libs
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
-          DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
           RUST_LOG: dexterous_developer_internal=trace
 
   tests:
@@ -257,7 +254,6 @@ jobs:
         run: bins/run_tests${{ matrix.os == 'windows-latest' && '.exe' || '' }} ${{matrix.test}}
         env:
           DEXTEROUS_CLI_PATH: ${{github.workspace}}/bins/dexterous_developer_cli
-          DEXTEROUS_TESTER_PATH: ${{github.workspace}}/testing
           RUST_LOG: dexterous_developer_internal=trace
 
   mdbook:

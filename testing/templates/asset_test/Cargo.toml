@@ -19,7 +19,5 @@ bevy = { version = "0.12", default_features = false, features = [
 ] }
 dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"]}
 
-[workspace]
-
 [package.metadata]
 hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"]

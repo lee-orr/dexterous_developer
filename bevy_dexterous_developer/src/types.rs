@@ -1,6 +1,7 @@
 use super::ReloadableAppContents;
-use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, prelude::*};
+use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
+use tracing::instrument::WithSubscriber;
 pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
@@ -149,13 +150,23 @@ pub struct InitialPluginsEmpty;
 
 impl InitialPlugins for InitialPluginsEmpty {
     fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
-        T::generate_reloadable_initializer()
+        let initializer = T::generate_reloadable_initializer();
+        if tracing::dispatcher::has_been_set() {
+            initializer.disable::<LogPlugin>()
+        } else {
+            initializer
+        }
     }
 }
 
 impl<P: Plugin> InitialPlugins for P {
     fn initialize<T: InitializablePlugins>(self) -> PluginGroupBuilder {
-        T::generate_reloadable_initializer().add(self)
+        let initializer = T::generate_reloadable_initializer().add(self);
+        if tracing::dispatcher::has_been_set() {
+            initializer.disable::<LogPlugin>()
+        } else {
+            initializer
+        }
     }
 }
 
