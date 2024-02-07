@@ -1,3 +1,6 @@
 [workspace]
 members = ["launcher", "simple"]
 resolver = "2"
+
+[workspace.metadata]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"]

@@ -19,3 +19,6 @@ dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy
 name = "reload_example"
 path = "examples/reload_example.rs"
 crate-type = ["dylib"]
+
+[package.metadata]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"]

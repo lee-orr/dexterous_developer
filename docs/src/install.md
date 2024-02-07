@@ -16,6 +16,9 @@ crate-type = ["rlib"]
 bevy = "0.12"
 dexterous_developer = "0.1"
 serde = "1" # If you want the serialization capacities
+
+[package.metadata]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"] # this injects these features into the build, enabling the use of bevy's dynamic linking and asset hot reload capacity.
 ```
 
 If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs` - call the bevy_main function:
