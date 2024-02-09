@@ -73,6 +73,6 @@ impl ScheduleLabel for WrappedSchedule {
     where
         Self: Sized,
     {
-        self.0.clone()
+        self.0
     }
 }

@@ -23,6 +23,7 @@ use crate::hot_internal::reload_systems::{
 pub use crate::types::*;
 use dexterous_developer_internal::internal_shared::lib_path_set::LibPathSet;
 
+#[allow(unused_imports)]
 pub use reloadable_app_setup::*;
 
 use reload_systems::{cleanup_schedules, reload, update_lib_system};

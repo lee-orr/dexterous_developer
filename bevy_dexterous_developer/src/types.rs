@@ -1,7 +1,7 @@
 use super::ReloadableAppContents;
 use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
-use tracing::instrument::WithSubscriber;
+
 pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
