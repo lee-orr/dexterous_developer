@@ -1,7 +1,11 @@
 #![allow(unused)]
 
 use std::{
-    fs, path::{Path, PathBuf}, process::ExitStatus, sync::{Arc, OnceLock}, time::Duration
+    fs,
+    path::{Path, PathBuf},
+    process::ExitStatus,
+    sync::{Arc, OnceLock},
+    time::Duration,
 };
 
 use std::process::Stdio;
@@ -85,7 +89,6 @@ impl TestProject {
     pub fn new(template: &'static str, test: &'static str) -> anyhow::Result<Self> {
         let mut cwd = template_path()?;
 
-
         let mut template_path = cwd.clone();
         template_path.push("testing");
         template_path.push("templates");
@@ -96,7 +99,7 @@ impl TestProject {
         }
 
         let name = test.to_string();
-        
+
         let package = format!("tmp_{name}");
         let mut path = cwd.clone();
         path.push("testing");
@@ -133,17 +136,36 @@ impl TestProject {
         }
 
         if path.join("Cargo.toml").exists() {
-            let path =  path.join("Cargo.toml");
+            let path = path.join("Cargo.toml");
             let file = std::fs::read_to_string(&path)?;
-            let file = file.lines().map(|line| if line.starts_with("name") { format!("name = \"{package}\"")} else { line.to_string() }).collect::<Vec<_>>().join("\n");
+            let file = file
+                .lines()
+                .map(|line| {
+                    if line.starts_with("name") {
+                        format!("name = \"{package}\"")
+                    } else {
+                        line.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
             std::fs::write(path, file)?;
         }
 
-        
         if path.join("src").join("main.rs").exists() {
-            let path =  path.join("src").join("main.rs");
+            let path = path.join("src").join("main.rs");
             let file = std::fs::read_to_string(&path)?;
-            let file = file.lines().map(|line| if line.contains("::bevy_main();") { format!("{package}::bevy_main();")} else { line.to_string() }).collect::<Vec<_>>().join("\n");
+            let file = file
+                .lines()
+                .map(|line| {
+                    if line.contains("::bevy_main();") {
+                        format!("{package}::bevy_main();")
+                    } else {
+                        line.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
             std::fs::write(path, file)?;
         }
 
@@ -515,15 +537,11 @@ impl RunningProcess {
                 self.send("\n").expect("Failed to send empty line");
                 loop {
                     match self.read_next_line().await.expect("No Next Line") {
-                        Line::Std(v) => {
-                            println!("Got a line while waiting {v} for \"reload complete\"");
-                        }
-
-                        Line::Err(line) => {
+                        Line::Std(line) | Line::Err(line) => {
                             if line.contains("reload complete") {
                                 break;
                             }
-                            println!("got an err while waiting {line} for \"reload complete\"");
+                            println!("got {line} while waiting for \"reload complete\"");
                         }
 
                         Line::Ended(v) => {
@@ -557,7 +575,7 @@ impl RunningProcess {
         value: impl ToString,
         error: impl ToString,
     ) {
-        let Ok(Line::Std(line)) = self.read_next_line().await else {
+        let Ok(Line::Std(line) | Line::Err(line)) = self.read_next_line().await else {
             panic!("Should have gotten a line");
         };
 
