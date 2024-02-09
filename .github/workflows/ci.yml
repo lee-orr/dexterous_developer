@@ -192,7 +192,6 @@ jobs:
             cold,
             hot,
             edit,
-            launcher,
             initialize_resource,
             update_resource,
             reset_resource,
