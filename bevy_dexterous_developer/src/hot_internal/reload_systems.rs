@@ -79,7 +79,7 @@ pub fn reload(world: &mut World) {
             let _ = world.try_run_schedule(DeserializeReloadables);
         }
         if should_run_setups {
-            info!("reload complete");
+            println!("reload complete");
             let _ = world.try_run_schedule(OnReloadComplete);
         }
     }
