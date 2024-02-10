@@ -55,7 +55,7 @@ jobs:
       - name: CI job
         run: cargo fmt --all -- --check
   
-  formatting:
+  check-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
