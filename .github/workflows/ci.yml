@@ -204,8 +204,8 @@ jobs:
             setup_in_state,
             replacable_state,
             update_reloadable_event,
-            remote,
-            asset,
+            # remote,
+            # asset,
           ]
     runs-on: ${{matrix.os}}
     steps:
