@@ -15,7 +15,7 @@ version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["bevy"]
+default = []
 hot = [
     "dep:libloading",
     "dep:uuid",
@@ -23,8 +23,8 @@ hot = [
     "dep:notify",
     "dep:debounce",
     "dep:which",
-    "dep:log",
-    "dep:env_logger",
+    "dep:tracing",
+    "dep:tracing-subscriber"
 ]
 hot_internal = [
     "dexterous_developer_macros/hot_internal",
@@ -32,27 +32,22 @@ hot_internal = [
     "dep:uuid",
     "dep:chrono",
 ]
-bevy = ["dep:bevy", "dep:serde", "dep:rmp-serde"]
-cli = ["hot", "dep:tokio", "dep:serde", "blake3"]
+cli = ["hot", "dep:tokio", "blake3"]
 
 
 [dependencies]
 anyhow = { version = "1" }
 dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.1.0" }
-bevy = { version = "0.12", default-features = false, features = [
-    "serialize",
-], optional = true }
 libloading = { version = "0.8", optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }
-serde = { version = "1", optional = true, features = ["derive"] }
-rmp-serde = { version = "1", optional = true }
 cargo_metadata = { version = "0.18", optional = true }
 notify = { version = "6", optional = true }
 debounce = { version = "0.2", optional = true }
 which = { version = "5", optional = true }
-log = { version = "0.4", optional = true }
-env_logger = { version = "0.10", optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"], optional = true }
 blake3 = { version = "1", optional = true }
 chrono = { version = "0.4", optional = true }
 dunce = "1"
+serde = { version = "1"}

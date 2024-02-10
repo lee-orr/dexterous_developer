@@ -5,12 +5,12 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "lib_simple_cli_test"
 crate-type = ["rlib", "dylib"]
 
 
 [dependencies]
 bevy = { version = "0.12", default_features = false }
-dexterous_developer = { path = "../../../dexterous_developer" }
+dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"] }
 
-[workspace]
+[package.metadata]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"]

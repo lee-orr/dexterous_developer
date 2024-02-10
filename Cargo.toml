@@ -6,31 +6,33 @@ members = [
     "dexterous_developer_cli",
     "dexterous_developer_internal",
     "dexterous_developer_dynamic",
+    "bevy_dexterous_developer",
+    "dexterous_developer_example",
+    "testing/dexterous_developer_tests",
+    "testing/templates/*",
+    "testing/tmp/*"
 ]
 
 exclude = [
-    "testing",
-    "no_cli_launcher",
     "tools/ci",
-    "dexterous_developer_example",
+    "testing/templates/remote_client",
+    "testing/tmp/tmp_can_run_remote_client",
+    "testing/tmp/tmp_can_update_assets_client",
 ]
 
 [workspace.package]
 version = "0.1.0"
 authors = ["Lee-Orr"]
-description = "An experimental hot reload system for the bevy game engine. "
+description = "A modular hot reload system for rust"
 license = "MIT OR Apache-2.0"
-categories = ["games", "game-development"]
+categories = ["games", "game-development", "hot-reload", "ui", "servers", "gui"]
 keywords = ["bevy"]
 homepage = "https://lee-orr.github.io/dexterous_developer/"
 repository = "https://github.com/lee-orr/dexterous_developer"
 documentation = "https://lee-orr.github.io/dexterous_developer/"
 
-
-# Enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
 
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3

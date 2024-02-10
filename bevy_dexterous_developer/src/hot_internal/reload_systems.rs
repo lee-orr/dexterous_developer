@@ -3,24 +3,23 @@ use bevy::{
     prelude::*,
     utils::Instant,
 };
+use dexterous_developer_internal::internal_shared::update_lib::update_lib;
 
 use crate::{
-    bevy_support::hot_internal::{
-        reloadable_app::ReloadableAppContents, schedules::CleanupSchedules,
+    hot_internal::{
+        CleanupReloaded, CleanupSchedules, DeserializeReloadables, OnReloadComplete,
+        ReloadableAppCleanupData, ReloadableAppElements, SerializeReloadables, SetupReload,
     },
-    internal_shared::update_lib::update_lib,
-    ReloadSettings,
-};
-
-use super::super::hot_internal::{
-    hot_reload_internal::InternalHotReload, reloadable_app::ReloadableAppElements,
-    schedules::OnReloadComplete, CleanupReloaded, DeserializeReloadables, ReloadableAppCleanupData,
-    ReloadableSchedule, SerializeReloadables, SetupReload,
+    ReloadSettings, ReloadableAppContents,
 };
 
 use super::super::ReloadableSetup;
 
+#[derive(Resource)]
+pub struct InternalHotReload(pub dexterous_developer_internal::hot_internal::InternalHotReload);
+
 pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
+    let internal = &mut internal.0;
     internal.updated_this_frame = false;
 
     if let Some(lib) = update_lib(&internal.libs) {
@@ -54,7 +53,7 @@ pub fn reload(world: &mut World) {
             false
         };
 
-        if !internal_state.updated_this_frame && !manual_reload {
+        if !internal_state.0.updated_this_frame && !manual_reload {
             return;
         }
 
@@ -80,14 +79,14 @@ pub fn reload(world: &mut World) {
             let _ = world.try_run_schedule(DeserializeReloadables);
         }
         if should_run_setups {
-            info!("reload complete");
+            println!("reload complete");
             let _ = world.try_run_schedule(OnReloadComplete);
         }
     }
 
     {
         let mut internal_state = world.resource_mut::<InternalHotReload>();
-        internal_state.last_update_date_time = chrono::Local::now();
+        internal_state.0.last_update_date_time = chrono::Local::now();
     }
 }
 
@@ -140,7 +139,7 @@ fn setup_reloadable_app_inner(
 
     debug!("got internal reload state");
 
-    let Some(lib) = &internal_state.library else {
+    let Some(lib) = &internal_state.0.library else {
         return Err(ReloadableSetupCallError::LibraryHolderNotSet);
     };
     let lib = lib.clone();
@@ -214,7 +213,7 @@ pub fn cleanup_schedules(
 }
 
 pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
-    reload.updated_this_frame
+    reload.0.updated_this_frame
 }
 
 pub fn toggle_reload_mode(

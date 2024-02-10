@@ -23,13 +23,9 @@ pub enum Target {
     Mac,
     MacArm,
     Android,
-    IOS
+    IOS,
 }
 
-#[cfg(any(feature = "cli", feature = "bevy"))]
-pub use serialize::*;
-
-#[cfg(any(feature = "cli", feature = "bevy"))]
 mod serialize {
     use super::*;
     use serde::{
@@ -72,7 +68,7 @@ impl Target {
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
             Target::Android => "aarch64-linux-android",
-            Target::IOS => "aarch64-apple-ios"
+            Target::IOS => "aarch64-apple-ios",
         }
     }
 

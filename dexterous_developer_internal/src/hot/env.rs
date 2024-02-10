@@ -44,7 +44,7 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
-    use crate::{Target, debug};
+    use crate::{debug, Target};
 
     use super::{BuildArgsProvider, GetBuildArgProvider};
     use std::process::Command;
@@ -176,7 +176,7 @@ mod cross_host {
                 Target::Mac => Ok(Box::new(AppleDarwinProvider)),
                 Target::MacArm => Ok(Box::new(AppleDarwinArmProvider)),
                 Target::Android => Ok(Box::new(AndroidProvider)),
-                Target::IOS => Ok(Box::new(AppleIOSProvider))
+                Target::IOS => Ok(Box::new(AppleIOSProvider)),
             }
         }
     }

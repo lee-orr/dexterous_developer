@@ -22,14 +22,22 @@ pub struct ReloadableAppElements {
 }
 
 impl ReloadableAppElements {
-    pub(crate) fn schedule_iter(self) -> impl Iterator<Item = (WrappedSchedule, Schedule, ReloadableSchedule<WrappedSchedule>)> {
-        self.schedules.into_iter().map(|(a, (b,c))| (a,b,c))
+    pub(crate) fn schedule_iter(
+        self,
+    ) -> impl Iterator<
+        Item = (
+            WrappedSchedule,
+            Schedule,
+            ReloadableSchedule<WrappedSchedule>,
+        ),
+    > {
+        self.schedules.into_iter().map(|(a, (b, c))| (a, b, c))
     }
 }
 
 pub struct ReloadableAppContents<'a> {
     name: &'static str,
-    schedules: &'a mut HashMap<WrappedSchedule,  (Schedule, ReloadableSchedule<WrappedSchedule>)>,
+    schedules: &'a mut HashMap<WrappedSchedule, (Schedule, ReloadableSchedule<WrappedSchedule>)>,
     resources: &'a mut HashSet<String>,
     components: &'a mut HashSet<String>,
 }
@@ -54,7 +62,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
         let schedules = &mut self.schedules;
-        let wrapped: WrappedSchedule= WrappedSchedule::new(schedule.clone());
+        let wrapped: WrappedSchedule = WrappedSchedule::new(schedule.clone());
 
         if let Some((schedule, _)) = schedules.get_mut(&wrapped) {
             debug!("Adding systems to schedule");

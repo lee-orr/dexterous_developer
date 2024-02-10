@@ -78,6 +78,7 @@ impl LibraryHolderInner {
 fn await_file(iterations: usize, path: &PathBuf) {
     if path.exists() {
         crate::logger::debug!("Validated {path:?} Exists");
+        std::thread::sleep(Duration::from_secs_f32(2.0));
         return;
     }
     if iterations > 0 {

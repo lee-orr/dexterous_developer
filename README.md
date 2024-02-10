@@ -18,7 +18,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - Run systems after hot-reload
 - Create functions to set up & tear down upon either entering/exiting a state or on hot reload
 - Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
-- Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a Linux-based development container, but it can be configured to work directly on windows or mac as well - albeit less reliably. Support for cross-compilation directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.
+- ~~Cross-platform/cross-device hot reload - run a "hot reload server" on a development environment, and execute the application elsewhere. For best results, the dev environment should be a linux device or a Linux-based development container, but it can be configured to work directly on windows or mac as well - albeit less reliably. Support for cross-compilation directly on windows/mac is not a priority, since those can always be set up to host a docker-in-docker environment with linux, which is confirmed to work.~~ **This Feature Is Currently Not Tested/Fully Supported. It Will Be Returned In The Future**
 
 ## Known issues
 
@@ -42,6 +42,9 @@ crate-type = ["rlib"]
 bevy = "0.12"
 dexterous_developer = "0.1"
 serde = "1" # If you want the serialization capacities
+
+[package.metadata]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"] # this injects these features into the build, enabling the use of bevy's dynamic linking and asset hot reload capacity.
 ```
 
 If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. Then, in your `main.rs` - call the bevy_main function:

@@ -4,9 +4,10 @@ mod env;
 mod singleton;
 use std::{fmt::Display, process::Command, sync::Once};
 
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 
 use command::*;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::{
     hot::singleton::{load_build_settings, BUILD_SETTINGS},
@@ -32,7 +33,10 @@ static RUNNER: Once = Once::new();
 pub fn run_reloadabe_app(options: HotReloadOptions) -> Result<(), Error> {
     let mut outcome = None;
     RUNNER.call_once(|| {
-        let _ = env_logger::try_init();
+        tracing_subscriber::registry()
+            .with(fmt::layer())
+            .with(EnvFilter::from_default_env())
+            .init();
         if let Ok(settings) = std::env::var("DEXTEROUS_BUILD_SETTINGS") {
             info!("Running based on DEXTEROUS_BUILD_SETTINGS env");
             outcome = Some(run_reloadable_from_env(settings));
@@ -119,7 +123,10 @@ pub fn watch_reloadable(
     options: HotReloadOptions,
     update_channel: tokio::sync::broadcast::Sender<HotReloadMessage>,
 ) -> anyhow::Result<(std::path::PathBuf, std::path::PathBuf)> {
-    let _ = env_logger::try_init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     let (mut settings, paths) = setup_build_settings(&options)?;
     let lib_path = settings.lib_path.clone();
     let lib_dir = settings.out_target.clone();
@@ -130,7 +137,7 @@ pub fn watch_reloadable(
 
     for dir in paths.iter() {
         if dir.as_path() != lib_dir.as_path() && dir.exists() {
-            log::trace!("Checking lib path {dir:?}");
+            tracing::trace!("Checking lib path {dir:?}");
             for file in (dir.read_dir()?).flatten() {
                 let path = file.path();
                 let extension = path
@@ -142,7 +149,7 @@ pub fn watch_reloadable(
                     && (extension == "dll" || extension == "dylib" || extension == "so")
                 {
                     let new_file = lib_dir.join(file.file_name());
-                    log::trace!("Moving {path:?} to {new_file:?}");
+                    tracing::trace!("Moving {path:?} to {new_file:?}");
                     std::fs::copy(path, new_file)?;
                 }
             }
@@ -187,7 +194,10 @@ fn run_from_file(
 
 #[cfg(feature = "cli")]
 pub async fn run_served_file(library_path: std::path::PathBuf) -> anyhow::Result<()> {
-    let _ = env_logger::try_init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
 
     let library_paths = LibPathSet::new(library_path.as_path());
 
@@ -202,7 +212,10 @@ fn null_watcher() {}
 
 #[cfg(feature = "cli")]
 pub async fn run_existing_library(library_path: std::path::PathBuf) -> anyhow::Result<()> {
-    let _ = env_logger::try_init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
 
     let library_paths = LibPathSet::new(library_path.as_path());
 
@@ -219,7 +232,10 @@ pub fn compile_reloadable_libraries(
 ) -> anyhow::Result<std::path::PathBuf> {
     use anyhow::Context;
 
-    let _ = env_logger::try_init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     let (mut settings, paths) = setup_build_settings(&options)?;
     let lib_path = settings.lib_path.clone();
 
@@ -241,7 +257,7 @@ pub fn compile_reloadable_libraries(
 
     for dir in paths.iter() {
         if dir.as_path() != lib_dir && dir.exists() {
-            log::trace!("Checking lib path {dir:?}");
+            tracing::trace!("Checking lib path {dir:?}");
             for file in (dir.read_dir()?).flatten() {
                 let path = file.path();
                 let extension = path
@@ -251,7 +267,7 @@ pub fn compile_reloadable_libraries(
                     .to_string();
                 if path.is_file() && (extension == lib_extension) {
                     let new_file = lib_dir.join(file.file_name());
-                    log::trace!("Moving {path:?} to {new_file:?}");
+                    tracing::trace!("Moving {path:?} to {new_file:?}");
                     std::fs::copy(path, new_file)?;
                 }
             }

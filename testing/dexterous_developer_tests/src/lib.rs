@@ -101,36 +101,6 @@ async fn can_run_example() {
     process.exit().await;
 }
 
-async fn can_run_hot_and_edit_with_launcher() {
-    let mut project = TestProject::new("no_cli_test", "no_cli").unwrap();
-    let mut process = project.run_hot_launcher("lib_simple").await.unwrap();
-
-    process.is_ready().await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Ran Update"]).await;
-
-    project
-        .write_file(
-            PathBuf::from("./simple/src/update.rs").as_path(),
-            include_str!("./updated_file.txt"),
-        )
-        .expect("Couldn't update file");
-
-    process.has_updated().await;
-
-    process.send("\n").expect("Failed to send empty line");
-
-    process.wait_for_lines(&["Got some new text!"]).await;
-
-    process.exit().await;
-}
-
 async fn insert_replacable_resource() {
     let mut project: TestProject =
         TestProject::new("reloadables_test", "insert_replacable_resource").unwrap();
@@ -775,10 +745,6 @@ pub async fn run_tests() {
             println!("Can edit with hot reload cli");
             can_run_hot_and_edit().await;
         }
-        "launcher" => {
-            println!("Can edit with hot reload launcher");
-            can_run_hot_and_edit_with_launcher().await;
-        }
         "initialize_resource" => {
             insert_replacable_resource().await;
         }
@@ -846,7 +812,6 @@ pub async fn run_tests() {
             println!("cold");
             println!("hot");
             println!("edit");
-            println!("launcher");
             println!("remote");
             println!("asset");
             println!("initialize_resource");
@@ -880,10 +845,6 @@ mod test {
     // #[tokio::test]
     // async fn can_run_hot_and_edit() {
     //     super::can_run_hot_and_edit().await;
-    // }
-    // #[tokio::test]
-    // async fn can_run_hot_and_edit_with_launcher() {
-    //     super::can_run_hot_and_edit_with_launcher().await;
     // }
     // #[tokio::test]
     // async fn can_run_with_reloadables() {

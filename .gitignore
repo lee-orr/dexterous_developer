@@ -7,7 +7,7 @@ book
 
 Cargo.lock
 
-/testing/tmp*
+/testing/tmp/tmp*
 **/target
 **/.fuse**
 

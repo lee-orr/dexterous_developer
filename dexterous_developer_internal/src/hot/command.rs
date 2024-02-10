@@ -10,8 +10,8 @@ use std::{
 use anyhow::{bail, Context, Error};
 
 use debounce::EventDebouncer;
-use log::{debug, error, info, trace};
 use notify::{RecursiveMode, Watcher};
+use tracing::{debug, error, info, trace};
 
 use crate::{
     hot::{
@@ -71,18 +71,15 @@ pub(crate) fn setup_build_settings(
 
     info!("Compiling with features: {}", features.join(", "));
 
-    let features = features
+    let mut features = features
         .iter()
         .cloned()
-        .chain([
-            "bevy/dynamic_linking".to_string(),
-            "bevy/embedded_watcher".to_string(),
-            "dexterous_developer/hot_internal".to_string(),
-        ])
+        .chain(["dexterous_developer/hot_internal".to_string()])
         .collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();
+
     if let Some(manifest) = manifest_path {
         get_metadata.manifest_path(manifest);
     }
@@ -97,6 +94,18 @@ pub(crate) fn setup_build_settings(
     debug!("Getting metadata...");
 
     let metadata = get_metadata.exec()?;
+
+    if let Some(metadata) = metadata.workspace_metadata.get("hot_reload_features") {
+        if let Some(metadata) = metadata.as_array() {
+            let mut new_features = metadata
+                .iter()
+                .filter_map(|feature| feature.as_str().map(|v| v.to_string()))
+                .collect();
+            features.append(&mut new_features);
+        } else if let Some(feature) = metadata.as_str() {
+            features.insert(feature.to_string());
+        }
+    }
 
     debug!("Got metadata");
 
@@ -147,6 +156,18 @@ pub(crate) fn setup_build_settings(
     let Some((pkg_or_example, lib, pkg)) = libs.first() else {
         bail!("Workspace contains no matching libraries");
     };
+
+    if let Some(metadata) = pkg.metadata.get("hot_reload_features") {
+        if let Some(metadata) = metadata.as_array() {
+            let mut new_features = metadata
+                .iter()
+                .filter_map(|feature| feature.as_str().map(|v| v.to_string()))
+                .collect();
+            features.append(&mut new_features);
+        } else if let Some(feature) = metadata.as_str() {
+            features.insert(feature.to_string());
+        }
+    }
 
     let mut target_path = if let Some(target) = target_folder {
         target.clone()
