@@ -32,7 +32,7 @@ jobs:
           components: clippy
           override: true
       - name: CI job
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::type_complexity -W clippy::doc_markdown
+        run: "cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::type_complexity -W clippy::doc_markdown"
   
   formatting:
     runs-on: ubuntu-latest
