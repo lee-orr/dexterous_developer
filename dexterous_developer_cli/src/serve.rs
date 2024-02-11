@@ -119,9 +119,9 @@ pub async fn run_server(
     });
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Serving on {port}");
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    axum::serve(listener, app)
         .await?;
 
     Ok(())

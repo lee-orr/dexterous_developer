@@ -26,14 +26,14 @@ dexterous_developer_internal = { path = "../dexterous_developer_internal", versi
     "cli",
 ] }
 clap = { version = "4", features = ["derive"] }
-axum = { version = "0.6", features = ["ws"] }
+axum = { version = "0.7", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.20"
+tokio-tungstenite = "0.21"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.4.0", features = ["fs", "trace"] }
+tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 anyhow = "1"
 url = { version = "2", features = ["serde"] }
 futures-util = { version = "0.3", default-features = false, features = [
@@ -49,7 +49,7 @@ notify = { version = "6", default-features = false, features = [
 dunce = "1"
 directories = "5"
 semver = "1"
-which = "5"
+which = "6"
 toml = "0.8"
 cargo_metadata = { version = "0.18" }
 zip = "0.6"

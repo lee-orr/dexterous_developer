@@ -21,7 +21,7 @@ syn = { version = "2.0", features = ["extra-traits", "derive", "full"] }
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
 libloading = "0.8"
-proc-macro-crate = "2"
+proc-macro-crate = "3"
 
 [lib]
 proc-macro = true
