@@ -43,7 +43,7 @@ uuid = { version = "1", features = ["v4"], optional = true }
 cargo_metadata = { version = "0.18", optional = true }
 notify = { version = "6", optional = true }
 debounce = { version = "0.2", optional = true }
-which = { version = "5", optional = true }
+which = { version = "6", optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"], optional = true }
