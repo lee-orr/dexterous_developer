@@ -145,12 +145,12 @@ mod linux_host {
             if let Ok(ld_path) = std::env::var("DEXTEROUS_DEVELOPER_LD_PATH") {
                 command.env(LINKER_VAR, "clang").env(
                     "RUSTFLAGS",
-                    format!("-Zshare-generics=y  -Clink-arg=-fuse-ld={ld_path}"),
+                    format!("-Clink-arg=-fuse-ld={ld_path}"),
                 );
             } else {
                 command
                     .env(LINKER_VAR, "clang")
-                    .env("RUSTFLAGS", "-Zshare-generics=y  -Clink-arg=-fuse-ld=lld");
+                    .env("RUSTFLAGS", "-Clink-arg=-fuse-ld=lld");
             }
         }
     }
@@ -189,7 +189,6 @@ mod cross_host {
         }
 
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=y");
         }
     }
 
@@ -201,7 +200,6 @@ mod cross_host {
         }
 
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=n");
         }
     }
 
@@ -213,7 +211,6 @@ mod cross_host {
         }
 
         fn set_env_vars(&self, command: &mut Command) {
-            command.env("RUSTFLAGS", "-Zshare-generics=n");
         }
     }
 
@@ -230,7 +227,7 @@ mod cross_host {
                 .env("RUSTC_LINKER", "clang")
                 .env(
                     "RUSTFLAGS",
-                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                    "-L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
                 )
                 .env("SYSTEM_VERSION_COMPAT", "0");
         }
@@ -249,7 +246,7 @@ mod cross_host {
                 .env("RUSTC_LINKER", "clang")
                 .env(
                     "RUSTFLAGS",
-                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                    "-L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
                 )
                 .env("SYSTEM_VERSION_COMPAT", "0");
         }
@@ -267,7 +264,7 @@ mod cross_host {
                 .env("RUSTC_LINKER", "clang")
                 .env(
                     "RUSTFLAGS",
-                    "-Zshare-generics=y -L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
+                    "-L /opt/osxcross/SDK/latest/usr/include/c++/v1/stdbool.h",
                 )
                 .env("SYSTEM_VERSION_COMPAT", "0");
         }
@@ -281,8 +278,7 @@ mod windows_host {
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
             command
-                .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe")
-                .env("RUSTFLAGS", "-Zshare-generics=n");
+                .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe");
         }
     }
 
@@ -306,7 +302,7 @@ mod macos_host {
         fn set_env_vars(&self, command: &mut Command) {
             command.env(
                 "RUSTFLAGS",
-                format!("-Zshare-generics=y -Clink-arg=-fuse-ld={LLDPATH}"),
+                format!("-Clink-arg=-fuse-ld={LLDPATH}"),
             );
         }
     }
