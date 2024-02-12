@@ -56,3 +56,7 @@ zip = "0.6"
 flate2 = "1"
 tar = "0.4"
 bytes = { version = "1", features = ["std"] }
+
+tracing = { version = "0.1" }
+tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
+dexterous_developer_types = { version = "0.1.0", path = "../dexterous_developer_types" }

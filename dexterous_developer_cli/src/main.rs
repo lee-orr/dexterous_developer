@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-
-use dexterous_developer_internal::{compile_reloadable_libraries, HotReloadOptions, Target};
+use dexterous_developer_internal::compile_reloadable_libraries;
+use dexterous_developer_types::{HotReloadOptions, Target};
 use url::Url;
 
 use dexterous_developer_cli::{

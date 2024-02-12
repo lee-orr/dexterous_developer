@@ -1,5 +1,3 @@
-// Copied from cargo repo: https://github.com/rust-lang/cargo/blob/master/crates/cargo-util/src/paths.rs
-
 use std::{env, path::PathBuf};
 
 pub fn dylib_path_envvar() -> &'static str {

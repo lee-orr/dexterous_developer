@@ -39,7 +39,7 @@ pub fn asset_updates() {
     println!("Running asset updates...");
 }
 
-pub(crate) fn get_base_path() -> PathBuf {
+pub fn get_base_path() -> PathBuf {
     if let Ok(manifest_dir) = env::var("BEVY_ASSET_ROOT") {
         PathBuf::from(manifest_dir)
     } else if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {

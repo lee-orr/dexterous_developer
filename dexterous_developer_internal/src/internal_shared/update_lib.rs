@@ -1,12 +1,15 @@
-use super::{lib_path_set::LibPathSet, library_holder::LibraryHolder};
+use dexterous_developer_types::LibPathSet;
+use tracing::{debug, info, trace};
+
+use super::library_holder::LibraryHolder;
 
 pub fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
-    crate::logger::trace!("Checking for Library");
+    trace!("Checking for Library");
     let lib_file_path = library_paths.library_path();
     if lib_file_path.is_file() {
-        crate::logger::debug!("Found library {lib_file_path:?}");
+        debug!("Found library {lib_file_path:?}");
         let holder = LibraryHolder::new(&lib_file_path)?;
-        crate::logger::debug!("Generated file holder");
+        debug!("Generated file holder");
         Some(holder)
     } else {
         None
@@ -15,7 +18,7 @@ pub fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
 
 #[allow(unused)]
 pub fn get_initial_library(library_paths: &LibPathSet) -> Result<LibraryHolder, String> {
-    crate::logger::info!("Looking for lib at {library_paths:?}");
+    info!("Looking for lib at {library_paths:?}");
 
     update_lib(library_paths).ok_or("Couldn't find library".to_string())
 }

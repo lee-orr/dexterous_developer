@@ -1,8 +1,7 @@
 use std::process::Command;
 
 use anyhow::Context;
-
-use crate::Target;
+use dexterous_developer_types::Target;
 
 pub trait BuildArgsProvider {
     fn get_cargo(&self) -> &'static str {
@@ -24,12 +23,12 @@ trait GetBuildArgProvider {
     fn get_provider(target: &Target) -> anyhow::Result<Box<dyn BuildArgsProvider>>;
 }
 
-pub(crate) fn cargo_command(target: Option<&Target>) -> anyhow::Result<&'static str> {
+pub fn cargo_command(target: Option<&Target>) -> anyhow::Result<&'static str> {
     let provider = default_host::get_provider(target)?;
     Ok(provider.get_cargo())
 }
 
-pub(crate) fn set_envs(
+pub fn set_envs(
     command: &mut Command,
     target: Option<&Target>,
 ) -> anyhow::Result<&'static [&'static str]> {
@@ -44,10 +43,10 @@ pub(crate) fn set_envs(
 }
 
 mod default_host {
-    use crate::{debug, Target};
-
     use super::{BuildArgsProvider, GetBuildArgProvider};
+    use dexterous_developer_types::Target;
     use std::process::Command;
+    use tracing::debug;
 
     use anyhow::{bail, Context};
 
@@ -143,10 +142,9 @@ mod linux_host {
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
             if let Ok(ld_path) = std::env::var("DEXTEROUS_DEVELOPER_LD_PATH") {
-                command.env(LINKER_VAR, "clang").env(
-                    "RUSTFLAGS",
-                    format!("-Clink-arg=-fuse-ld={ld_path}"),
-                );
+                command
+                    .env(LINKER_VAR, "clang")
+                    .env("RUSTFLAGS", format!("-Clink-arg=-fuse-ld={ld_path}"));
             } else {
                 command
                     .env(LINKER_VAR, "clang")
@@ -188,8 +186,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, _: &mut Command) {
-        }
+        fn set_env_vars(&self, _: &mut Command) {}
     }
 
     struct WindowsProvider;
@@ -199,8 +196,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, _: &mut Command) {
-        }
+        fn set_env_vars(&self, _: &mut Command) {}
     }
 
     struct AndroidProvider;
@@ -210,8 +206,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, _: &mut Command) {
-        }
+        fn set_env_vars(&self, _: &mut Command) {}
     }
 
     struct AppleDarwinProvider;
@@ -277,8 +272,7 @@ mod windows_host {
 
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command
-                .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe");
+            command.env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "rust-lld.exe");
         }
     }
 
@@ -300,10 +294,7 @@ mod macos_host {
 
     impl BuildArgsProvider for DefaultProvider {
         fn set_env_vars(&self, command: &mut Command) {
-            command.env(
-                "RUSTFLAGS",
-                format!("-Clink-arg=-fuse-ld={LLDPATH}"),
-            );
+            command.env("RUSTFLAGS", format!("-Clink-arg=-fuse-ld={LLDPATH}"));
         }
     }
 

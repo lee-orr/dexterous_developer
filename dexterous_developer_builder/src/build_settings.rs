@@ -1,10 +1,9 @@
-use std::path::PathBuf;
-
 use anyhow::Error;
+use dexterous_developer_types::HotReloadMessage;
+use std::{path::PathBuf, sync::Arc};
 
-#[cfg(feature = "cli")]
-#[derive(Clone, Debug, Default)]
-pub(crate) struct BuildSettings {
+#[derive(Clone, Default)]
+pub struct BuildSettings {
     pub watch_folders: Vec<PathBuf>,
     pub manifest: Option<PathBuf>,
     pub lib_path: PathBuf,
@@ -12,21 +11,27 @@ pub(crate) struct BuildSettings {
     pub features: String,
     pub target_folder: Option<PathBuf>,
     pub out_target: PathBuf,
-    pub build_target: Option<crate::Target>,
-    pub updated_file_channel: Option<tokio::sync::broadcast::Sender<HotReloadMessage>>,
+    pub build_target: Option<dexterous_developer_types::Target>,
+    pub updated_file_channel: Option<Arc<dyn Fn(HotReloadMessage) + Send + Sync>>,
 }
 
-#[cfg(not(feature = "cli"))]
-#[derive(Clone, Debug, Default)]
-pub(crate) struct BuildSettings {
-    pub watch_folders: Vec<PathBuf>,
-    pub manifest: Option<PathBuf>,
-    pub lib_path: PathBuf,
-    pub package: PackageOrExample,
-    pub features: String,
-    pub target_folder: Option<PathBuf>,
-    pub out_target: PathBuf,
-    pub build_target: Option<crate::Target>,
+impl std::fmt::Debug for BuildSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BuildSettings")
+            .field("watch_folders", &self.watch_folders)
+            .field("manifest", &self.manifest)
+            .field("lib_path", &self.lib_path)
+            .field("package", &self.package)
+            .field("features", &self.features)
+            .field("target_folder", &self.target_folder)
+            .field("out_target", &self.out_target)
+            .field("build_target", &self.build_target)
+            .field(
+                "updated_file_channel",
+                &self.updated_file_channel.as_ref().map(|_| "Has Channel"),
+            )
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -124,24 +129,4 @@ impl TryFrom<&str> for BuildSettings {
             ..Default::default()
         })
     }
-}
-
-#[cfg(feature = "cli")]
-use serde::{Deserialize, Serialize};
-
-#[cfg(feature = "cli")]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum HotReloadMessage {
-    RootLibPath(String),
-    UpdatedLibs(Vec<(String, [u8; 32])>),
-    UpdatedAssets(Vec<(String, [u8; 32])>),
-    KeepAlive,
-}
-
-#[cfg(not(feature = "cli"))]
-#[derive(Debug, Clone)]
-pub enum HotReloadMessage {
-    RootLibPath(String),
-    UpdatedLibs(Vec<(String, [u8; 32])>),
-    UpdatedAssets(Vec<(String, [u8; 32])>),
 }

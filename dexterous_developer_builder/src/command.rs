@@ -13,24 +13,17 @@ use debounce::EventDebouncer;
 use notify::{RecursiveMode, Watcher};
 use tracing::{debug, error, info, trace};
 
-use crate::{
-    hot::{
-        build_settings::PackageOrExample,
-        singleton::{BUILD_SETTINGS, WATCHER},
-    },
-    internal_shared::cargo_path_utils,
-    internal_shared::LibPathSet,
-    HotReloadOptions,
-};
+use dexterous_developer_types::{cargo_path_utils, HotReloadOptions, LibPathSet};
 
-use super::build_settings::BuildSettings;
+use super::build_settings::{BuildSettings, PackageOrExample};
+use super::singleton::{BUILD_SETTINGS, WATCHER};
 
 pub enum BuildSettingsReady {
     LibraryPath(LibPathSet),
     RequiredEnvChange(String, String),
 }
 
-pub(crate) fn setup_build_settings(
+pub fn setup_build_settings(
     options: &HotReloadOptions,
 ) -> anyhow::Result<(BuildSettings, BTreeSet<PathBuf>)> {
     let HotReloadOptions {
@@ -282,7 +275,7 @@ pub(crate) fn setup_build_settings(
     Ok((settings, paths))
 }
 
-pub(crate) fn setup_build_setting_environment(
+pub fn setup_build_setting_environment(
     settings: BuildSettings,
     paths: BTreeSet<PathBuf>,
 ) -> anyhow::Result<BuildSettingsReady> {
@@ -342,12 +335,12 @@ pub(crate) fn setup_build_setting_environment(
     )))
 }
 
-pub(crate) fn first_exec(settings: &BuildSettings) -> anyhow::Result<()> {
+pub fn first_exec(settings: &BuildSettings) -> anyhow::Result<()> {
     info!("First Execution");
     rebuild_internal(settings)
 }
 
-pub(crate) fn run_watcher() {
+pub fn run_watcher() {
     debug!("run watcher called");
     WATCHER.call_once(|| {
         debug!("Getting Settings");
@@ -361,7 +354,7 @@ pub(crate) fn run_watcher() {
     });
 }
 
-pub(crate) fn run_watcher_with_settings(settings: &BuildSettings) -> anyhow::Result<()> {
+pub fn run_watcher_with_settings(settings: &BuildSettings) -> anyhow::Result<()> {
     info!("Getting watch settings");
     let delay = Duration::from_secs(2);
     let (watching_tx, watching_rx) = mpsc::channel::<()>();
@@ -433,10 +426,10 @@ fn rebuild_internal(settings: &BuildSettings) -> anyhow::Result<()> {
     command.args(build_command).arg("--profile").arg("dev");
 
     match package {
-        crate::hot::build_settings::PackageOrExample::Package(package) => {
+        PackageOrExample::Package(package) => {
             command.arg("-p").arg(package.as_str());
         }
-        crate::hot::build_settings::PackageOrExample::Example(example) => {
+        PackageOrExample::Example(example) => {
             command.arg("--example").arg(example.as_str());
         }
     }

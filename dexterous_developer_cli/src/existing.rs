@@ -1,9 +1,7 @@
 use std::{collections::BTreeSet, path::PathBuf, process::Command};
 
 use anyhow::{bail, Context};
-use dexterous_developer_internal::internal_shared::cargo_path_utils::{
-    dylib_path, dylib_path_envvar,
-};
+use dexterous_developer_types::cargo_path_utils::{dylib_path, dylib_path_envvar};
 
 pub async fn load_existing_directory(libs: PathBuf) -> anyhow::Result<()> {
     let current_dir = std::env::current_dir().context("Couldn't get current working directory")?;

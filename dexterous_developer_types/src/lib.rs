@@ -1,8 +1,28 @@
+pub mod cargo_path_utils;
+
 use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
 
 use anyhow::bail;
+use serde::{de, Deserialize, Deserializer, Serialize};
+use tracing::debug;
 
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LibPathSet {
+    path: PathBuf,
+}
+
+impl LibPathSet {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        debug!("Creating path");
+        Self { path: path.into() }
+    }
+
+    pub fn library_path(&self) -> PathBuf {
+        self.path.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct HotReloadOptions {
     pub manifest_path: Option<PathBuf>,
     pub package: Option<String>,
@@ -26,30 +46,22 @@ pub enum Target {
     IOS,
 }
 
-mod serialize {
-    use super::*;
-    use serde::{
-        de::{self},
-        Deserialize, Deserializer, Serialize,
-    };
-
-    impl Serialize for Target {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            serializer.collect_str(self.to_static())
-        }
+impl Serialize for Target {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self.to_static())
     }
+}
 
-    impl<'de> Deserialize<'de> for Target {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            let s = String::deserialize(deserializer)?;
-            FromStr::from_str(&s).map_err(de::Error::custom)
-        }
+impl<'de> Deserialize<'de> for Target {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(de::Error::custom)
     }
 }
 
@@ -118,4 +130,12 @@ impl FromStr for Target {
             bail!("Invalid Target");
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum HotReloadMessage {
+    RootLibPath(String),
+    UpdatedLibs(Vec<(String, [u8; 32])>),
+    UpdatedAssets(Vec<(String, [u8; 32])>),
+    KeepAlive,
 }

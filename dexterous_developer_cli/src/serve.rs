@@ -11,7 +11,8 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use dexterous_developer_internal::{watch_reloadable, HotReloadMessage, HotReloadOptions, Target};
+use dexterous_developer_internal::watch_reloadable;
+use dexterous_developer_types::{HotReloadMessage, HotReloadOptions, Target};
 use futures_util::{SinkExt, StreamExt};
 use notify::{RecursiveMode, Watcher};
 use tokio::{

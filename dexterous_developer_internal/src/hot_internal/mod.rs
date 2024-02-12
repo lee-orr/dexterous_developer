@@ -1,6 +1,7 @@
 use chrono::Local;
+use dexterous_developer_types::LibPathSet;
 
-use crate::internal_shared::{lib_path_set::LibPathSet, library_holder::LibraryHolder};
+use crate::internal_shared::library_holder::LibraryHolder;
 
 pub struct InternalHotReload {
     pub library: Option<LibraryHolder>,

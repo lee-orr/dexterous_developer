@@ -275,7 +275,7 @@ impl TestProject {
             .stderr(Stdio::piped())
             .env(
                 "RUST_LOG",
-                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace,bevy_dexterous_developer=trace",
+                "warn,dexterous_developer_internal=trace,dexterous_developer_cli=trace,bevy_dexterous_developer=trace,dexterous_developer_build=trace,dexterous_developer_types=trace",
             )
             .kill_on_drop(true);
         println!("Running:{cmd:?}");

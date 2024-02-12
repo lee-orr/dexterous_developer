@@ -1,0 +1,24 @@
+[package]
+name = "dexterous_developer_builder"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1", features = ["derive"]}
+anyhow = { version = "1" }
+notify = { version = "6" }
+debounce = { version = "0.2" }
+tracing = { version = "0.1" }
+dexterous_developer_types = { version = "0.1.0", path = "../dexterous_developer_types" }
+cargo_metadata = { version = "0.18" }
+which = { version = "6" }

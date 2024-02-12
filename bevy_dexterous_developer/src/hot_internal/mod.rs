@@ -21,7 +21,7 @@ use crate::hot_internal::reload_systems::{
     toggle_reload_mode, toggle_reloadable_elements, InternalHotReload,
 };
 pub use crate::types::*;
-use dexterous_developer_internal::internal_shared::lib_path_set::LibPathSet;
+use dexterous_developer_types::LibPathSet;
 
 #[allow(unused_imports)]
 pub use reloadable_app_setup::*;

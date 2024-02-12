@@ -7,8 +7,8 @@ use std::{
 
 use anyhow::{bail, Context};
 use blake3::Hash;
-use dexterous_developer_internal::{
-    internal_shared::cargo_path_utils::{dylib_path, dylib_path_envvar},
+use dexterous_developer_types::{
+    cargo_path_utils::{dylib_path, dylib_path_envvar},
     HotReloadMessage,
 };
 use futures_util::StreamExt;

@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{bail, Context};
-
-use dexterous_developer_internal::{debug, info, Target};
+use dexterous_developer_types::Target;
+use tracing::{debug, info};
 
 use url::Url;
 use which::which;

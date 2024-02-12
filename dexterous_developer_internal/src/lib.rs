@@ -10,16 +10,10 @@ pub mod internal_shared;
 #[cfg(feature = "hot_internal")]
 pub mod hot_internal;
 
-mod types;
-
-mod logger;
-
 pub use dexterous_developer_macros::*;
 
-pub use types::*;
-
 #[cfg(feature = "hot")]
-pub use hot::{run_reloadabe_app, HotReloadMessage};
+pub use hot::run_reloadabe_app;
 
 #[cfg(feature = "cli")]
 pub use hot::{

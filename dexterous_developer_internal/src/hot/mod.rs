@@ -1,21 +1,22 @@
-mod build_settings;
-mod command;
-mod env;
-mod singleton;
-use std::{fmt::Display, process::Command, sync::Once};
-
-use tracing::{debug, error, info};
-
-use command::*;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-use crate::{
-    hot::singleton::{load_build_settings, BUILD_SETTINGS},
-    internal_shared::{update_lib::get_initial_library, LibPathSet, LibraryHolder},
-    HotReloadOptions,
+use std::{
+    fmt::Display,
+    process::Command,
+    sync::{Arc, Once},
 };
 
-pub use self::build_settings::HotReloadMessage;
+use dexterous_developer_builder::{
+    command::{
+        first_exec, run_watcher, run_watcher_with_settings, setup_build_setting_environment,
+        setup_build_settings, BuildSettingsReady,
+    },
+    singleton::{load_build_settings, BUILD_SETTINGS},
+};
+use dexterous_developer_types::{HotReloadMessage, HotReloadOptions, LibPathSet};
+use tracing::{debug, error, info};
+
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+use crate::internal_shared::{update_lib::get_initial_library, LibraryHolder};
 
 #[derive(Clone, Debug)]
 pub struct Error {
@@ -82,7 +83,7 @@ fn run_reloadabe_app_inner(options: HotReloadOptions) -> Result<(), Error> {
     }
 }
 
-fn run_app_with_path(library_paths: crate::internal_shared::LibPathSet) -> Result<(), Error> {
+fn run_app_with_path(library_paths: LibPathSet) -> Result<(), Error> {
     let _ = std::fs::remove_file(library_paths.library_path());
     let settings = BUILD_SETTINGS
         .get()
@@ -118,7 +119,6 @@ fn run_reloadable_from_env(settings: String) -> Result<(), Error> {
     run_app_with_path(library_paths)
 }
 
-#[cfg(feature = "cli")]
 pub fn watch_reloadable(
     options: HotReloadOptions,
     update_channel: tokio::sync::broadcast::Sender<HotReloadMessage>,
@@ -156,7 +156,10 @@ pub fn watch_reloadable(
         }
     }
 
-    settings.updated_file_channel = Some(update_channel);
+    settings.updated_file_channel = Some(Arc::new(move |msg| {
+        let _ = update_channel.send(msg);
+    }));
+
     tokio::spawn(async move {
         first_exec(&settings).expect("Build failed");
         run_watcher_with_settings(&settings).expect("Couldn't run watcher");

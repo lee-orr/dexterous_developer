@@ -22,7 +22,7 @@ pub struct ReloadableAppElements {
 }
 
 impl ReloadableAppElements {
-    pub(crate) fn schedule_iter(
+    pub fn schedule_iter(
         self,
     ) -> impl Iterator<
         Item = (
