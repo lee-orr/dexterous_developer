@@ -188,7 +188,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, command: &mut Command) {
+        fn set_env_vars(&self, _: &mut Command) {
         }
     }
 
@@ -199,7 +199,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, command: &mut Command) {
+        fn set_env_vars(&self, _: &mut Command) {
         }
     }
 
@@ -210,7 +210,7 @@ mod cross_host {
             "cross"
         }
 
-        fn set_env_vars(&self, command: &mut Command) {
+        fn set_env_vars(&self, _: &mut Command) {
         }
     }
 
