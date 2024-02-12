@@ -1,6 +1,5 @@
 pub mod update;
-use bevy::{prelude::App};
-
+use bevy::prelude::App;
 
 pub fn terminal_runner(mut app: App) {
     app.update();
