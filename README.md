@@ -91,5 +91,6 @@ fn reloadable(app: &mut ReloadableAppContents) {
 
 | Bevy | Dexterous Developer |
 | --- |--------------------|
+| 0.13 | >= 0.1.1 |
 | 0.12 | 0.0.12, 0.1        |
 | 0.11 | <= 0.0.11          |
