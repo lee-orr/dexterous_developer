@@ -25,8 +25,16 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_replacable_resource<R: super::CustomReplacableResource>(&mut self) -> &mut Self {
+    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self {
         self.0.init_resource::<R>();
+        self
+    }
+
+    fn insert_replacable_resource<R: CustomReplacableResource>(
+        &mut self,
+        initializer: impl 'static + Send + Sync + Fn() -> R,
+    ) -> &mut Self {
+        self.0.insert_resource(initializer());
         self
     }
 
@@ -75,8 +83,8 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_state<S: super::ReplacableState>(&mut self) -> &mut Self {
-        self.0.add_state::<S>();
+    fn init_state<S: super::ReplacableState>(&mut self) -> &mut Self {
+        self.0.init_state::<S>();
         self
     }
 }

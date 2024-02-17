@@ -10,7 +10,7 @@ crate-type = ["rlib"]
 
 
 [dependencies]
-bevy = { version = "0.12", default_features = false }
+bevy = { version = "0.13", default_features = false }
 dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"] }
 
 [[example]]

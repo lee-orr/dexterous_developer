@@ -101,9 +101,9 @@ async fn can_run_example() {
     process.exit().await;
 }
 
-async fn insert_replacable_resource() {
+async fn init_replacable_resource() {
     let mut project: TestProject =
-        TestProject::new("reloadables_test", "insert_replacable_resource").unwrap();
+        TestProject::new("reloadables_test", "init_replacable_resource").unwrap();
     let mut process = project.run_hot_cli().await.unwrap();
 
     process.is_ready().await;
@@ -115,7 +115,7 @@ async fn insert_replacable_resource() {
     project
         .write_file(
             PathBuf::from("src/update.rs").as_path(),
-            include_str!("./insert_replacable_resource.txt"),
+            include_str!("./init_replacable_resource.txt"),
         )
         .expect("Couldn't update file");
 
@@ -260,7 +260,7 @@ async fn update_resource_schema() {
     project
         .write_file(
             PathBuf::from("src/update.rs").as_path(),
-            include_str!("./insert_replacable_resource.txt"),
+            include_str!("./init_replacable_resource.txt"),
         )
         .expect("Couldn't update file");
     let mut process = project.run_hot_cli().await.unwrap();
@@ -746,7 +746,7 @@ pub async fn run_tests() {
             can_run_hot_and_edit().await;
         }
         "initialize_resource" => {
-            insert_replacable_resource().await;
+            init_replacable_resource().await;
         }
         "update_resource" => {
             update_replacable_resource().await;

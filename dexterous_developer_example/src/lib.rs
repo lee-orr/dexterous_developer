@@ -52,7 +52,7 @@ impl ReplacableState for AppState {
 
 #[dexterous_developer_setup(first_reloadable)]
 fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_state::<AppState>();
+    app.init_state::<AppState>();
     println!("Setting up reloadabless #1");
     app.add_systems(Update, (move_cube, toggle));
     println!("Reset Setup");
@@ -120,8 +120,10 @@ fn setup_cube(
     commands.spawn((
         Cube::default(),
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(cube_color.into()),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Cuboid {
+                half_size: Vec3::ONE,
+            })),
+            material: materials.add(cube_color),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -129,8 +131,10 @@ fn setup_cube(
     commands.spawn((
         Cube(Vec3::Z * 2. + Vec3::Y),
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(cube_color.into()),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Cuboid {
+                half_size: Vec3::ONE,
+            })),
+            material: materials.add(cube_color),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -145,11 +149,8 @@ fn setup_sphere(
     commands.spawn((
         Sphere,
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.2,
-                ..Default::default()
-            })),
-            material: materials.add(Color::PINK.into()),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: 0.2 })),
+            material: materials.add(Color::PINK),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -164,11 +165,8 @@ fn setup_two_spheres(
     commands.spawn((
         Sphere,
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.2,
-                ..Default::default()
-            })),
-            material: materials.add(Color::PINK.into()),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: 0.2 })),
+            material: materials.add(Color::PINK),
             transform: Transform::from_xyz(1.0, 0.5, 0.0),
             ..default()
         },
@@ -176,11 +174,8 @@ fn setup_two_spheres(
     commands.spawn((
         Sphere,
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.2,
-                ..Default::default()
-            })),
-            material: materials.add(Color::PINK.into()),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: 0.2 })),
+            material: materials.add(Color::PINK),
             transform: Transform::from_xyz(-1.0, 0.5, 0.0),
             ..default()
         },
@@ -195,8 +190,10 @@ fn setup(
 ) {
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(bevy::math::primitives::Plane3d {
+            normal: Direction3d::Y,
+        }),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
         ..default()
     });
     // light
@@ -237,7 +234,7 @@ fn advance_time(mut multiplier: ResMut<VelocityMultiplier>, time: Res<Time>) {
     multiplier.1 += time.delta_seconds();
 }
 
-fn toggle(input: Res<Input<KeyCode>>, mut commands: Commands, current: Res<State<AppState>>) {
+fn toggle(input: Res<ButtonInput<KeyCode>>, mut commands: Commands, current: Res<State<AppState>>) {
     if input.just_pressed(KeyCode::Space) {
         let next = match current.get() {
             AppState::State => AppState::AnotherState,

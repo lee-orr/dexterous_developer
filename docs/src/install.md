@@ -13,7 +13,7 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-bevy = "0.12"
+bevy = "0.13"
 dexterous_developer = "0.1"
 serde = "1" # If you want the serialization capacities
 

@@ -45,7 +45,7 @@ impl ReplacableState for AppState {
 #[dexterous_developer_setup]
 pub fn reloadable(app: &mut ReloadableAppContents) {
     app
-        .add_state::<AppState>()
+        .init_state::<AppState>()
         .add_systems(Startup, startup)
         .add_systems(Update, update_a.run_if(in_state(AppState::A)))
         .add_systems(Update, update_b.run_if(in_state(AppState::B)));

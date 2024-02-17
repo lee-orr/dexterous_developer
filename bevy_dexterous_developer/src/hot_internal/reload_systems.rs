@@ -38,7 +38,7 @@ pub struct ReloadableElementList(pub Vec<&'static str>);
 pub fn reload(world: &mut World) {
     {
         let internal_state = world.resource::<InternalHotReload>();
-        let input = world.get_resource::<Input<KeyCode>>();
+        let input = world.get_resource::<ButtonInput<KeyCode>>();
 
         let (reload_mode, manual_reload) = world
             .get_resource::<ReloadSettings>()
@@ -218,7 +218,7 @@ pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
 
 pub fn toggle_reload_mode(
     settings: Option<ResMut<ReloadSettings>>,
-    input: Option<Res<Input<KeyCode>>>,
+    input: Option<Res<ButtonInput<KeyCode>>>,
 ) {
     let Some(input) = input else {
         return;
@@ -243,7 +243,7 @@ pub fn toggle_reload_mode(
 pub fn toggle_reloadable_elements(
     settings: Option<ResMut<ReloadSettings>>,
     element_list: Option<Res<ReloadableElementList>>,
-    input: Option<Res<Input<KeyCode>>>,
+    input: Option<Res<ButtonInput<KeyCode>>>,
 ) {
     let Some(input) = input else {
         return;

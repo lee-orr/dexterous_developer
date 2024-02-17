@@ -17,7 +17,7 @@ fn startup() {
 pub fn reloadable(app: &mut ReloadableAppContents) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update)
-        .insert_replacable_resource::<TextResource>();
+        .init_replacable_resource::<TextResource>();
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]

@@ -6,7 +6,7 @@ pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default 
     fn get_type_name() -> &'static str;
 }
 
-pub trait CustomReplacableResource: Resource + Default {
+pub trait CustomReplacableResource: Resource + Sized {
     fn get_type_name() -> &'static str;
 
     fn to_vec(&self) -> anyhow::Result<Vec<u8>>;
@@ -35,7 +35,7 @@ pub trait ReplacableEvent: Event + Serialize + DeserializeOwned {
     fn get_type_name() -> &'static str;
 }
 
-pub trait ReplacableState: States + Serialize + DeserializeOwned {
+pub trait ReplacableState: States + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
     fn get_next_type_name() -> &'static str;
 }
@@ -94,7 +94,11 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
 
-    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self;
+    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self;
+    fn insert_replacable_resource<R: CustomReplacableResource>(
+        &mut self,
+        initializer: impl 'static + Send + Sync + Fn() -> R,
+    ) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
     fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
@@ -106,7 +110,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
     fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self;
-    fn add_state<S: ReplacableState>(&mut self) -> &mut Self;
+    fn init_state<S: ReplacableState>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

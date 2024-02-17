@@ -78,7 +78,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_replacable_resource<R: CustomReplacableResource>(&mut self) -> &mut Self {
+    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
             self.resources.insert(name.to_string());
@@ -91,7 +91,30 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             )
             .add_systems(
                 DeserializeReloadables,
-                deserialize_replacable_resource::<R>
+                deserialize_replacable_resource_with_default::<R>
+                    .run_if(element_selection_condition(reloadable_element_name)),
+            );
+        }
+        self
+    }
+
+    fn insert_replacable_resource<R: CustomReplacableResource>(
+        &mut self,
+        initializer: impl 'static + Send + Sync + Fn() -> R,
+    ) -> &mut Self {
+        let name = R::get_type_name();
+        if !self.resources.contains(name) {
+            self.resources.insert(name.to_string());
+            info!("adding resource {name}");
+            let reloadable_element_name = self.name;
+            self.add_systems(
+                SerializeReloadables,
+                serialize_replacable_resource::<R>
+                    .run_if(element_selection_condition(reloadable_element_name)),
+            )
+            .add_systems(
+                DeserializeReloadables,
+                deserialize_replacable_resource_with_initializer(initializer)
                     .run_if(element_selection_condition(reloadable_element_name)),
             );
         }
@@ -181,15 +204,15 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 in_state(state).and_then(
                     dexterous_developer_occured
                         .and_then(element_selection_condition(name))
-                        .or_else(resource_changed::<State<S>>()),
+                        .or_else(|res: Res<State<S>>| resource_changed::<State<S>>(res)),
                 ),
             ),
         )
     }
 
-    fn add_state<S: ReplacableState>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<State<S>>()
-            .insert_replacable_resource::<NextState<S>>()
+    fn init_state<S: ReplacableState>(&mut self) -> &mut Self {
+        self.insert_replacable_resource::<State<S>>(|| State::new(S::default()))
+            .init_replacable_resource::<NextState<S>>()
             .add_systems(
                 StateTransition,
                 ((
@@ -203,7 +226,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     }
 
     fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<Events<T>>().add_systems(
+        self.init_replacable_resource::<Events<T>>().add_systems(
             First,
             bevy::ecs::event::event_update_system::<T>
                 .run_if(bevy::ecs::event::event_update_condition::<T>),

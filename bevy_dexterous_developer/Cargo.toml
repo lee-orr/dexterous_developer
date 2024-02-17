@@ -31,7 +31,7 @@ anyhow = { version = "1" }
 dexterous_developer_types = { version = "0.1.0", path = "../dexterous_developer_types" }
 dexterous_developer_internal = { version = "0.1.0", path = "../dexterous_developer_internal"}
 dexterous_developer_macros = { path = "../dexterous_developer_macros", version = "0.1.0" }
-bevy = { version = "0.12", default-features = false, features = [
+bevy = { version = "0.13", default-features = false, features = [
     "serialize",
 ]}
 serde = { version = "1", features = ["derive"] }

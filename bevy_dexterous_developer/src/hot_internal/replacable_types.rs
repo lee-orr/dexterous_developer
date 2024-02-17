@@ -1,4 +1,5 @@
 use bevy::{
+    ecs::schedule::IntoSystemConfigs,
     prelude::{debug, Commands, Entity, Query, Res, ResMut, Resource},
     utils::HashMap,
 };
@@ -25,7 +26,7 @@ pub fn serialize_replacable_resource<R: CustomReplacableResource>(
     commands.remove_resource::<R>();
 }
 
-pub fn deserialize_replacable_resource<R: CustomReplacableResource>(
+pub fn deserialize_replacable_resource_with_default<R: CustomReplacableResource + Default>(
     store: Res<ReplacableResourceStore>,
     mut commands: Commands,
 ) {
@@ -38,6 +39,23 @@ pub fn deserialize_replacable_resource<R: CustomReplacableResource>(
         .unwrap_or_default();
 
     commands.insert_resource(v);
+}
+
+pub fn deserialize_replacable_resource_with_initializer<R: CustomReplacableResource>(
+    initializer: impl 'static + Send + Sync + Fn() -> R,
+) -> impl IntoSystemConfigs<()> {
+    (move |store: Res<ReplacableResourceStore>, mut commands: Commands| {
+        let name = R::get_type_name();
+        debug!("Deserializing {name}");
+        let v: R = store
+            .map
+            .get(name)
+            .and_then(|v| R::from_slice(v).ok())
+            .unwrap_or(initializer());
+
+        commands.insert_resource(v);
+    })
+    .into_configs()
 }
 
 #[derive(Resource, Default)]
