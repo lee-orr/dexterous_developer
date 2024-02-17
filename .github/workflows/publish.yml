@@ -3,6 +3,10 @@ name: Publish
 on:
   workflow_dispatch:
 
+permissions:
+  pull-requests: write
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -11,7 +15,10 @@ jobs:
   publish:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/cache@v2
         with:
           path: |
@@ -21,20 +28,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-          override: true
-      - name: publish macros
-        run: cargo publish -p dexterous_developer_macros
-      - name: publish internal
-        run: cargo publish -p dexterous_developer_internal
-      - name: publish bevy
-        run: cargo publish -p bevy_dexterous_developer
-      - name: publish dynamic
-        run: cargo publish -p dexterous_developer_dynamic
-      - name: publish main crate
-        run: cargo publish -p dexterous_developer
-      - name: publish cli
-        run: cargo publish -p dexterous_developer_cli
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
