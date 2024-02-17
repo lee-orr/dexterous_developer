@@ -1,6 +1,6 @@
 use anyhow::Error;
 use dexterous_developer_types::HotReloadMessage;
-use std::{path::PathBuf, sync::Arc};
+use std::{fmt::Display, path::PathBuf, sync::Arc};
 
 #[derive(Clone, Default)]
 pub struct BuildSettings {
@@ -46,8 +46,8 @@ impl Default for PackageOrExample {
     }
 }
 
-impl ToString for BuildSettings {
-    fn to_string(&self) -> String {
+impl Display for BuildSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let BuildSettings {
             watch_folders,
             manifest,
@@ -79,7 +79,8 @@ impl ToString for BuildSettings {
             PackageOrExample::Example(v) => format!("example:{v}"),
         };
 
-        format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}")
+        let value = format!("{lib_path}:!:{watch_folder}:!:{manifest}:!:{package}:!:{features}:!:{out_target}:!:{target}");
+        f.write_str(&value)
     }
 }
 
