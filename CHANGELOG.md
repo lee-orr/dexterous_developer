@@ -1,6 +1,7 @@
 # Release Notes
 
 ## Version 0.2.0
+
 - extract bevy support to bevy_dexterous_developer crate
 - extract compilation & watcher to dexterous_developer_builder crate
 - temporarily disable remote CLI tests
