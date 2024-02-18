@@ -21,7 +21,7 @@ name = "dexterous_developer_cli"
 path = "src/main.rs"
 
 [dependencies]
-dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.1.0", default-features = false, features = [
+dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.2.0", default-features = false, features = [
     "hot",
     "cli",
 ] }
@@ -59,4 +59,4 @@ bytes = { version = "1", features = ["std"] }
 
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
-dexterous_developer_types = { version = "0.1.0", path = "../dexterous_developer_types" }
+dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
