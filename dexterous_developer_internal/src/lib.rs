@@ -10,7 +10,6 @@ pub mod internal_shared;
 #[cfg(feature = "hot_internal")]
 pub mod hot_internal;
 
-pub use dexterous_developer_macros::*;
 
 #[cfg(feature = "hot")]
 pub use hot::run_reloadabe_app;

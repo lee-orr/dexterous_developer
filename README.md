@@ -58,13 +58,12 @@ fn main() {
 and in your `lib.rs`, your main function should become:
 
 ```rust
-#[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+reloadable_main!( bevy_main(initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>()) // You can use either DefaultPlugins or MinimnalPlugins here, and use "set" on this as you would with them
     // Here you can do what you'd normally do with app
     // ... and so on
-}
+});
 ```
 
 If you have a plugin where you want to add reloadable elements, add the following in the file defining the plugin:
@@ -78,8 +77,7 @@ impl Plugin for MyPlugin {
     }
 }
 
-#[dexterous_developer_setup]
-fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app
         .add_systems(Update, this_system_will_reload);
 }

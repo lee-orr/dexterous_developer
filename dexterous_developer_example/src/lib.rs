@@ -1,15 +1,14 @@
 use bevy::prelude::*;
 
 #[allow(unused_imports)]
-use dexterous_developer::{
-    dexterous_developer_setup, hot_bevy_main, InitialPlugins, ReloadableApp, ReloadableAppContents,
+use bevy_dexterous_developer::{
+    InitialPlugins, ReloadableApp, ReloadableAppContents,
     ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
 };
-use dexterous_developer::{ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState};
+use bevy_dexterous_developer::{reloadable_main, reloadable_scope, ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState};
 use serde::{Deserialize, Serialize};
 
-#[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+reloadable_main!(bevy_main (initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
         .add_systems(Startup, setup)
@@ -20,7 +19,7 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
             manual_reload: Some(KeyCode::F2),
             toggle_reload_mode: Some(KeyCode::F1),
             reload_mode: ReloadMode::Full,
-            reloadable_element_policy: dexterous_developer::ReloadableElementPolicy::OneOfList(
+            reloadable_element_policy: bevy_dexterous_developer::ReloadableElementPolicy::OneOfList(
                 KeyCode::F3,
                 vec![
                     reloadable::setup_function_name(),
@@ -30,7 +29,7 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
             reloadable_element_selection: None,
         })
         .run();
-}
+});
 
 #[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default, Serialize, Deserialize)]
 pub enum AppState {
@@ -50,8 +49,7 @@ impl ReplacableState for AppState {
     }
 }
 
-#[dexterous_developer_setup(first_reloadable)]
-fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app.init_state::<AppState>();
     println!("Setting up reloadabless #1");
     app.add_systems(Update, (move_cube, toggle));
@@ -61,16 +59,15 @@ fn reloadable(app: &mut ReloadableAppContents) {
     app.reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
     app.reset_setup_in_state::<Sphere, AppState, _>(AppState::TwoSpheres, setup_two_spheres);
     println!("Done");
-}
+});
 
-#[dexterous_developer_setup(second_reloadable)]
-fn reloadable_2(app: &mut ReloadableAppContents) {
+reloadable_scope!("second_reloadable", reloadable_2(app) {
     println!("Setting up reloadabless #2");
     app.add_systems(Update, advance_time);
     println!("Reset Resource");
     app.reset_resource::<VelocityMultiplier>();
     println!("Done");
-}
+});
 
 #[derive(Component, Serialize, Deserialize)]
 struct Cube(Vec3);

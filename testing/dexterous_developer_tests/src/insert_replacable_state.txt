@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use dexterous_developer::*;
+use bevy_dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 use crate::shared::{StdInput};
 
@@ -42,11 +42,10 @@ impl ReplacableState for AppState {
     }
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app
         .init_state::<AppState>()
         .add_systems(Startup, startup)
         .add_systems(Update, update_a.run_if(in_state(AppState::A)))
         .add_systems(Update, update_b.run_if(in_state(AppState::B)));
-}
+});

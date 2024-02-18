@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{Text, TextAsset};
 
-use dexterous_developer::*;
+use bevy_dexterous_developer::*;
 
 pub fn update(text: Res<Text>, texts: Res<Assets<TextAsset>>) {
     for (id, text) in texts.iter() {
@@ -28,12 +28,11 @@ pub fn startup(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.insert_resource(Text(text))
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update)
         .add_systems(UpdateAssets, asset_updates);
-}
+});
 
 pub fn asset_updates() {
     println!("Running asset updates...");

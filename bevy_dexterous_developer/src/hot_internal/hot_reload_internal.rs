@@ -24,7 +24,7 @@ pub fn draw_internal_hot_reload(
     let reloadable_element_selection = settings
         .reloadable_element_selection
         .unwrap_or("all reloadables")
-        .replace("_dexterous_developered_inner_", "_");
+        .replace("_internal_reloadable_context", "_");
 
     let update = internal
         .0

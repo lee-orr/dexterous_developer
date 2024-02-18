@@ -1,5 +1,5 @@
 use bevy::prelude::{Component, Resource, Startup, Update};
-use dexterous_developer::*;
+use bevy_dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
 fn update() {
@@ -10,11 +10,10 @@ fn startup() {
     println!("Press Enter to Progress, or type 'exit' to exit");
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
-}
+});
 
 #[derive(Component, Serialize, Deserialize, Default)]
 struct TextComponent(String);

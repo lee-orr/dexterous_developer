@@ -12,7 +12,7 @@ impl Plugin for MyPlugin {
 }
 
 #[dexterous_developer_setup]
-fn reloadable(app: &mut ReloadableAppContents) {
+fn reloadable(app) {
     app
         .add_systems(Update, this_system_will_reload);
 }

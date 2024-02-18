@@ -67,7 +67,6 @@ pub fn setup_build_settings(
     let mut features = features
         .iter()
         .cloned()
-        .chain(["dexterous_developer/hot_internal".to_string()])
         .collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();

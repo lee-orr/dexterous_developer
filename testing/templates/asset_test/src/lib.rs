@@ -1,6 +1,6 @@
 mod update;
 
-use dexterous_developer::{hot_bevy_main, InitialPlugins, ReloadableElementsSetup};
+use bevy_dexterous_developer::{reloadable_main, InitialPlugins, ReloadableElementsSetup};
 use std::str::Utf8Error;
 use thiserror::Error;
 
@@ -26,8 +26,7 @@ fn terminal_runner(mut app: App) {
     }
 }
 
-#[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+reloadable_main!( bevy_main(initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
         .add_plugins(AssetPlugin {
@@ -40,7 +39,7 @@ pub fn bevy_main(initial_plugins: impl InitialPlugins) {
         .set_runner(terminal_runner)
         .setup_reloadable_elements::<update::reloadable>()
         .run();
-}
+});
 
 #[derive(Resource)]
 pub struct Text(pub Handle<TextAsset>);

@@ -13,7 +13,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 bevy = { version = "0.13", default_features = false }
-dexterous_developer = { path = "../../../dexterous_developer", features = ["bevy"] }
+bevy_dexterous_developer = { path = "../../../bevy_dexterous_developer" }
 
 [[example]]
 name = "reload_example"
@@ -21,4 +21,4 @@ path = "examples/reload_example.rs"
 crate-type = ["dylib"]
 
 [package.metadata]
-hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher"]
+hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher", "bevy_dexterous_developer/hot_internal"]

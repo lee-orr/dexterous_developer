@@ -46,7 +46,7 @@ This allows you to only enable more complex reload (cleanup/setup functions and/
 
 ```rust
 #[dexterous_developer_setup]
-fn reloadable(app: &mut ReloadableAppContents) {
+fn reloadable(app) {
     ...
 }
 ```
@@ -55,29 +55,26 @@ In your app, you can treat these similarly to plugins, and have more than one of
 
 ```rust
 
-#[hot_bevy_main]
-pub fn bevy_main(initial_plugins: impl InitialPlugins) {
+reloadable_main!( bevy_main(initial_plugins) {
     App::new()
     ...
         .setup_reloadable_elements::<first::reloadable>()
         .setup_reloadable_elements::<second::reloadable>()
     ...
-}
+});
 
 mod first {
-        #[dexterous_developer_setup(first_reloadable)]
-    fn reloadable(app: &mut ReloadableAppContents) {
+    reloadable_scope!("first_reloadable", fn reloadable(app) {
         ...
-    }
+    });
 
 }
 
 mod second {
 
-    #[dexterous_developer_setup(second_reloadable)]
-    fn reloadable(app: &mut ReloadableAppContents) {
+    reloadable_scope!("second_reloadable", reloadable(app) {
         ...
-    }
+    });
 }
 
 

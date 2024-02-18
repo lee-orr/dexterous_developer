@@ -13,7 +13,6 @@ use bevy::utils::Instant;
 
 use bevy::log::{debug, info};
 
-pub extern crate dexterous_developer_macros;
 pub extern crate libloading;
 
 use crate::hot_internal::hot_reload_internal::draw_internal_hot_reload;

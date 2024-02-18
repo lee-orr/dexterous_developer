@@ -1,5 +1,5 @@
 use bevy::prelude::{Commands, Component, PreUpdate, Query, Res, Resource, Startup, Update};
-use dexterous_developer::*;
+use bevy_dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
 use crate::shared::StdInput;
@@ -34,13 +34,12 @@ fn setup(mut commands: Commands) {
     commands.spawn(TextComponent { content: "a_thing".to_string()});
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app.add_systems(Startup, startup)
         .add_systems(PreUpdate, spawn_texts)
         .add_systems(Update, update)
         .reset_setup::<TextComponent, _>(setup);
-}
+});
 
 #[derive(Component, Serialize, Deserialize, Default)]
 struct TextComponent {

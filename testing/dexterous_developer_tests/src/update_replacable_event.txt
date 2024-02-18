@@ -1,6 +1,6 @@
 use crate::shared::StdInput;
 use bevy::prelude::*;
-use dexterous_developer::*;
+use bevy_dexterous_developer::*;
 use serde::{Deserialize, Serialize};
 
 fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
@@ -42,9 +42,8 @@ impl ReplacableEvent for AppEvent {
     }
 }
 
-#[dexterous_developer_setup]
-pub fn reloadable(app: &mut ReloadableAppContents) {
+reloadable_scope!(reloadable(app) {
     app.add_event::<AppEvent>()
         .add_systems(Startup, startup)
         .add_systems(Update, (update, read).chain());
-}
+});
