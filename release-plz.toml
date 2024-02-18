@@ -5,24 +5,3 @@ pr_labels = ["release"] # add the `release` label to the release Pull Request
 publish_allow_dirty = true # add `--allow-dirty` to `cargo publish`
 
 semver_check = false # disable API breaking changes checks
-
-[[package]]
-name = "dexterous_developer_example"
-publish = false
-
-[[package]]
-name = "dexterous_developer_tests"
-publish = false
-
-[[package]]
-name = "asset_test"
-publish = false
-[[package]]
-name = "example_cli_test"
-publish = false
-[[package]]
-name = "reloadables_test"
-publish = false
-[[package]]
-name = "simple_cli_test"
-publish = false
