@@ -1,6 +1,6 @@
 mod update;
 
-use bevy_dexterous_developer::{reloadable_main, InitialPlugins, ReloadableElementsSetup};
+use bevy_dexterous_developer::{reloadable_main, ReloadableElementsSetup};
 use std::str::Utf8Error;
 use thiserror::Error;
 

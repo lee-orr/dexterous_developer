@@ -64,10 +64,7 @@ pub fn setup_build_settings(
 
     info!("Compiling with features: {}", features.join(", "));
 
-    let mut features = features
-        .iter()
-        .cloned()
-        .collect::<BTreeSet<_>>();
+    let mut features = features.iter().cloned().collect::<BTreeSet<_>>();
 
     let mut get_metadata = cargo_metadata::MetadataCommand::new();
     get_metadata.no_deps();

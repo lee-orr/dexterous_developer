@@ -1,6 +1,6 @@
 mod update;
 use bevy::{log::info, prelude::App, MinimalPlugins};
-use bevy_dexterous_developer::{reloadable_main, InitialPlugins, ReloadableElementsSetup};
+use bevy_dexterous_developer::{reloadable_main, ReloadableElementsSetup};
 
 fn terminal_runner(mut app: App) {
     app.update();

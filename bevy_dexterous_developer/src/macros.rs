@@ -5,6 +5,7 @@ macro_rules! reloadable_main {
     ($f:ident ($attr: ident) $body:block) => {
         fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 
+        #[cfg(feature = "hot_internal")]
         #[no_mangle]
         pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
             reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(library_paths, closure));
@@ -27,7 +28,7 @@ macro_rules! reloadable_scope {
     };
 
     (@inner $f:ident, $attr:ident, $internal_f:tt, $body:block) => {
-        #[no_mangle]            
+        #[no_mangle]
         pub fn $internal_f($attr: &mut ReloadableAppContents) $body
 
         #[allow(non_camel_case_types)]
@@ -41,7 +42,7 @@ macro_rules! reloadable_scope {
             }
 
             fn default_function(app: &mut ReloadableAppContents) {
-                bevy::prelude::trace!("Running Reloadable Function: {}", stringify!($f));        
+                bevy::prelude::trace!("Running Reloadable Function: {}", stringify!($f));
                 bevy_dexterous_developer::macros::paste! {
                     $internal_f(app);
                 }

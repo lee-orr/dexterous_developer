@@ -1,5 +1,5 @@
-mod types;
 pub mod macros;
+mod types;
 
 #[cfg(not(feature = "hot_internal"))]
 mod cold;

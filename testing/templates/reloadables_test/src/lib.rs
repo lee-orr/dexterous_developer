@@ -1,7 +1,7 @@
 pub mod shared;
 mod update;
 use bevy::{prelude::App, MinimalPlugins};
-use bevy_dexterous_developer::{reloadable_main, InitialPlugins, ReloadableElementsSetup};
+use bevy_dexterous_developer::{reloadable_main, ReloadableElementsSetup};
 
 use crate::shared::AppState;
 

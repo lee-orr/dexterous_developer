@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 
+use bevy_dexterous_developer::{
+    reloadable_main, reloadable_scope, ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState,
+};
 #[allow(unused_imports)]
 use bevy_dexterous_developer::{
-    InitialPlugins, ReloadableApp, ReloadableAppContents,
-    ReloadableElementsSetup, ReplacableComponent, ReplacableResource,
+    InitialPlugins, ReloadableApp, ReloadableAppContents, ReloadableElementsSetup,
+    ReplacableComponent, ReplacableResource,
 };
-use bevy_dexterous_developer::{reloadable_main, reloadable_scope, ReloadMode, ReloadSettings, ReloadableSetup, ReplacableState};
 use serde::{Deserialize, Serialize};
 
 reloadable_main!(bevy_main (initial_plugins) {
