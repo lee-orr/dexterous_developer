@@ -13,7 +13,7 @@ fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
     } else {
         AppEvent::Text(text.to_string())
     };
-    event.send(e)
+    event.send(e);
 }
 
 fn read(input: Res<StdInput>, mut event: EventReader<AppEvent>) {
