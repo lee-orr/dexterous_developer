@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - '!release-plz-*'
   push:
     branches: ["main"]
 
