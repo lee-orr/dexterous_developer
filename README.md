@@ -40,7 +40,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 bevy = "0.13"
-dexterous_developer = "0.1"
+dexterous_developer = "0.1.1"
 serde = "1" # If you want the serialization capacities
 
 [package.metadata]
@@ -91,6 +91,6 @@ fn reloadable(app: &mut ReloadableAppContents) {
 
 | Bevy | Dexterous Developer |
 | --- |--------------------|
-| 0.13 | >= 0.1.1 |
+| 0.13 | >= 0.2 |
 | 0.12 | 0.0.12, 0.1        |
 | 0.11 | <= 0.0.11          |
