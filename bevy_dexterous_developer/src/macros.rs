@@ -1,20 +1,36 @@
 pub use paste::paste;
 
-#[macro_export]
-macro_rules! reloadable_main {
-    ($f:ident ($attr: ident) $body:block) => {
-        fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
+#[cfg(feature = "hot_internal")]
+mod hot {
+    #[macro_export]
+    macro_rules! reloadable_main {
+        ($f:ident ($attr: ident) $body:block) => {
+            fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 
-        #[cfg(feature = "hot_internal")]
-        #[no_mangle]
-        pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
-            reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(library_paths, closure));
-        }
+            #[no_mangle]
+            pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
+                reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(library_paths, closure));
+            }
 
-        pub fn $f() {
-            reloadable_main_implementation(bevy_dexterous_developer::InitialPluginsEmpty);
-        }
-    };
+            pub fn $f() {
+                reloadable_main_implementation(bevy_dexterous_developer::InitialPluginsEmpty);
+            }
+        };
+    }
+}
+
+#[cfg(not(feature = "hot_internal"))]
+mod cold {
+    #[macro_export]
+    macro_rules! reloadable_main {
+        ($f:ident ($attr: ident) $body:block) => {
+            fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
+
+            pub fn $f() {
+                reloadable_main_implementation(bevy_dexterous_developer::InitialPluginsEmpty);
+            }
+        };
+    }
 }
 
 #[macro_export]
