@@ -14,7 +14,7 @@ members = [
     "dexterous_developer_builder",
     "dexterous_developer_types",
     "dexerous_developer_manager_server",
-    "dexerous_developer_manager_client",
+    "dexerous_developer_dylib_manager",
 ]
 
 exclude = [

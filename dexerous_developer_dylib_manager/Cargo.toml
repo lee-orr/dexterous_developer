@@ -1,5 +1,5 @@
 [package]
-name = "dexerous_developer_manager_client"
+name = "dexerous_developer_dylib_manager"
 edition = "2021"
 version.workspace = true
 authors.workspace = true
