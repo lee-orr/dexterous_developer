@@ -10,8 +10,12 @@ members = [
     "dexterous_developer_example",
     "testing/dexterous_developer_tests",
     "testing/templates/*",
-    "testing/tmp/*"
-, "dexterous_developer_builder", "dexterous_developer_types", "dexerous_developer_manager_server", "dexerous_developer_manager_client"]
+    "testing/tmp/*",
+    "dexterous_developer_builder",
+    "dexterous_developer_types",
+    "dexerous_developer_manager_server",
+    "dexerous_developer_manager_client",
+]
 
 exclude = [
     "testing/templates/remote_client",
