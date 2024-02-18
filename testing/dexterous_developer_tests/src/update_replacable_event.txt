@@ -17,7 +17,7 @@ fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
 }
 
 fn read(input: Res<StdInput>, mut event: EventReader<AppEvent>) {
-    for event in event.iter() {
+    for event in event.read() {
         let text = match event {
             AppEvent::Text(s) => format!("Text - {s}"),
             AppEvent::Shout(s) => format!("Shout - {s}"),

@@ -6,11 +6,11 @@ use crate::shared::{StdInput};
 fn update(input: Res<StdInput>, mut event: EventWriter<AppEvent>) {
     let text = input.0.as_str();
     println!("Got: {text}");
-    event.send(AppEvent::Text(text.to_string()))
+    event.send(AppEvent::Text(text.to_string()));
 }
 
 fn read(input: Res<StdInput>, mut event: EventReader<AppEvent>) {
-    for event in event.iter() {
+    for event in event.read() {
         let text = match event {
            AppEvent::Text(s) => format!("Text - {s}"),
         };
