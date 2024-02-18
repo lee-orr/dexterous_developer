@@ -1,9 +1,6 @@
 #[cfg(feature = "hot")]
 mod hot;
 
-#[cfg(not(any(feature = "hot", feature = "hot_internal")))]
-mod cold;
-
 #[cfg(any(feature = "hot", feature = "hot_internal"))]
 pub mod internal_shared;
 
