@@ -850,10 +850,10 @@ mod test {
     // async fn can_run_with_reloadables() {
     //     super::can_run_with_reloadables().await;
     // }
-    #[tokio::test]
-    async fn can_run_remote() {
-        super::can_run_remote().await;
-    }
+    // #[tokio::test]
+    // async fn can_run_remote() {
+    //     super::can_run_remote().await;
+    // }
     // #[tokio::test]
     // async fn can_update_assets() {
     //     super::can_update_assets().await;

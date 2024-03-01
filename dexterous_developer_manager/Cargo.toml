@@ -1,0 +1,31 @@
+[package]
+name = "dexterous_developer_manager"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[features]
+
+[dependencies]
+tracing = { version = "0.1" }
+tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
+tokio = { version = "1", features = ["full"]}
+serde = { version = "1", features = ["derive"]}
+axum = { version = "0.7", features = ["ws"]}
+thiserror = "1"
+dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types"}
+futures-util = { version = "0.3", default-features = false, features = [
+    "sink",
+    "std",
+] }
+rmp-serde = { version = "1" }
+
+[dev-dependencies]
+tokio-tungstenite = { version = "0.21"}

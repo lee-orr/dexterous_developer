@@ -10,7 +10,7 @@ members = [
     "testing/dexterous_developer_tests",
     "testing/templates/*",
     "testing/tmp/*"
-, "dexterous_developer_builder", "dexterous_developer_types"]
+, "dexterous_developer_builder", "dexterous_developer_types", "dexterous_developer_manager"]
 
 exclude = [
     "testing/templates/remote_client",

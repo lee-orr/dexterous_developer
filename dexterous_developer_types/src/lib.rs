@@ -46,6 +46,28 @@ pub enum Target {
     IOS,
 }
 
+impl Target {
+    pub fn current() -> Option<Self> {
+        if cfg!(target_os = "linux") {
+            if cfg!(target_arch = "aarch64") {
+                Some(Self::LinuxArm)
+            } else {
+                Some(Self::Linux)
+            }
+        } else if cfg!(target_os = "windows") {
+            Some(Self::Windows)
+        } else if cfg!(target_os = "macos") {
+            if cfg!(target_arch = "aarch64") {
+                Some(Self::MacArm)
+            } else {
+                Some(Self::Mac)
+            }
+        } else {
+            None
+        }
+    }
+}
+
 impl Serialize for Target {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -130,6 +152,24 @@ impl FromStr for Target {
             bail!("Invalid Target");
         }
     }
+}
+
+pub trait Builder: 'static + Send + Sync {
+    fn targets(&self) -> Vec<Target>;
+    fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages>;
+    fn outgoing_channel(&self) -> tokio::sync::watch::Receiver<BuilderOutgoingMessages>;
+}
+
+#[derive(Debug, Clone)]
+pub enum BuilderIncomingMessages {
+    RequestBuild(Target),
+}
+
+#[derive(Debug, Clone)]
+pub enum BuilderOutgoingMessages {
+    Waiting,
+    InvalidTarget(Target),
+    BuildSubscription(Target, tokio::sync::watch::Receiver<HotReloadMessage>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
