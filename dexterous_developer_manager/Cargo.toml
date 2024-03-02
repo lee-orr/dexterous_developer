@@ -12,21 +12,22 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
-
+server = []
 [dependencies]
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"]}
 serde = { version = "1", features = ["derive"]}
-axum = { version = "0.7", features = ["ws"]}
 thiserror = "1"
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types"}
 dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}
-futures-util = { version = "0.3", default-features = false, features = [
+
+axum = { version = "0.7", features = ["ws"], optional = true}
+futures-util = { version = "0.3", default-features = false, optional = true, features = [
     "sink",
     "std",
 ] }
-rmp-serde = { version = "1" }
+rmp-serde = { version = "1", optional = true }
 
 [dev-dependencies]
 tokio-tungstenite = { version = "0.21"}
