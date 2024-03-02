@@ -21,6 +21,7 @@ serde = { version = "1", features = ["derive"]}
 axum = { version = "0.7", features = ["ws"]}
 thiserror = "1"
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types"}
+dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}
 futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",

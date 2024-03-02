@@ -1,11 +1,11 @@
+use dexterous_developer_builder::types::{
+    Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
+};
+use dexterous_developer_types::{HotReloadMessage, Target};
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
     sync::Arc,
-};
-
-use dexterous_developer_types::{
-    Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HotReloadMessage, Target,
 };
 use thiserror::Error;
 use tokio::sync::{mpsc, watch};
@@ -78,7 +78,9 @@ impl Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dexterous_developer_types::{BuilderIncomingMessages, BuilderOutgoingMessages};
+    use dexterous_developer_builder::types::{
+        Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
+    };
 
     struct TestBuilder;
 
@@ -87,16 +89,11 @@ mod tests {
             vec![Target::Android]
         }
 
-        fn incoming_channel(
-            &self,
-        ) -> tokio::sync::mpsc::Sender<dexterous_developer_types::BuilderIncomingMessages> {
+        fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages> {
             mpsc::channel(1).0
         }
 
-        fn outgoing_channel(
-            &self,
-        ) -> tokio::sync::watch::Receiver<dexterous_developer_types::BuilderOutgoingMessages>
-        {
+        fn outgoing_channel(&self) -> tokio::sync::watch::Receiver<BuilderOutgoingMessages> {
             watch::channel(BuilderOutgoingMessages::Waiting).1
         }
     }
@@ -108,16 +105,11 @@ mod tests {
             vec![Target::Android, Target::IOS]
         }
 
-        fn incoming_channel(
-            &self,
-        ) -> tokio::sync::mpsc::Sender<dexterous_developer_types::BuilderIncomingMessages> {
+        fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages> {
             mpsc::channel(1).0
         }
 
-        fn outgoing_channel(
-            &self,
-        ) -> tokio::sync::watch::Receiver<dexterous_developer_types::BuilderOutgoingMessages>
-        {
+        fn outgoing_channel(&self) -> tokio::sync::watch::Receiver<BuilderOutgoingMessages> {
             watch::channel(BuilderOutgoingMessages::Waiting).1
         }
     }
@@ -216,10 +208,7 @@ mod tests {
             self.incoming.clone()
         }
 
-        fn outgoing_channel(
-            &self,
-        ) -> tokio::sync::watch::Receiver<dexterous_developer_types::BuilderOutgoingMessages>
-        {
+        fn outgoing_channel(&self) -> tokio::sync::watch::Receiver<BuilderOutgoingMessages> {
             self.outgoing.clone()
         }
     }
