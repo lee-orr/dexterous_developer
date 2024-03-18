@@ -15,5 +15,5 @@ documentation.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"]}
-anyhow = { version = "1" }
 tracing = { version = "0.1" }
+thiserror = "1"

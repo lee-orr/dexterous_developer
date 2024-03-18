@@ -2,8 +2,8 @@ pub mod cargo_path_utils;
 
 use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
 
-use anyhow::bail;
 use serde::{de, Deserialize, Deserializer, Serialize};
+use thiserror::Error;
 use tracing::debug;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -125,8 +125,14 @@ impl Deref for Target {
     }
 }
 
+#[derive(Error, Debug, Serialize, Deserialize)]
+pub enum TargetParseError {
+    #[error("Couldn't Parse Target")]
+    InvalidTarget,
+}
+
 impl FromStr for Target {
-    type Err = anyhow::Error;
+    type Err = TargetParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim().to_lowercase();
@@ -149,7 +155,7 @@ impl FromStr for Target {
         } else if s.contains("ios") {
             Ok(Self::IOS)
         } else {
-            bail!("Invalid Target");
+            Err(TargetParseError::InvalidTarget)
         }
     }
 }

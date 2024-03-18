@@ -23,3 +23,4 @@ dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_
 cargo_metadata = { version = "0.18" }
 which = { version = "6" }
 tokio = { version = "1", features = ["sync"]}
+dashmap = { version = "5", features = ["serde"] }
