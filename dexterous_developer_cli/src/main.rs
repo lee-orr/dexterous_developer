@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use dexterous_developer_internal::compile_reloadable_libraries;
 use dexterous_developer_types::{HotReloadOptions, Target};
 use url::Url;
 
 use dexterous_developer_cli::{
     cross::AppleSDKPath,
     cross::{self, check_cross_requirements_installed},
-    existing::load_existing_directory,
     paths::{self, CliPaths},
     temporary_manifest::setup_temporary_manifest,
 };
@@ -133,124 +131,124 @@ impl Default for Commands {
 
 #[tokio::main]
 async fn main() {
-    if std::env::var("DEXTEROUS_BUILD_SETTINGS").is_ok() {
-        let result = dexterous_developer_internal::run_reloadabe_app(Default::default());
-        if let Err(e) = result {
-            eprintln!("Run Failed with error - {e}");
-            std::process::exit(1);
-        }
-        std::process::exit(0);
-    }
+    // if std::env::var("DEXTEROUS_BUILD_SETTINGS").is_ok() {
+    //     let result = dexterous_developer_internal::run_reloadabe_app(Default::default());
+    //     if let Err(e) = result {
+    //         eprintln!("Run Failed with error - {e}");
+    //         std::process::exit(1);
+    //     }
+    //     std::process::exit(0);
+    // }
 
-    let Args { command } = Args::parse();
-    let dir = std::env::current_dir().expect("No current directory - nothing to run");
-    println!("Current directory: {:?}", &dir);
-    std::env::set_var("CARGO_MANIFEST_DIR", &dir);
+    // let Args { command } = Args::parse();
+    // let dir = std::env::current_dir().expect("No current directory - nothing to run");
+    // println!("Current directory: {:?}", &dir);
+    // std::env::set_var("CARGO_MANIFEST_DIR", &dir);
 
-    match command {
-        Commands::Run {
-            package,
-            example,
-            features,
-            watch,
-        } => {
-            println!("Running {package:?} with {features:?}");
+    // match command {
+    //     Commands::Run {
+    //         package,
+    //         example,
+    //         features,
+    //         watch,
+    //     } => {
+    //         println!("Running {package:?} with {features:?}");
 
-            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
-                .expect("Couldn't set up temporary manifest");
+    //         let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
+    //             .expect("Couldn't set up temporary manifest");
 
-            let options = HotReloadOptions {
-                features,
-                package,
-                example,
-                watch_folders: watch,
-                ..Default::default()
-            };
+    //         let options = HotReloadOptions {
+    //             features,
+    //             package,
+    //             example,
+    //             watch_folders: watch,
+    //             ..Default::default()
+    //         };
 
-            let result = dexterous_developer_internal::run_reloadabe_app(options);
-            if let Some(manifest) = temporary {
-                println!("Resetting original manifest - {manifest}");
-            };
-            if let Err(e) = result {
-                eprintln!("Run Failed with error - {e}");
-                std::process::exit(1);
-            }
-        }
-        Commands::Serve {
-            package: _,
-            example: _,
-            features: _,
-            watch: _,
-            port: _,
-        } => {
-            // println!("Serving {package:?} on port {port}");
+    //         let result = dexterous_developer_internal::run_reloadabe_app(options);
+    //         if let Some(manifest) = temporary {
+    //             println!("Resetting original manifest - {manifest}");
+    //         };
+    //         if let Err(e) = result {
+    //             eprintln!("Run Failed with error - {e}");
+    //             std::process::exit(1);
+    //         }
+    //     }
+    //     Commands::Serve {
+    //         package: _,
+    //         example: _,
+    //         features: _,
+    //         watch: _,
+    //         port: _,
+    //     } => {
+    //         // println!("Serving {package:?} on port {port}");
 
-            // let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
-            //     .expect("Couldn't set up temporary manifest");
-            // run_server(port, package, features, watch)
-            //     .await
-            //     .expect("Couldn't run server");
-            // if let Some(manifest) = temporary {
-            //     println!("Resetting original manifest - {manifest}");
-            // };
-        }
-        Commands::Remote { remote: _, dir: _ } => {
-            // connect_to_remote(remote, dir)
-            //     .await
-            //     .expect("Remote Connection Failed");
-        }
-        Commands::InstallCross {
-            macos_sdk_url,
-            ios_sdk_url,
-            targets,
-        } => {
-            let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);
-            let ios_sdk_url = ios_sdk_url.map(AppleSDKPath::Url);
-            println!("Setup cross compiling");
-            cross::install_cross(&targets, macos_sdk, ios_sdk_url)
-                .await
-                .expect("Failed to install cross");
-        }
-        Commands::RunExisting { libs } => {
-            println!("Running existing libraries");
-            load_existing_directory(libs)
-                .await
-                .expect("Couldn't run existing libs");
-        }
-        Commands::CompileLibs {
-            package,
-            example,
-            features,
-            libs,
-            target,
-        } => {
-            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
-                .expect("Couldn't set up temporary manifest");
-            let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
-            if cross_config.exists() {
-                std::env::set_var("CROSS_CONFIG", &cross_config);
-            }
-            let target = target.map(|v| v.parse::<Target>().expect("Invalid Target {v}"));
+    //         // let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
+    //         //     .expect("Couldn't set up temporary manifest");
+    //         // run_server(port, package, features, watch)
+    //         //     .await
+    //         //     .expect("Couldn't run server");
+    //         // if let Some(manifest) = temporary {
+    //         //     println!("Resetting original manifest - {manifest}");
+    //         // };
+    //     }
+    //     Commands::Remote { remote: _, dir: _ } => {
+    //         // connect_to_remote(remote, dir)
+    //         //     .await
+    //         //     .expect("Remote Connection Failed");
+    //     }
+    //     Commands::InstallCross {
+    //         macos_sdk_url,
+    //         ios_sdk_url,
+    //         targets,
+    //     } => {
+    //         let macos_sdk = macos_sdk_url.map(AppleSDKPath::Url);
+    //         let ios_sdk_url = ios_sdk_url.map(AppleSDKPath::Url);
+    //         println!("Setup cross compiling");
+    //         cross::install_cross(&targets, macos_sdk, ios_sdk_url)
+    //             .await
+    //             .expect("Failed to install cross");
+    //     }
+    //     Commands::RunExisting { libs } => {
+    //         println!("Running existing libraries");
+    //         load_existing_directory(libs)
+    //             .await
+    //             .expect("Couldn't run existing libs");
+    //     }
+    //     Commands::CompileLibs {
+    //         package,
+    //         example,
+    //         features,
+    //         libs,
+    //         target,
+    //     } => {
+    //         let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
+    //             .expect("Couldn't set up temporary manifest");
+    //         let CliPaths { cross_config, .. } = paths::get_paths().expect("Couldn't get cli paths");
+    //         if cross_config.exists() {
+    //             std::env::set_var("CROSS_CONFIG", &cross_config);
+    //         }
+    //         let target = target.map(|v| v.parse::<Target>().expect("Invalid Target {v}"));
 
-            println!("Compiling Reloadable Libs");
+    //         println!("Compiling Reloadable Libs");
 
-            if let Some(target) = target.as_ref() {
-                check_cross_requirements_installed(target)
-                    .expect("Cross Compilation Requirements Missing");
-            }
+    //         if let Some(target) = target.as_ref() {
+    //             check_cross_requirements_installed(target)
+    //                 .expect("Cross Compilation Requirements Missing");
+    //         }
 
-            let options = HotReloadOptions {
-                package,
-                features,
-                build_target: target,
-                ..Default::default()
-            };
+    //         let options = HotReloadOptions {
+    //             package,
+    //             features,
+    //             build_target: target,
+    //             ..Default::default()
+    //         };
 
-            compile_reloadable_libraries(options, &libs)
-                .expect("Couldn't compile reloadable library");
-            if let Some(manifest) = temporary {
-                println!("Resetting original manifest - {manifest}");
-            };
-        }
-    }
+    //         compile_reloadable_libraries(options, &libs)
+    //             .expect("Couldn't compile reloadable library");
+    //         if let Some(manifest) = temporary {
+    //             println!("Resetting original manifest - {manifest}");
+    //         };
+    //     }
+    // }
 }

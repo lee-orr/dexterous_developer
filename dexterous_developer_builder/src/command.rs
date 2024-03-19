@@ -16,7 +16,6 @@ use tracing::{debug, error, info, trace};
 use dexterous_developer_types::{cargo_path_utils, HotReloadOptions, LibPathSet};
 
 use super::build_settings::{BuildSettings, PackageOrExample};
-use super::singleton::{BUILD_SETTINGS, WATCHER};
 
 pub enum BuildSettingsReady {
     LibraryPath(LibPathSet),
