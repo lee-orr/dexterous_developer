@@ -10,8 +10,6 @@ use dexterous_developer_cli::{
     cross::{self, check_cross_requirements_installed},
     existing::load_existing_directory,
     paths::{self, CliPaths},
-    remote::connect_to_remote,
-    serve::run_server,
     temporary_manifest::setup_temporary_manifest,
 };
 
@@ -179,27 +177,27 @@ async fn main() {
             }
         }
         Commands::Serve {
-            package,
-            example,
-            features,
-            watch,
-            port,
+            package: _,
+            example: _,
+            features: _,
+            watch: _,
+            port: _,
         } => {
-            println!("Serving {package:?} on port {port}");
+            // println!("Serving {package:?} on port {port}");
 
-            let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
-                .expect("Couldn't set up temporary manifest");
-            run_server(port, package, features, watch)
-                .await
-                .expect("Couldn't run server");
-            if let Some(manifest) = temporary {
-                println!("Resetting original manifest - {manifest}");
-            };
+            // let temporary = setup_temporary_manifest(&dir, package.as_deref(), example.as_deref())
+            //     .expect("Couldn't set up temporary manifest");
+            // run_server(port, package, features, watch)
+            //     .await
+            //     .expect("Couldn't run server");
+            // if let Some(manifest) = temporary {
+            //     println!("Resetting original manifest - {manifest}");
+            // };
         }
-        Commands::Remote { remote, dir } => {
-            connect_to_remote(remote, dir)
-                .await
-                .expect("Remote Connection Failed");
+        Commands::Remote { remote: _, dir: _ } => {
+            // connect_to_remote(remote, dir)
+            //     .await
+            //     .expect("Remote Connection Failed");
         }
         Commands::InstallCross {
             macos_sdk_url,

@@ -297,6 +297,7 @@ async fn connect_to_build(
                     println!("Done sending asset update");
                 }
                 HotReloadMessage::KeepAlive => println!("Received Keep Alive Message"),
+                HotReloadMessage::InitialState { root_lib, libraries, assets } => todo!(),
             }
         }
     }

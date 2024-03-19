@@ -1,4 +1,4 @@
-use std::{path::PathBuf};
+use std::path::PathBuf;
 
 use dashmap::DashMap;
 use dexterous_developer_types::Target;

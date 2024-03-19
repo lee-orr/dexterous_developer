@@ -162,8 +162,14 @@ impl FromStr for Target {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum HotReloadMessage {
+    InitialState {
+        id: uuid::Uuid,
+        root_lib: String,
+        libraries: Vec<(String, [u8; 32])>,
+        assets: Vec<(String, [u8; 32])>,
+    },
     RootLibPath(String),
-    UpdatedLibs(Vec<(String, [u8; 32])>),
-    UpdatedAssets(Vec<(String, [u8; 32])>),
+    UpdatedLibs(String, [u8; 32]),
+    UpdatedAssets(String, [u8; 32]),
     KeepAlive,
 }

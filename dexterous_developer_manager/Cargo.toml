@@ -12,7 +12,6 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
-server = []
 
 [dependencies]
 tracing = { version = "0.1" }
@@ -23,14 +22,15 @@ thiserror = "1"
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types"}
 dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}
 
-axum = { version = "0.7", features = ["ws"], optional = true}
-futures-util = { version = "0.3", default-features = false, optional = true, features = [
+axum = { version = "0.7", features = ["ws"] }
+futures-util = { version = "0.3", default-features = false,  features = [
     "sink",
     "std",
 ] }
-rmp-serde = { version = "1", optional = true }
+rmp-serde = { version = "1"  }
 blake3 = "1"
 walkdir = "2"
 tower-http = { version = "0.5.0", features = ["fs", "trace"] }
 tower = "0.4"
 dashmap = "5"
+uuid = { version = "1.8", features = ["serde", "v4"] }

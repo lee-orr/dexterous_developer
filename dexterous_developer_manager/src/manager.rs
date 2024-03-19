@@ -3,11 +3,8 @@ use dexterous_developer_builder::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
     CurrentBuildState,
 };
-use dexterous_developer_types::{Target};
-use std::{
-    collections::{HashSet},
-    sync::Arc,
-};
+use dexterous_developer_types::Target;
+use std::{collections::HashSet, sync::Arc};
 use thiserror::Error;
 use tokio::{
     sync::{broadcast, mpsc},
@@ -103,13 +100,13 @@ impl Manager {
 
 #[cfg(test)]
 mod tests {
-    
+
+    use std::path::PathBuf;
 
     use super::*;
     use dexterous_developer_builder::types::{
         Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
     };
-    
 
     struct TestBuilder;
 
