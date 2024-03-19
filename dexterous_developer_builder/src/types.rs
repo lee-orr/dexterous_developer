@@ -13,7 +13,7 @@ pub trait Builder: 'static + Send + Sync {
         tokio::sync::broadcast::Receiver<BuilderOutgoingMessages>,
         tokio::sync::broadcast::Receiver<BuildOutputMessages>,
     );
-    fn root_lib_name(&self) -> String;
+    fn root_lib_name(&self) -> PathBuf;
 }
 
 #[derive(Debug, Clone)]
@@ -29,21 +29,42 @@ pub enum BuilderOutgoingMessages {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurrentBuildState {
-    pub root_library: String,
-    pub libraries: DashMap<String, (PathBuf, String, [u8; 32])>,
-    pub assets: DashMap<String, (PathBuf, String, [u8; 32])>,
+    pub root_library: PathBuf,
+    pub libraries: DashMap<PathBuf, HashedFileRecord>,
+    pub assets: DashMap<PathBuf, HashedFileRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HashedFileRecord {
+    pub relative_path: PathBuf,
+    pub local_path: PathBuf,
+    pub hash: [u8; 32],
+}
+
+impl HashedFileRecord {
+    pub fn new(
+        relative_path: impl Into<PathBuf>,
+        local_path: impl Into<PathBuf>,
+        hash: [u8; 32],
+    ) -> Self {
+        Self {
+            relative_path: relative_path.into(),
+            local_path: local_path.into(),
+            hash,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BuildOutputMessages {
-    RootLibraryName(String),
-    LibraryUpdated(PathBuf, String, [u8; 32]),
-    AssetUpdated(PathBuf, String, [u8; 32]),
+    RootLibraryName(PathBuf),
+    LibraryUpdated(HashedFileRecord),
+    AssetUpdated(HashedFileRecord),
     KeepAlive,
 }
 
 impl CurrentBuildState {
-    pub fn new(root_library: String) -> Self {
+    pub fn new(root_library: PathBuf) -> Self {
         Self {
             root_library,
             libraries: Default::default(),
@@ -53,11 +74,11 @@ impl CurrentBuildState {
 
     pub fn update(&self, msg: BuildOutputMessages) -> &Self {
         match msg {
-            BuildOutputMessages::LibraryUpdated(path, name, hash) => {
-                self.libraries.insert(name.clone(), (path, name, hash));
+            BuildOutputMessages::LibraryUpdated(record) => {
+                self.libraries.insert(record.relative_path.clone(), record);
             }
-            BuildOutputMessages::AssetUpdated(path, name, hash) => {
-                self.assets.insert(name.clone(), (path, name, hash));
+            BuildOutputMessages::AssetUpdated(record) => {
+                self.assets.insert(record.relative_path.clone(), record);
             }
             BuildOutputMessages::RootLibraryName(_) | BuildOutputMessages::KeepAlive => {}
         }

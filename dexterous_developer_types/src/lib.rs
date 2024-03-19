@@ -164,12 +164,12 @@ impl FromStr for Target {
 pub enum HotReloadMessage {
     InitialState {
         id: uuid::Uuid,
-        root_lib: String,
-        libraries: Vec<(String, [u8; 32])>,
-        assets: Vec<(String, [u8; 32])>,
+        root_lib: PathBuf,
+        libraries: Vec<(PathBuf, [u8; 32])>,
+        assets: Vec<(PathBuf, [u8; 32])>,
     },
-    RootLibPath(String),
-    UpdatedLibs(String, [u8; 32]),
-    UpdatedAssets(String, [u8; 32]),
+    RootLibPath(PathBuf),
+    UpdatedLibs(PathBuf, [u8; 32]),
+    UpdatedAssets(PathBuf, [u8; 32]),
     KeepAlive,
 }

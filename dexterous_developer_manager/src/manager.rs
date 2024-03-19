@@ -4,7 +4,11 @@ use dexterous_developer_builder::types::{
     CurrentBuildState,
 };
 use dexterous_developer_types::Target;
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use thiserror::Error;
 use tokio::{
     sync::{broadcast, mpsc},
@@ -96,6 +100,26 @@ impl Manager {
         let _ = sender.send(BuilderIncomingMessages::RequestBuild).await;
         Ok(response)
     }
+
+    pub fn get_filepath(
+        &self,
+        target: &Target,
+        path: &Path,
+    ) -> Result<Option<PathBuf>, ManagerError> {
+        let target_ref = self
+            .targets
+            .get(target)
+            .ok_or(ManagerError::MissingTarget(*target))?;
+
+        let current_state = &target_ref.3;
+
+        let file = current_state
+            .libraries
+            .get(path)
+            .or_else(|| current_state.assets.get(path));
+
+        Ok(file.map(|v| v.local_path.clone()))
+    }
 }
 
 #[cfg(test)]
@@ -105,7 +129,7 @@ mod tests {
 
     use super::*;
     use dexterous_developer_builder::types::{
-        Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
+        Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord,
     };
 
     struct TestBuilder;
@@ -128,8 +152,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> String {
-            "root_lib".to_string()
+        fn root_lib_name(&self) -> PathBuf {
+            PathBuf::from("root_lib")
         }
     }
 
@@ -152,8 +176,9 @@ mod tests {
         ) {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
-        fn root_lib_name(&self) -> String {
-            "root_lib".to_string()
+
+        fn root_lib_name(&self) -> PathBuf {
+            PathBuf::from("root_lib")
         }
     }
 
@@ -215,12 +240,14 @@ mod tests {
                                 }
                                 if output_tx
                                     .send(BuildOutputMessages::LibraryUpdated(
-                                        PathBuf::new(),
-                                        "root_lib_path".to_string(),
-                                        [
-                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        ],
+                                        HashedFileRecord::new(
+                                            PathBuf::from("root_lib_path"),
+                                            PathBuf::new(),
+                                            [
+                                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            ],
+                                        ),
                                     ))
                                     .is_err()
                                 {
@@ -260,8 +287,8 @@ mod tests {
             (self.outgoing.subscribe(), self.output.subscribe())
         }
 
-        fn root_lib_name(&self) -> String {
-            "root_lib".to_string()
+        fn root_lib_name(&self) -> PathBuf {
+            PathBuf::from("root_lib")
         }
     }
 
@@ -282,15 +309,22 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, "root_lib");
-            assert!(current_state.libraries.get("root_lib_path").is_none());
+            assert_eq!(current_state.root_library, PathBuf::from("root_lib"));
+            assert!(current_state
+                .libraries
+                .get(&PathBuf::from("root_lib_path"))
+                .is_none());
 
             let _ = channel.send(BuilderIncomingMessages::RequestBuild).await;
 
             let message = rx.recv().await.unwrap();
             match message {
-                BuildOutputMessages::LibraryUpdated(_, message, hash) => {
-                    assert_eq!(message, "root_lib_path");
+                BuildOutputMessages::LibraryUpdated(HashedFileRecord {
+                    relative_path: _,
+                    local_path,
+                    hash,
+                }) => {
+                    assert_eq!(local_path.to_string_lossy(), "root_lib_path");
                     hash
                 }
                 _ => panic!("Message is wrong type"),
@@ -302,10 +336,14 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, "root_lib");
+            assert_eq!(current_state.root_library, PathBuf::from("root_lib"));
 
             assert_eq!(
-                current_state.libraries.get("root_lib_path").unwrap().2,
+                current_state
+                    .libraries
+                    .get(&PathBuf::from("root_lib_path"))
+                    .unwrap()
+                    .hash,
                 hash
             );
         }

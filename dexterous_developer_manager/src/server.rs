@@ -1,20 +1,25 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
+    body::Body,
     extract::{
         ws::{self, WebSocket},
-        Path, State, WebSocketUpgrade,
+        Path, Request, State, WebSocketUpgrade,
     },
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
-use dexterous_developer_builder::types::{BuildOutputMessages, CurrentBuildState};
+use dexterous_developer_builder::types::{
+    BuildOutputMessages, CurrentBuildState, HashedFileRecord,
+};
 use dexterous_developer_types::{HotReloadMessage, Target, TargetParseError};
 use futures_util::{SinkExt, StreamExt};
 use thiserror::Error;
 use tokio::sync::broadcast;
+use tower::ServiceExt;
+use tower_http::services::ServeFile;
 use tracing::{error, info};
 
 use crate::{Manager, ManagerError};
@@ -22,7 +27,8 @@ use crate::{Manager, ManagerError};
 pub async fn run_server(port: u16, manager: Manager) -> Result<(), Error> {
     let app = Router::new()
         .route("/targets", get(list_targets))
-        .route("target/:target", get(connect_to_target));
+        .route("target/:target", get(connect_to_target))
+        .route("/files/:target/:file", get(target_file_loader));
 
     let app = app.with_state(ServerState {
         manager: Arc::new(manager),
@@ -54,6 +60,8 @@ pub enum Error {
     TargetParseError(#[from] TargetParseError),
     #[error("Internal Manager Error {0}")]
     ManagerError(#[from] ManagerError),
+    #[error("The Impossible Happened {0}")]
+    Infallible(#[from] Infallible),
 }
 
 impl IntoResponse for Error {
@@ -100,12 +108,12 @@ async fn connected_to_target(
             libraries: initial_build_state
                 .libraries
                 .iter()
-                .map(|asset| (asset.key().clone(), asset.2))
+                .map(|asset| (asset.key().clone(), asset.hash))
                 .collect(),
             assets: initial_build_state
                 .assets
                 .iter()
-                .map(|asset| (asset.key().clone(), asset.2))
+                .map(|asset| (asset.key().clone(), asset.hash))
                 .collect(),
         };
         let Ok(message) = rmp_serde::to_vec(&initial_state_message) else {
@@ -124,9 +132,9 @@ async fn connected_to_target(
     while let Ok(msg) = tokio::select! {
         val = builder_rx.recv() => {
             val.map(|msg| match msg {
-                BuildOutputMessages::RootLibraryName(name) => Some(HotReloadMessage::RootLibPath(name)),
-                BuildOutputMessages::LibraryUpdated(_, name, hash) => Some(HotReloadMessage::UpdatedLibs(name, hash)),
-                BuildOutputMessages::AssetUpdated(_, name, hash) => Some(HotReloadMessage::UpdatedAssets(name, hash)),
+                BuildOutputMessages::RootLibraryName(local_path) => Some(HotReloadMessage::RootLibPath(local_path)),
+                BuildOutputMessages::LibraryUpdated(HashedFileRecord { relative_path: _, local_path, hash }) => Some(HotReloadMessage::UpdatedLibs(local_path, hash)),
+                BuildOutputMessages::AssetUpdated(HashedFileRecord { relative_path: _, local_path, hash }) => Some(HotReloadMessage::UpdatedAssets(local_path, hash)),
                 BuildOutputMessages::KeepAlive => None,
             })
         }
@@ -149,4 +157,21 @@ async fn connected_to_target(
     }
 
     info!("Connection closed for {id}");
+}
+
+async fn target_file_loader(
+    Path((target, file)): Path<(String, std::path::PathBuf)>,
+    state: State<ServerState>,
+    request: Request<Body>,
+) -> Result<Response, Error> {
+    let target: Target = target.parse()?;
+    println!("Requested file {file:?} from {target}");
+    let Some(file) = state.manager.get_filepath(&target, &file)? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    println!("Found File path: {file:?}");
+    let serve = ServeFile::new(file);
+    let result = serve.oneshot(request).await?;
+    println!("Result has status {:?}", result.status());
+    Ok(result.into_response())
 }
