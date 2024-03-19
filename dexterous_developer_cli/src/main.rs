@@ -5,10 +5,7 @@ use dexterous_developer_types::{HotReloadOptions, Target};
 use url::Url;
 
 use dexterous_developer_cli::{
-    cross::AppleSDKPath,
-    cross::{self, check_cross_requirements_installed},
     paths::{self, CliPaths},
-    temporary_manifest::setup_temporary_manifest,
 };
 
 #[derive(Parser, Debug)]

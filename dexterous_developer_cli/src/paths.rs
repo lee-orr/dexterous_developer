@@ -15,12 +15,10 @@ pub fn get_paths() -> anyhow::Result<CliPaths> {
     }
 
     Ok(CliPaths {
-        cross_config: data.join("cross_config.toml"),
         data,
     })
 }
 
 pub struct CliPaths {
     pub data: PathBuf,
-    pub cross_config: PathBuf,
 }
