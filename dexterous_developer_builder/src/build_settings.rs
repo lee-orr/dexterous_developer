@@ -1,6 +1,5 @@
-use anyhow::Error;
 use dexterous_developer_types::HotReloadMessage;
-use std::{fmt::Display, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone, Default)]
 pub struct BuildSettings {

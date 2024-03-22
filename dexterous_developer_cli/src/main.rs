@@ -1,12 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use dexterous_developer_types::{HotReloadOptions, Target};
+use dexterous_developer_types::Target;
 use url::Url;
-
-use dexterous_developer_cli::{
-    paths::{self, CliPaths},
-};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

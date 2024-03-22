@@ -14,9 +14,7 @@ pub fn get_paths() -> anyhow::Result<CliPaths> {
         std::fs::create_dir_all(data.as_path())?;
     }
 
-    Ok(CliPaths {
-        data,
-    })
+    Ok(CliPaths { data })
 }
 
 pub struct CliPaths {
