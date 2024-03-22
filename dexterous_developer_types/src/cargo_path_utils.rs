@@ -1,4 +1,7 @@
-use std::{env, ffi, io, path::{Path, PathBuf}};
+use std::{
+    env, ffi, io,
+    path::{Path, PathBuf},
+};
 
 use thiserror::Error;
 

@@ -1,4 +1,4 @@
-use std::{env, path::{Path, PathBuf}};
+use std::path::{Path, PathBuf};
 
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
@@ -6,12 +6,20 @@ use thiserror::Error;
 use tokio_tungstenite::connect_async;
 use tracing::info;
 
-pub async fn run_reloadable_app(working_directory: &Path, library_path: &Path, server: url::Url) -> Result<(),DylibRunnerError> {
+pub async fn run_reloadable_app(
+    working_directory: &Path,
+    library_path: &Path,
+    server: url::Url,
+) -> Result<(), DylibRunnerError> {
     if !library_path.exists() {
-        return Err(DylibRunnerError::LibraryDirectoryDoesntExist(library_path.to_owned()));
+        return Err(DylibRunnerError::LibraryDirectoryDoesntExist(
+            library_path.to_owned(),
+        ));
     }
     if !working_directory.exists() {
-        return Err(DylibRunnerError::WorkingDirectoryDoesntExist(working_directory.to_owned()));
+        return Err(DylibRunnerError::WorkingDirectoryDoesntExist(
+            working_directory.to_owned(),
+        ));
     }
 
     let dylib_paths = dylib_path();
@@ -28,30 +36,32 @@ pub async fn run_reloadable_app(working_directory: &Path, library_path: &Path, s
         "https" => "wss",
         "ws" => "ws",
         "wss" => "wss",
-        scheme => return Err(DylibRunnerError::InvalidScheme(server, scheme.to_string()))
+        scheme => return Err(DylibRunnerError::InvalidScheme(server, scheme.to_string())),
     };
 
-    address.set_scheme(new_scheme).map_err(|_e| DylibRunnerError::InvalidScheme(server, "Unknown".to_string()))?;
+    address
+        .set_scheme(new_scheme)
+        .map_err(|_e| DylibRunnerError::InvalidScheme(server, "Unknown".to_string()))?;
 
     let (ws_stream, _) = connect_async(address).await?;
 
     let (_, mut read) = ws_stream.split();
 
     loop {
-         let Some(msg) = read.next().await else {
+        let Some(msg) = read.next().await else {
             return Ok(());
-         };
+        };
 
-         let msg = msg?;
+        let msg = msg?;
 
-         match msg {
+        match msg {
             tokio_tungstenite::tungstenite::Message::Binary(binary) => {
-                let msg : HotReloadMessage = rmp_serde::from_slice(&binary)?;
+                let msg: HotReloadMessage = rmp_serde::from_slice(&binary)?;
                 info!("Received Hot Reload Message: {msg:?}");
-            },
+            }
             _ => {
                 return Ok(());
-            },
+            }
         }
     }
 }
@@ -75,5 +85,5 @@ pub enum DylibRunnerError {
     #[error("WebSocket Error {0}")]
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
     #[error("RMP Parse Error {0}")]
-    RmpPArseError(#[from] rmp_serde::decode::Error)
+    RmpPArseError(#[from] rmp_serde::decode::Error),
 }

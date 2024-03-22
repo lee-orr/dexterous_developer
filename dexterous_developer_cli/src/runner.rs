@@ -1,10 +1,8 @@
-use std::{env, io, path::PathBuf, process, str::FromStr};
+use std::{env, path::PathBuf, process};
 use tracing::error;
-use tracing_subscriber::{filter, prelude::*};
 
-use clap::{Parser, Subcommand};
-use dexterous_developer_types::{cargo_path_utils::add_to_dylib_path, Target};
-use url::Url;
+use clap::Parser;
+use dexterous_developer_types::cargo_path_utils::add_to_dylib_path;
 
 #[derive(Parser, Debug, Default)]
 #[command(author, version, about, long_about = None)]
@@ -63,7 +61,7 @@ async fn main() {
     )
     .await
     {
-        match (e) {
+        match e {
             dexterous_developer_dylib_runner::DylibRunnerError::DylibPathsMissingLibraries => {
                 let executable = env::current_exe().expect("Couldn't get current executable");
                 let (env_var, env_val) = add_to_dylib_path(&library_path)
