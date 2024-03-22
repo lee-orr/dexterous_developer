@@ -1,4 +1,6 @@
-use std::{env, path::PathBuf};
+use std::{env, ffi, io, path::{Path, PathBuf}};
+
+use thiserror::Error;
 
 pub fn dylib_path_envvar() -> &'static str {
     if cfg!(windows) {
@@ -36,6 +38,25 @@ pub fn dylib_path() -> Vec<PathBuf> {
         Some(var) => env::split_paths(&var).collect(),
         None => Vec::new(),
     }
+}
+
+pub fn add_to_dylib_path(path: &Path) -> Result<(&'static str, ffi::OsString), Error> {
+    let cannonical = path.canonicalize()?;
+    let mut dylibs = dylib_path();
+    dylibs.push(cannonical);
+    let value = env::join_paths(&dylibs)?;
+    let env_var = dylib_path_envvar();
+    env::set_var(env_var, &value);
+
+    Ok((env_var, value))
+}
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("IO Error {0}")]
+    IoError(#[from] io::Error),
+    #[error("Join Paths Error {0}")]
+    JoinPathsError(#[from] env::JoinPathsError),
 }
 
 /// Returns a list of directories that are searched for dynamic libraries.

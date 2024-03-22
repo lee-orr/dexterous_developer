@@ -20,43 +20,26 @@ crate-type = ["rlib"]
 name = "dexterous_developer_cli"
 path = "src/main.rs"
 
+[[bin]]
+name = "dexterous_developer_runner"
+path = "src/runner.rs"
+
 [dependencies]
-dexterous_developer_internal = { path = "../dexterous_developer_internal", version = "0.2.0", default-features = false, features = [
-    "hot",
-    "cli",
-] }
 clap = { version = "4", features = ["derive"] }
-axum = { version = "0.7", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.21"
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.5.0", features = ["fs", "trace"] }
-anyhow = "1"
 url = { version = "2", features = ["serde"] }
 futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
 ] }
-crossbeam = "0.8"
-blake3 = "1"
-walkdir = "2"
-notify = { version = "6", default-features = false, features = [
-    "macos_kqueue",
-] }
 dunce = "1"
 directories = "5"
-semver = "1"
-which = "6"
 toml = "0.8"
 cargo_metadata = { version = "0.18" }
-zip = "0.6"
-flate2 = "1"
-tar = "0.4"
-bytes = { version = "1", features = ["std"] }
-
 tracing = { version = "0.1" }
-tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
+tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
+
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
+dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}
+dexterous_developer_manager = { version = "0.2.0", path = "../dexterous_developer_manager"}
+dexterous_developer_dylib_runner = {version = "0.2.0", path = "../dexterous_developer_dylib_runner"}
