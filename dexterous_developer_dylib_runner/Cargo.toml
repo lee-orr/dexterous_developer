@@ -26,4 +26,12 @@ tokio = { version = "1", features = ["full"] }
 blake3 = { version = "1" }
 dunce = "1"
 serde = { version = "1"}
+rmp-serde = { version = "1" }
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
+reqwest = { version = "0.12", features = [] }
+tokio-tungstenite = { version = "0.21", features =[ "native-tls"] }
+url = "2"
+futures-util = { version = "0.3", default-features = false,  features = [
+    "sink",
+    "std",
+] }
