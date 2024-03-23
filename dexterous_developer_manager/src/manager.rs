@@ -1,14 +1,11 @@
+use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 use dexterous_developer_builder::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
     CurrentBuildState,
 };
 use dexterous_developer_types::Target;
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 use thiserror::Error;
 use tokio::{
     sync::{broadcast, mpsc},
@@ -104,8 +101,8 @@ impl Manager {
     pub fn get_filepath(
         &self,
         target: &Target,
-        path: &Path,
-    ) -> Result<Option<PathBuf>, ManagerError> {
+        path: &Utf8Path,
+    ) -> Result<Option<Utf8PathBuf>, ManagerError> {
         let target_ref = self
             .targets
             .get(target)
@@ -124,8 +121,6 @@ impl Manager {
 
 #[cfg(test)]
 mod tests {
-
-    use std::path::PathBuf;
 
     use super::*;
     use dexterous_developer_builder::types::{
@@ -152,8 +147,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> PathBuf {
-            PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Utf8PathBuf {
+            Utf8PathBuf::from("root_lib")
         }
     }
 
@@ -177,8 +172,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> PathBuf {
-            PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Utf8PathBuf {
+            Utf8PathBuf::from("root_lib")
         }
     }
 
@@ -241,8 +236,8 @@ mod tests {
                                 if output_tx
                                     .send(BuildOutputMessages::LibraryUpdated(
                                         HashedFileRecord::new(
-                                            PathBuf::from("root_lib_path"),
-                                            PathBuf::new(),
+                                            "root_lib_path",
+                                            Utf8PathBuf::new(),
                                             [
                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -287,8 +282,8 @@ mod tests {
             (self.outgoing.subscribe(), self.output.subscribe())
         }
 
-        fn root_lib_name(&self) -> PathBuf {
-            PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Utf8PathBuf {
+            Utf8PathBuf::from("root_lib")
         }
     }
 
@@ -309,10 +304,10 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, PathBuf::from("root_lib"));
+            assert_eq!(current_state.root_library, Utf8PathBuf::from("root_lib"));
             assert!(current_state
                 .libraries
-                .get(&PathBuf::from("root_lib_path"))
+                .get(&Utf8PathBuf::from("root_lib_path"))
                 .is_none());
 
             let _ = channel.send(BuilderIncomingMessages::RequestBuild).await;
@@ -320,11 +315,11 @@ mod tests {
             let message = rx.recv().await.unwrap();
             match message {
                 BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                    relative_path: _,
-                    local_path,
+                    relative_path,
+                    local_path: _,
                     hash,
                 }) => {
-                    assert_eq!(local_path.to_string_lossy(), "root_lib_path");
+                    assert_eq!(relative_path.to_string(), "root_lib_path");
                     hash
                 }
                 _ => panic!("Message is wrong type"),
@@ -336,12 +331,12 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, PathBuf::from("root_lib"));
+            assert_eq!(current_state.root_library, Utf8PathBuf::from("root_lib"));
 
             assert_eq!(
                 current_state
                     .libraries
-                    .get(&PathBuf::from("root_lib_path"))
+                    .get(&Utf8PathBuf::from("root_lib_path"))
                     .unwrap()
                     .hash,
                 hash

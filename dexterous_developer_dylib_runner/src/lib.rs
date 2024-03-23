@@ -1,5 +1,4 @@
-use std::path::{Path, PathBuf};
-
+use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use thiserror::Error;
@@ -7,8 +6,8 @@ use tokio_tungstenite::connect_async;
 use tracing::info;
 
 pub async fn run_reloadable_app(
-    working_directory: &Path,
-    library_path: &Path,
+    working_directory: &Utf8Path,
+    library_path: &Utf8Path,
     server: url::Url,
 ) -> Result<(), DylibRunnerError> {
     if !library_path.exists() {
@@ -79,9 +78,9 @@ pub enum DylibRunnerError {
     #[error("Couldn't set websocket scheme for {0:?} - {1} is an invalid scheme")]
     InvalidScheme(url::Url, String),
     #[error("Working Directory does not exist - {0:?}")]
-    WorkingDirectoryDoesntExist(PathBuf),
+    WorkingDirectoryDoesntExist(Utf8PathBuf),
     #[error("Library Directory does not exist - {0:?}")]
-    LibraryDirectoryDoesntExist(PathBuf),
+    LibraryDirectoryDoesntExist(Utf8PathBuf),
     #[error("WebSocket Error {0}")]
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
     #[error("RMP Parse Error {0}")]

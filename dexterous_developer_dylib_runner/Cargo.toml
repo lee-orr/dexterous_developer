@@ -35,3 +35,4 @@ futures-util = { version = "0.3", default-features = false,  features = [
     "sink",
     "std",
 ] }
+camino = "1"

@@ -33,11 +33,15 @@ futures-util = { version = "0.3", default-features = false, features = [
     "std",
 ] }
 dunce = "1"
-directories = "5"
-toml = "0.8"
-cargo_metadata = { version = "0.18" }
+camino = "1"
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
+
+toml = "0.8"
+cargo_toml = "0.19"
+locate-cargo-manifest = "0.2"
+serde = { version = "1", features = ["derive"]}
+
 
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
 dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}

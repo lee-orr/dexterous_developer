@@ -1,8 +1,6 @@
-use std::{
-    env, ffi, io,
-    path::{Path, PathBuf},
-};
+use std::{env, ffi, io};
 
+use camino::{Utf8Path, Utf8PathBuf};
 use thiserror::Error;
 
 pub fn dylib_path_envvar() -> &'static str {
@@ -36,15 +34,17 @@ pub fn dylib_path_envvar() -> &'static str {
 ///
 /// Note that some operating systems will have defaults if this is empty that
 /// will need to be dealt with.
-pub fn dylib_path() -> Vec<PathBuf> {
+pub fn dylib_path() -> Vec<Utf8PathBuf> {
     match env::var_os(dylib_path_envvar()) {
-        Some(var) => env::split_paths(&var).collect(),
+        Some(var) => env::split_paths(&var)
+            .filter_map(|p| Utf8PathBuf::try_from(p).ok())
+            .collect(),
         None => Vec::new(),
     }
 }
 
-pub fn add_to_dylib_path(path: &Path) -> Result<(&'static str, ffi::OsString), Error> {
-    let cannonical = path.canonicalize()?;
+pub fn add_to_dylib_path(path: &Utf8Path) -> Result<(&'static str, ffi::OsString), Error> {
+    let cannonical = path.canonicalize_utf8()?;
     let mut dylibs = dylib_path();
     dylibs.push(cannonical);
     let value = env::join_paths(&dylibs)?;
@@ -66,9 +66,11 @@ pub enum Error {
 ///
 /// Note that some operating systems will have defaults if this is empty that
 /// will need to be dealt with.
-pub fn bin_path() -> Vec<PathBuf> {
+pub fn bin_path() -> Vec<Utf8PathBuf> {
     match env::var_os("PATH") {
-        Some(var) => env::split_paths(&var).collect(),
+        Some(var) => env::split_paths(&var)
+            .filter_map(|p| Utf8PathBuf::try_from(p).ok())
+            .collect(),
         None => Vec::new(),
     }
 }

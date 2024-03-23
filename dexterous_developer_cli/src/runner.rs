@@ -1,4 +1,5 @@
-use std::{env, path::PathBuf, process};
+use camino::Utf8PathBuf;
+use std::{env, process};
 use tracing::error;
 
 use clap::Parser;
@@ -10,11 +11,11 @@ struct Args {
     /// The working directory - this will serve as a root for any assets and other files copied over
     /// as well as being the CWD of the executed code. Defaults to the current directory.
     #[arg(short, long)]
-    working_directory: Option<PathBuf>,
+    working_directory: Option<Utf8PathBuf>,
     /// The library directory - this is where the compiled dynamic libraries
     /// will be stored, and where they are loaded from. Defaults to "./target/reload_libs"
     #[arg(short, long)]
-    library_path: Option<PathBuf>,
+    library_path: Option<Utf8PathBuf>,
     /// The Url for the process handling compilation, defaults to "http://localhost:1234"
     #[arg(short, long)]
     server: Option<url::Url>,
@@ -24,20 +25,14 @@ struct Args {
 async fn main() {
     tracing_subscriber::fmt().pretty().init();
 
+    let cwd =
+        Utf8PathBuf::try_from(env::current_dir().expect("Couldn't determine curent directory"))
+            .expect("Couldn't parse current directory");
+
     let args = Args::parse();
 
-    let working_directory = args
-        .working_directory
-        .or_else(|| env::current_dir().ok())
-        .expect("Couldn't determine current directory");
-    let library_path = args
-        .library_path
-        .or_else(|| {
-            env::current_dir()
-                .map(|dir| dir.join("target").join("reload_libs"))
-                .ok()
-        })
-        .expect("Couldn't determine current directory");
+    let working_directory = args.working_directory.unwrap_or_else(|| cwd.clone());
+    let library_path = args.library_path.unwrap_or_else(|| cwd.clone());
     let server = args
         .server
         .or_else(|| url::Url::parse("http://localhost:1234").ok())

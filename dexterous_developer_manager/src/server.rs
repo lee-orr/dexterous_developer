@@ -11,6 +11,7 @@ use axum::{
     routing::get,
     Router,
 };
+use camino::Utf8PathBuf;
 use dexterous_developer_builder::types::{
     BuildOutputMessages, CurrentBuildState, HashedFileRecord,
 };
@@ -160,7 +161,7 @@ async fn connected_to_target(
 }
 
 async fn target_file_loader(
-    Path((target, file)): Path<(String, std::path::PathBuf)>,
+    Path((target, file)): Path<(String, Utf8PathBuf)>,
     state: State<ServerState>,
     request: Request<Body>,
 ) -> Result<Response, Error> {

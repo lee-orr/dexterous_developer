@@ -1,12 +1,13 @@
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use anyhow::{bail, Context};
+use camino::{Utf8Path, Utf8PathBuf};
 use libloading::Library;
 
 use dexterous_developer_types::cargo_path_utils;
 use tracing::{debug, error, info};
 
-struct LibraryHolderInner(Option<Library>, PathBuf);
+struct LibraryHolderInner(Option<Library>, Utf8PathBuf);
 
 impl Drop for LibraryHolderInner {
     fn drop(&mut self) {
@@ -16,7 +17,8 @@ impl Drop for LibraryHolderInner {
 }
 
 impl LibraryHolderInner {
-    pub fn new(path: &PathBuf) -> Option<Self> {
+    pub fn new(path: &Utf8Path) -> Option<Self> {
+        let path = path.to_owned();
         let extension = path.extension();
         let uuid = uuid::Uuid::new_v4();
         let new_path = path.clone();
@@ -24,14 +26,14 @@ impl LibraryHolderInner {
         let mut archival_path = path.clone();
         if let Some(extension) = extension {
             new_path.set_extension(extension);
-            archival_path.set_extension(format!("{}.backup", extension.to_string_lossy()));
+            archival_path.set_extension(format!("{}.backup", extension));
         }
-        std::fs::copy(path, archival_path).ok()?;
-        std::fs::rename(path, &new_path).ok()?;
+        std::fs::copy(&path, archival_path).ok()?;
+        std::fs::rename(&path, &new_path).ok()?;
         debug!("Copied file to new path");
 
         await_file(10, &new_path);
-        let new_path = dunce::canonicalize(new_path).ok()?;
+        let new_path = Utf8PathBuf::try_from(dunce::canonicalize(new_path).ok()?).ok()?;
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&new_path) } {
@@ -76,7 +78,7 @@ impl LibraryHolderInner {
     }
 }
 
-fn await_file(iterations: usize, path: &PathBuf) {
+fn await_file(iterations: usize, path: &Utf8PathBuf) {
     if path.exists() {
         debug!("Validated {path:?} Exists");
         std::thread::sleep(Duration::from_secs_f32(2.0));
@@ -93,7 +95,7 @@ fn await_file(iterations: usize, path: &PathBuf) {
 pub struct LibraryHolder(Arc<LibraryHolderInner>);
 
 impl LibraryHolder {
-    pub fn new(path: &PathBuf) -> Option<Self> {
+    pub fn new(path: &Utf8Path) -> Option<Self> {
         let inner = LibraryHolderInner::new(path)?;
         Some(Self(Arc::new(inner)))
     }

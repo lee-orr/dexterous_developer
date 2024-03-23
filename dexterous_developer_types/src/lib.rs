@@ -1,35 +1,36 @@
 pub mod cargo_path_utils;
 
-use std::{fmt::Display, ops::Deref, path::PathBuf, str::FromStr};
+use std::{fmt::Display, ops::Deref, str::FromStr};
 
+use camino::Utf8PathBuf;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use tracing::debug;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LibPathSet {
-    path: PathBuf,
+    path: Utf8PathBuf,
 }
 
 impl LibPathSet {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
+    pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
         debug!("Creating path");
         Self { path: path.into() }
     }
 
-    pub fn library_path(&self) -> PathBuf {
+    pub fn library_path(&self) -> Utf8PathBuf {
         self.path.clone()
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct HotReloadOptions {
-    pub manifest_path: Option<PathBuf>,
+    pub manifest_path: Option<Utf8PathBuf>,
     pub package: Option<String>,
     pub example: Option<String>,
     pub lib_name: Option<String>,
-    pub watch_folders: Vec<PathBuf>,
-    pub target_folder: Option<PathBuf>,
+    pub watch_folders: Vec<Utf8PathBuf>,
+    pub target_folder: Option<Utf8PathBuf>,
     pub features: Vec<String>,
     pub build_target: Option<Target>,
 }
@@ -163,12 +164,12 @@ impl FromStr for Target {
 pub enum HotReloadMessage {
     InitialState {
         id: uuid::Uuid,
-        root_lib: PathBuf,
-        libraries: Vec<(PathBuf, [u8; 32])>,
-        assets: Vec<(PathBuf, [u8; 32])>,
+        root_lib: Utf8PathBuf,
+        libraries: Vec<(Utf8PathBuf, [u8; 32])>,
+        assets: Vec<(Utf8PathBuf, [u8; 32])>,
     },
-    RootLibPath(PathBuf),
-    UpdatedLibs(PathBuf, [u8; 32]),
-    UpdatedAssets(PathBuf, [u8; 32]),
+    RootLibPath(Utf8PathBuf),
+    UpdatedLibs(Utf8PathBuf, [u8; 32]),
+    UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,
 }
