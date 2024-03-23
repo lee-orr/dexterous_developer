@@ -31,7 +31,6 @@ pub struct HotReloadOptions {
     pub watch_folders: Vec<PathBuf>,
     pub target_folder: Option<PathBuf>,
     pub features: Vec<String>,
-    pub set_env: bool,
     pub build_target: Option<Target>,
 }
 

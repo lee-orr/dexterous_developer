@@ -1,125 +1,27 @@
-use std::path::PathBuf;
-
-use clap::{Parser, Subcommand};
-use dexterous_developer_types::Target;
-use url::Url;
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[command(subcommand)]
-    command: Commands,
-}
+    /// Package to build (required in a workspace)
+    #[arg(short, long)]
+    package: Option<String>,
 
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Run and launch a hot reloaded application
-    Run {
-        /// Package to build (required in a workspace)
-        #[arg(short, long)]
-        package: Option<String>,
+    /// Example to build
+    #[arg(short, long)]
+    example: Option<String>,
 
-        /// Example to build
-        #[arg(short, long)]
-        example: Option<String>,
+    /// Features to include
+    #[arg(short, long)]
+    features: Vec<String>,
 
-        /// Features to include
-        #[arg(short, long)]
-        features: Vec<String>,
+    /// Port to host on
+    #[arg(default_value = "1234")]
+    port: u16,
 
-        /// Folders to watch - defaults to src in the package root
-        #[arg(short, long)]
-        watch: Vec<PathBuf>,
-    },
-    /// Start a dev server for remote, hot reloaded development
-    Serve {
-        /// Package to build (required in a workspace)
-        #[arg(short, long)]
-        package: Option<String>,
-
-        /// Example to build
-        #[arg(short, long)]
-        example: Option<String>,
-
-        /// Features to include
-        #[arg(short, long)]
-        features: Vec<String>,
-
-        /// Port to host on
-        #[arg(default_value = "1234")]
-        port: u16,
-
-        /// Folders to watch - defaults to src in the package root
-        #[arg(short, long)]
-        watch: Vec<PathBuf>,
-    },
-    /// Connect to a remote dev server and run it's application locally
-    Remote {
-        /// Reload from remote dev server
-        /// Will place all files within the current working directory, or in the reload directory
-        remote: url::Url,
-
-        /// Reload directory
-        /// optional directory to use for the hot reload process
-        #[arg(short, long)]
-        dir: Option<PathBuf>,
-    },
-    /// Set up cross compilation support
-    InstallCross {
-        // /// Macos SDK Tarball File Path
-        // #[arg(long)]
-        // macos_sdk_url: Option<PathBuf>,
-        #[arg(long)]
-        macos_sdk_url: Option<Url>,
-        // /// iOS SDK Tarball File Path
-        // #[arg(long)]
-        // ios_sdk_url: Option<PathBuf>,
-        #[arg(long)]
-        ios_sdk_url: Option<Url>,
-
-        /// The targets you want to install. Options are: linux, linux-arm, windows, mac, mac-arm
-        #[arg(required = true)]
-        targets: Vec<Target>,
-    },
-    /// Run a pre-existing set of compiled libraries. Mostly useful for debugging purposes.
-    RunExisting {
-        /// The location of the existing libraries
-        #[arg(default_value = "./libs")]
-        libs: PathBuf,
-    },
-    /// Compile reloading libraries, without running them. Mostly useful for debugging purposes.
-    CompileLibs {
-        /// Package to build (required in a workspace)
-        #[arg(short, long)]
-        package: Option<String>,
-
-        /// Example to build
-        #[arg(short, long)]
-        example: Option<String>,
-
-        /// Features to include
-        #[arg(short, long)]
-        features: Vec<String>,
-
-        /// Target
-        #[arg(short, long)]
-        target: Option<String>,
-
-        /// The location of the existing libraries
-        #[arg(default_value = "./libs")]
-        libs: PathBuf,
-    },
-}
-
-impl Default for Commands {
-    fn default() -> Self {
-        Self::Run {
-            package: None,
-            example: None,
-            features: vec![],
-            watch: vec![],
-        }
-    }
+    /// Do not run the application localy
+    #[arg(short, long)]
+    serve_only: bool,
 }
 
 #[tokio::main]
