@@ -105,7 +105,12 @@ async fn connected_to_target(
     {
         let initial_state_message = HotReloadMessage::InitialState {
             id,
-            root_lib: initial_build_state.root_library,
+            root_lib: {
+                {
+                    let lock = initial_build_state.root_library.lock().await;
+                    (*lock).as_ref().cloned()
+                }
+            },
             libraries: initial_build_state
                 .libraries
                 .iter()

@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use camino::Utf8PathBuf;
+
 use dashmap::DashMap;
 use dexterous_developer_types::Target;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 pub trait Builder: 'static + Send + Sync {
     fn target(&self) -> Target;
@@ -12,7 +16,7 @@ pub trait Builder: 'static + Send + Sync {
         tokio::sync::broadcast::Receiver<BuilderOutgoingMessages>,
         tokio::sync::broadcast::Receiver<BuildOutputMessages>,
     );
-    fn root_lib_name(&self) -> Utf8PathBuf;
+    fn root_lib_name(&self) -> Option<Utf8PathBuf>;
 }
 
 #[derive(Debug, Clone)]
@@ -26,9 +30,9 @@ pub enum BuilderOutgoingMessages {
     BuildStarted,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct CurrentBuildState {
-    pub root_library: Utf8PathBuf,
+    pub root_library: Arc<Mutex<Option<Utf8PathBuf>>>,
     pub libraries: DashMap<Utf8PathBuf, HashedFileRecord>,
     pub assets: DashMap<Utf8PathBuf, HashedFileRecord>,
 }
@@ -63,15 +67,15 @@ pub enum BuildOutputMessages {
 }
 
 impl CurrentBuildState {
-    pub fn new(root_library: Utf8PathBuf) -> Self {
+    pub fn new(root_library: Option<Utf8PathBuf>) -> Self {
         Self {
-            root_library,
+            root_library: Arc::new(Mutex::new(root_library)),
             libraries: Default::default(),
             assets: Default::default(),
         }
     }
 
-    pub fn update(&self, msg: BuildOutputMessages) -> &Self {
+    pub async fn update(&self, msg: BuildOutputMessages) -> &Self {
         match msg {
             BuildOutputMessages::LibraryUpdated(record) => {
                 self.libraries.insert(record.relative_path.clone(), record);
@@ -79,7 +83,11 @@ impl CurrentBuildState {
             BuildOutputMessages::AssetUpdated(record) => {
                 self.assets.insert(record.relative_path.clone(), record);
             }
-            BuildOutputMessages::RootLibraryName(_) | BuildOutputMessages::KeepAlive => {}
+            BuildOutputMessages::RootLibraryName(name) => {
+                let mut lock = self.root_library.lock().await;
+                let _ = lock.replace(name);
+            }
+            BuildOutputMessages::KeepAlive => {}
         }
         self
     }

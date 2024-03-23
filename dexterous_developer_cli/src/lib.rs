@@ -9,7 +9,7 @@ impl DexterousConfig {
     pub fn generate_build_settings(
         &self,
         package_or_example: Option<PackageOrExample>,
-        features: Vec<String>,
+        features: &[String],
     ) -> Result<Vec<(Target, TargetBuildSettings)>, BuildSettingsGenerationError> {
         let package_or_example = package_or_example.unwrap_or_default();
 
@@ -100,7 +100,7 @@ mod test {
 
         let config = DexterousConfig::load_toml_from_str(toml).expect("Couldn't load toml");
         let build_settings = config
-            .generate_build_settings(None, vec![])
+            .generate_build_settings(None, &[])
             .expect("Couldn't generate build settings");
 
         assert_eq!(build_settings.len(), 1);
@@ -133,7 +133,7 @@ mod test {
         };
 
         let build_settings = config
-            .generate_build_settings(None, vec![])
+            .generate_build_settings(None, &[])
             .expect("Couldn't generate build settings");
 
         assert_eq!(build_settings.len(), 1);
@@ -166,7 +166,7 @@ mod test {
         };
 
         let build_settings = config
-            .generate_build_settings(None, vec![])
+            .generate_build_settings(None, &[])
             .expect("Couldn't generate build settings");
 
         assert_eq!(build_settings.len(), 1);
@@ -217,7 +217,7 @@ mod test {
         let build_settings = config
             .generate_build_settings(
                 Some(PackageOrExample::Package("My-Package".to_string())),
-                vec![],
+                &[],
             )
             .expect("Couldn't generate build settings");
 
@@ -272,7 +272,7 @@ mod test {
         let build_settings = config
             .generate_build_settings(
                 Some(PackageOrExample::Example("My-Example".to_string())),
-                vec![],
+                &[],
             )
             .expect("Couldn't generate build settings");
 
@@ -308,7 +308,7 @@ mod test {
         };
 
         let build_settings = config
-            .generate_build_settings(None, vec!["my-feature".to_string()])
+            .generate_build_settings(None, &["my-feature".to_string()])
             .expect("Couldn't generate build settings");
 
         assert_eq!(build_settings.len(), 1);

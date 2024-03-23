@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use dexterous_developer_types::Target;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::info;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct DexterousConfig {
@@ -38,6 +39,11 @@ impl DexterousConfig {
         } else {
             path.join("Dexterous.toml")
         };
+
+        if !path.exists() {
+            info!("No config found at {path}, using a default config");
+            return Ok(Default::default());
+        }
 
         let file = tokio::fs::read_to_string(path).await?;
 

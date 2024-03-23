@@ -63,7 +63,7 @@ impl Manager {
                                     }
                                 }
                                 Ok(msg) = output.recv() => {
-                                    current_state.update(msg);
+                                    current_state.update(msg).await;
                                 }
                                 else => { break }
                             }
@@ -147,8 +147,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> Utf8PathBuf {
-            Utf8PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
+            Some(Utf8PathBuf::from("root_lib"))
         }
     }
 
@@ -172,8 +172,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> Utf8PathBuf {
-            Utf8PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
+            Some(Utf8PathBuf::from("root_lib"))
         }
     }
 
@@ -282,8 +282,8 @@ mod tests {
             (self.outgoing.subscribe(), self.output.subscribe())
         }
 
-        fn root_lib_name(&self) -> Utf8PathBuf {
-            Utf8PathBuf::from("root_lib")
+        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
+            Some(Utf8PathBuf::from("root_lib"))
         }
     }
 
@@ -304,7 +304,13 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, Utf8PathBuf::from("root_lib"));
+            assert_eq!(
+                {
+                    let lock = current_state.root_library.lock().await;
+                    lock.as_ref().unwrap().clone()
+                },
+                Utf8PathBuf::from("root_lib")
+            );
             assert!(current_state
                 .libraries
                 .get(&Utf8PathBuf::from("root_lib_path"))
@@ -331,7 +337,13 @@ mod tests {
                 .await
                 .expect("Failed to watch target");
 
-            assert_eq!(current_state.root_library, Utf8PathBuf::from("root_lib"));
+            assert_eq!(
+                {
+                    let lock = current_state.root_library.lock().await;
+                    lock.as_ref().unwrap().clone()
+                },
+                Utf8PathBuf::from("root_lib")
+            );
 
             assert_eq!(
                 current_state

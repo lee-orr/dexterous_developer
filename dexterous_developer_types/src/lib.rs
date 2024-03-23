@@ -179,7 +179,7 @@ impl FromStr for Target {
 pub enum HotReloadMessage {
     InitialState {
         id: uuid::Uuid,
-        root_lib: Utf8PathBuf,
+        root_lib: Option<Utf8PathBuf>,
         libraries: Vec<(Utf8PathBuf, [u8; 32])>,
         assets: Vec<(Utf8PathBuf, [u8; 32])>,
     },

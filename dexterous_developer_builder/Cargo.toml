@@ -25,3 +25,4 @@ which = { version = "6" }
 tokio = { version = "1", features = ["sync"]}
 dashmap = { version = "5", features = ["serde"] }
 camino = "1"
+crossbeam = "0.8"
