@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 use dexterous_developer_types::Target;
@@ -32,9 +31,7 @@ pub struct ReloadTargetConfig {
 }
 
 impl DexterousConfig {
-    pub async fn load_toml(
-        path: &camino::Utf8Path,
-    ) -> Result<Self, LoadConfigError> {
+    pub async fn load_toml(path: &camino::Utf8Path) -> Result<Self, LoadConfigError> {
         let path = path.canonicalize_utf8()?;
         let path = if path.is_file() {
             path
@@ -49,9 +46,7 @@ impl DexterousConfig {
         Ok(config)
     }
 
-    pub fn load_toml_from_str(
-        toml: &str,
-    ) -> Result<Self, LoadConfigError> {
+    pub fn load_toml_from_str(toml: &str) -> Result<Self, LoadConfigError> {
         let config = toml::from_str(toml)?;
         Ok(config)
     }
@@ -62,5 +57,5 @@ pub enum LoadConfigError {
     #[error("Couldn't read config file {0}")]
     IoError(#[from] std::io::Error),
     #[error("Couldn't parse config file {0}")]
-    ParseError(#[from] toml::de::Error)
+    ParseError(#[from] toml::de::Error),
 }

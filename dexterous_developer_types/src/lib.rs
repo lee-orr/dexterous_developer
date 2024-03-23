@@ -40,14 +40,14 @@ pub enum PackageOrExample {
     #[default]
     DefaulPackage,
     Package(String),
-    Example(String)
+    Example(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TargetBuildSettings {
     pub package_or_example: PackageOrExample,
     pub features: Vec<String>,
-    pub asset_folders: Vec<camino::Utf8PathBuf>
+    pub asset_folders: Vec<camino::Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
