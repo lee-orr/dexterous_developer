@@ -136,8 +136,6 @@ impl Manager {
 #[cfg(test)]
 mod tests {
 
-    
-
     use super::*;
     use dexterous_developer_builder::types::{
         Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord,
@@ -417,7 +415,8 @@ mod tests {
             subscriber: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
         ) {
             for directory in directories.iter() {
-                self.subscribers.insert(directory.clone(), subscriber.clone());
+                self.subscribers
+                    .insert(directory.clone(), subscriber.clone());
             }
         }
     }

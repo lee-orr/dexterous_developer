@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use camino::{Utf8PathBuf};
+use camino::Utf8PathBuf;
 
 use dashmap::DashMap;
 use dexterous_developer_types::Target;
