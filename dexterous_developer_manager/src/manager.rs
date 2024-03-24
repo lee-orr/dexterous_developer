@@ -225,29 +225,25 @@ mod tests {
                 let output_tx = output_tx.clone();
                 tokio::spawn(async move {
                     while let Some(recv) = incoming_rx.recv().await {
-                        match recv {
-                            BuilderIncomingMessages::RequestBuild => {
-                                if outgoing_tx
-                                    .send(BuilderOutgoingMessages::BuildStarted)
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                                if output_tx
-                                    .send(BuildOutputMessages::LibraryUpdated(
-                                        HashedFileRecord::new(
-                                            "root_lib_path",
-                                            Utf8PathBuf::new(),
-                                            [
-                                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                            ],
-                                        ),
-                                    ))
-                                    .is_err()
-                                {
-                                    break;
-                                }
+                        if let BuilderIncomingMessages::RequestBuild = recv {
+                            if outgoing_tx
+                                .send(BuilderOutgoingMessages::BuildStarted)
+                                .is_err()
+                            {
+                                break;
+                            }
+                            if output_tx
+                                .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord::new(
+                                    "root_lib_path",
+                                    Utf8PathBuf::new(),
+                                    [
+                                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                    ],
+                                )))
+                                .is_err()
+                            {
+                                break;
                             }
                         }
                     }

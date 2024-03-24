@@ -26,3 +26,4 @@ tokio = { version = "1", features = ["sync"]}
 dashmap = { version = "5", features = ["serde"] }
 camino = "1"
 crossbeam = "0.8"
+prefer-dynamic = "0"

@@ -22,6 +22,8 @@ pub trait Builder: 'static + Send + Sync {
 #[derive(Debug, Clone)]
 pub enum BuilderIncomingMessages {
     RequestBuild,
+    CodeChanged,
+    AssetChanged(HashedFileRecord),
 }
 
 #[derive(Debug, Clone)]
