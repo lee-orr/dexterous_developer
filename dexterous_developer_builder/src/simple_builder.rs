@@ -116,4 +116,8 @@ impl Builder for SimpleBuilder {
     fn root_lib_name(&self) -> Option<camino::Utf8PathBuf> {
         None
     }
+
+    fn get_watcher_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
+        todo!()
+    }
 }

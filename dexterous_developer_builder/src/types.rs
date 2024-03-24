@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use camino::Utf8PathBuf;
+use camino::{Utf8PathBuf};
 
 use dashmap::DashMap;
 use dexterous_developer_types::Target;
@@ -17,6 +17,15 @@ pub trait Builder: 'static + Send + Sync {
         tokio::sync::broadcast::Receiver<BuildOutputMessages>,
     );
     fn root_lib_name(&self) -> Option<Utf8PathBuf>;
+    fn get_watcher_subscriptions(&self) -> Vec<Utf8PathBuf>;
+}
+
+pub trait Watcher: 'static + Send + Sync {
+    fn watch_directories(
+        &self,
+        directory: &[Utf8PathBuf],
+        subscriber: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
+    );
 }
 
 #[derive(Debug, Clone)]

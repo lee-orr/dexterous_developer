@@ -48,6 +48,7 @@ pub struct TargetBuildSettings {
     pub package_or_example: PackageOrExample,
     pub features: Vec<String>,
     pub asset_folders: Vec<camino::Utf8PathBuf>,
+    pub code_watch_folders: Vec<camino::Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

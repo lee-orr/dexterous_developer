@@ -136,6 +136,7 @@ impl DexterousConfig {
                         package_or_example: package_or_example.clone(),
                         features,
                         asset_folders,
+                        code_watch_folders: self.code_watch_folders.clone(),
                     },
                 )
             })
