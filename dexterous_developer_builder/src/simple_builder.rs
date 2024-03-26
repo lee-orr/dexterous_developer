@@ -7,7 +7,8 @@ use crate::types::{
 
 pub struct SimpleBuilder {
     target: Target,
-    incoming: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
+    settings: TargetBuildSettings,
+    incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -54,7 +55,7 @@ async fn build(
 
 impl SimpleBuilder {
     pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        let (incoming, mut incoming_rx) = tokio::sync::mpsc::channel(100);
+        let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
 
@@ -64,6 +65,7 @@ impl SimpleBuilder {
             let settings = settings.clone();
             tokio::spawn(async move {
                 let mut should_build = false;
+
                 while let Some(recv) = incoming_rx.recv().await {
                     match recv {
                         BuilderIncomingMessages::RequestBuild => {
@@ -86,6 +88,7 @@ impl SimpleBuilder {
         };
 
         Self {
+            settings,
             target,
             incoming,
             outgoing: outgoing_tx,
@@ -100,7 +103,9 @@ impl Builder for SimpleBuilder {
         self.target
     }
 
-    fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<crate::types::BuilderIncomingMessages> {
+    fn incoming_channel(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedSender<crate::types::BuilderIncomingMessages> {
         self.incoming.clone()
     }
 
@@ -117,7 +122,11 @@ impl Builder for SimpleBuilder {
         None
     }
 
-    fn get_watcher_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
-        todo!()
+    fn get_code_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
+        self.settings.code_watch_folders.clone()
+    }
+
+    fn get_asset_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
+        self.settings.asset_folders.clone()
     }
 }

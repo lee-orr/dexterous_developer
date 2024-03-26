@@ -16,7 +16,7 @@ documentation.workspace = true
 [dependencies]
 serde = { version = "1", features = ["derive"]}
 anyhow = { version = "1" }
-notify = { version = "6" }
+notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
 debounce = { version = "0.2" }
 tracing = { version = "0.1" }
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
@@ -27,3 +27,5 @@ dashmap = { version = "5", features = ["serde"] }
 camino = "1"
 crossbeam = "0.8"
 prefer-dynamic = "0"
+blake3 = "1"
+thiserror = "1"

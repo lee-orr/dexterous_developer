@@ -31,6 +31,7 @@ url = { version = "2", features = ["serde"] }
 futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
+    "async-await"
 ] }
 dunce = "1"
 camino = "1"

@@ -20,7 +20,7 @@ pub struct Manager {
         DashMap<
             Target,
             (
-                mpsc::Sender<BuilderIncomingMessages>,
+                mpsc::UnboundedSender<BuilderIncomingMessages>,
                 broadcast::Receiver<BuilderOutgoingMessages>,
                 broadcast::Receiver<BuildOutputMessages>,
                 Arc<CurrentBuildState>,
@@ -28,6 +28,7 @@ pub struct Manager {
             ),
         >,
     >,
+    target_count: usize,
     watcher: Option<Arc<dyn Watcher>>,
 }
 
@@ -46,11 +47,14 @@ impl Manager {
         Manager {
             targets: Default::default(),
             watcher: Some(watcher),
+            target_count: 0,
         }
     }
 
-    pub async fn add_builders(self, builders: &[Arc<dyn Builder>]) -> Self {
+    pub async fn add_builders(mut self, builders: &[Arc<dyn Builder>]) -> Self {
         for builder in builders.iter() {
+            self.target_count += 1;
+            let id = self.target_count;
             let target = builder.target();
             self.targets.entry(target).or_insert_with(|| {
                 let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name()));
@@ -82,7 +86,8 @@ impl Manager {
                 let incoming = builder.incoming_channel();
 
                 if let Some(watcher) = &self.watcher {
-                    watcher.watch_directories(&builder.get_watcher_subscriptions(), incoming.clone());
+                    let _ = watcher.watch_code_directories(&builder.get_code_subscriptions(), (id, incoming.clone()));
+                    let _ = watcher.watch_asset_directories(&builder.get_asset_subscriptions(), (id, incoming.clone()));
                 }
 
                 (incoming, outgoing, output, current_state, handle)
@@ -108,7 +113,7 @@ impl Manager {
 
         let response = (current_state.as_ref().clone(), output_rx.resubscribe());
 
-        let _ = sender.send(BuilderIncomingMessages::RequestBuild).await;
+        let _ = sender.send(BuilderIncomingMessages::RequestBuild);
         Ok(response)
     }
 
@@ -138,7 +143,7 @@ mod tests {
 
     use super::*;
     use dexterous_developer_builder::types::{
-        Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord,
+        Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord, WatcherError,
     };
 
     struct TestBuilder;
@@ -148,8 +153,8 @@ mod tests {
             Target::Android
         }
 
-        fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages> {
-            mpsc::channel(1).0
+        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
+            mpsc::unbounded_channel().0
         }
 
         fn outgoing_channel(
@@ -165,7 +170,11 @@ mod tests {
             Some(Utf8PathBuf::from("root_lib"))
         }
 
-        fn get_watcher_subscriptions(&self) -> Vec<Utf8PathBuf> {
+        fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
+            vec![]
+        }
+
+        fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
         }
     }
@@ -177,8 +186,8 @@ mod tests {
             Target::IOS
         }
 
-        fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages> {
-            mpsc::channel(1).0
+        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
+            mpsc::unbounded_channel().0
         }
 
         fn outgoing_channel(
@@ -194,7 +203,11 @@ mod tests {
             Some(Utf8PathBuf::from("root_lib"))
         }
 
-        fn get_watcher_subscriptions(&self) -> Vec<Utf8PathBuf> {
+        fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
+            vec![]
+        }
+
+        fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
         }
     }
@@ -228,7 +241,7 @@ mod tests {
 
     struct TestChanneledBuilder {
         target: Target,
-        incoming: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
+        incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
         outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
         output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
         #[allow(dead_code)]
@@ -237,7 +250,7 @@ mod tests {
 
     impl TestChanneledBuilder {
         fn new(target: Target) -> Self {
-            let (incoming, mut incoming_rx) = tokio::sync::mpsc::channel(10);
+            let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
             let (outgoing_tx, _) = tokio::sync::broadcast::channel(10);
             let (output_tx, _) = tokio::sync::broadcast::channel(10);
             let _my_target = target;
@@ -299,7 +312,7 @@ mod tests {
             self.target
         }
 
-        fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages> {
+        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
             self.incoming.clone()
         }
 
@@ -316,8 +329,12 @@ mod tests {
             Some(Utf8PathBuf::from("root_lib"))
         }
 
-        fn get_watcher_subscriptions(&self) -> Vec<Utf8PathBuf> {
+        fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![Utf8PathBuf::from("watched_path")]
+        }
+
+        fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
+            vec![]
         }
     }
 
@@ -350,7 +367,7 @@ mod tests {
                 .get(&Utf8PathBuf::from("root_lib_path"))
                 .is_none());
 
-            let _ = channel.send(BuilderIncomingMessages::RequestBuild).await;
+            let _ = channel.send(BuilderIncomingMessages::RequestBuild);
 
             let message = rx.recv().await.unwrap();
             match message {
@@ -391,7 +408,8 @@ mod tests {
     }
 
     struct TestWatcher {
-        subscribers: DashMap<Utf8PathBuf, tokio::sync::mpsc::Sender<BuilderIncomingMessages>>,
+        subscribers:
+            DashMap<Utf8PathBuf, tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>>,
     }
 
     impl TestWatcher {
@@ -403,21 +421,36 @@ mod tests {
 
         async fn update(&self, directory: Utf8PathBuf) {
             if let Some(sub) = self.subscribers.get(&directory) {
-                let _ = sub.send(BuilderIncomingMessages::CodeChanged).await;
+                let _ = sub.send(BuilderIncomingMessages::CodeChanged);
             }
         }
     }
 
     impl Watcher for TestWatcher {
-        fn watch_directories(
+        fn watch_code_directories(
             &self,
             directories: &[Utf8PathBuf],
-            subscriber: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
-        ) {
+            (_, subscriber): (
+                usize,
+                tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
+            ),
+        ) -> Result<(), WatcherError> {
             for directory in directories.iter() {
                 self.subscribers
                     .insert(directory.clone(), subscriber.clone());
             }
+            Ok(())
+        }
+
+        fn watch_asset_directories(
+            &self,
+            _directory: &[Utf8PathBuf],
+            (_, _subscriber): (
+                usize,
+                tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
+            ),
+        ) -> Result<(), WatcherError> {
+            Ok(())
         }
     }
 
@@ -450,7 +483,7 @@ mod tests {
                 .get(&Utf8PathBuf::from("root_lib_path"))
                 .is_none());
 
-            let _ = channel.send(BuilderIncomingMessages::RequestBuild).await;
+            let _ = channel.send(BuilderIncomingMessages::RequestBuild);
 
             let message = rx.recv().await.unwrap();
             match message {

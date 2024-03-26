@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
-use camino::Utf8PathBuf;
+use camino::{FromPathBufError, Utf8PathBuf};
 
 use dashmap::DashMap;
 use dexterous_developer_types::Target;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tokio::sync::Mutex;
 
 pub trait Builder: 'static + Send + Sync {
     fn target(&self) -> Target;
-    fn incoming_channel(&self) -> tokio::sync::mpsc::Sender<BuilderIncomingMessages>;
+    fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>;
     fn outgoing_channel(
         &self,
     ) -> (
@@ -17,15 +18,41 @@ pub trait Builder: 'static + Send + Sync {
         tokio::sync::broadcast::Receiver<BuildOutputMessages>,
     );
     fn root_lib_name(&self) -> Option<Utf8PathBuf>;
-    fn get_watcher_subscriptions(&self) -> Vec<Utf8PathBuf>;
+    fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf>;
+    fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf>;
 }
 
 pub trait Watcher: 'static + Send + Sync {
-    fn watch_directories(
+    fn watch_code_directories(
         &self,
-        directory: &[Utf8PathBuf],
-        subscriber: tokio::sync::mpsc::Sender<BuilderIncomingMessages>,
-    );
+        directories: &[Utf8PathBuf],
+        subscriber: (
+            usize,
+            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
+        ),
+    ) -> Result<(), WatcherError>;
+    fn watch_asset_directories(
+        &self,
+        directories: &[Utf8PathBuf],
+        subscriber: (
+            usize,
+            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
+        ),
+    ) -> Result<(), WatcherError>;
+}
+
+#[derive(Error, Debug)]
+pub enum WatcherError {
+    #[error("Io Error {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Couldn't Find Path")]
+    PathNotFound,
+    #[error("Other Watch Error: {0}")]
+    OtherError(String),
+    #[error("Notify Error {0}")]
+    NotifyError(#[from] notify::Error),
+    #[error("Couldn't Parse Path Buf {0}")]
+    Utf8PathBufError(#[from] FromPathBufError),
 }
 
 #[derive(Debug, Clone)]
