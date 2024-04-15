@@ -1,4 +1,7 @@
-use std::sync::{atomic::{AtomicU32, Ordering}, Arc};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc,
+};
 
 use camino::{FromPathBufError, Utf8PathBuf};
 
@@ -54,7 +57,7 @@ pub enum WatcherError {
     #[error("Couldn't Parse Path Buf {0}")]
     Utf8PathBufError(#[from] FromPathBufError),
     #[error("Path is not a file {0}")]
-    NotAFile(Utf8PathBuf)
+    NotAFile(Utf8PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -85,7 +88,7 @@ pub struct HashedFileRecord {
     pub name: String,
     pub local_path: Utf8PathBuf,
     pub hash: [u8; 32],
-    pub dependencies: Vec<String>
+    pub dependencies: Vec<String>,
 }
 
 impl HashedFileRecord {
@@ -100,7 +103,7 @@ impl HashedFileRecord {
             local_path: local_path.into(),
             name: name.to_string(),
             hash,
-            dependencies: Vec::new()
+            dependencies: Vec::new(),
         }
     }
 }
@@ -140,11 +143,13 @@ impl CurrentBuildState {
             }
             BuildOutputMessages::KeepAlive => {}
             BuildOutputMessages::StartedBuild(id) => {
-                self.most_recent_started_build.fetch_max(id, Ordering::SeqCst);
-            },
+                self.most_recent_started_build
+                    .fetch_max(id, Ordering::SeqCst);
+            }
             BuildOutputMessages::EndedBuild(id) => {
-                self.most_recent_completed_build.fetch_max(id, Ordering::SeqCst);
-            },
+                self.most_recent_completed_build
+                    .fetch_max(id, Ordering::SeqCst);
+            }
         }
         self
     }

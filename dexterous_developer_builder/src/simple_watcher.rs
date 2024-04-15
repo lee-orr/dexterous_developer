@@ -101,7 +101,11 @@ impl Watcher for SimpleWatcher {
                                                             let name = match path.file_name() {
                                                                 Some(n) => n.to_string(),
                                                                 None => {
-                                                                    return Err(WatcherError::NotAFile(path.clone()))
+                                                                    return Err(
+                                                                        WatcherError::NotAFile(
+                                                                            path.clone(),
+                                                                        ),
+                                                                    )
                                                                 }
                                                             };
                                                             let hash = blake3::hash(&file);
@@ -112,8 +116,9 @@ impl Watcher for SimpleWatcher {
                                                             let record = HashedFileRecord::new(
                                                                 relative_path,
                                                                 path.clone(),
-                                                                name, 
-                                                                hash.as_bytes().to_owned());
+                                                                name,
+                                                                hash.as_bytes().to_owned(),
+                                                            );
                                                             Ok(record)
                                                         })
                                                 })

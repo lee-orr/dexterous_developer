@@ -121,8 +121,12 @@ async fn connected_to_target(
                 .iter()
                 .map(|asset| (asset.key().clone(), asset.hash))
                 .collect(),
-            most_recent_started_build: initial_build_state.most_recent_started_build.load(std::sync::atomic::Ordering::SeqCst),
-            most_recent_completed_build: initial_build_state.most_recent_completed_build.load(std::sync::atomic::Ordering::SeqCst),
+            most_recent_started_build: initial_build_state
+                .most_recent_started_build
+                .load(std::sync::atomic::Ordering::SeqCst),
+            most_recent_completed_build: initial_build_state
+                .most_recent_completed_build
+                .load(std::sync::atomic::Ordering::SeqCst),
         };
         let Ok(message) = rmp_serde::to_vec(&initial_state_message) else {
             error!("Failed to serialize initial state message for {id}");

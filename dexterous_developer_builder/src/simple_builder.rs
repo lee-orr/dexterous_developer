@@ -8,12 +8,12 @@ use std::{
 };
 
 use anyhow::bail;
-use blake3::Hash;
+
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use object::{read::elf::FileHeader, Endianness, Object, ObjectSection, ObjectSymbol};
-use tracing::{error, info, trace};
-use which::{which, which_all, WhichConfig};
+use object::{read::elf::FileHeader, Endianness, Object};
+use tracing::{error, info};
+use which::WhichConfig;
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -145,7 +145,7 @@ fn build(
             &path_var,
             &mut libraries,
             &mut dependencies,
-            &name,
+            name,
             library,
         )?;
     }
@@ -181,10 +181,10 @@ fn process_dependencies_recursive(
             let elf = object::elf::FileHeader32::<Endianness>::parse(data)?;
             let endian = elf.endian()?;
             let sections = elf.sections(endian, data)?;
-            
-            if let Some((mut verneed, link))  = sections.gnu_verneed(endian, data)? {
+
+            if let Some((mut verneed, link)) = sections.gnu_verneed(endian, data)? {
                 let strings = sections.strings(endian, data, link).unwrap_or_default();
-                
+
                 let mut dependencies = HashSet::new();
                 while let Ok(Some((need, _))) = verneed.next() {
                     let name = std::str::from_utf8(need.file(endian, strings)?)?;
@@ -194,17 +194,17 @@ fn process_dependencies_recursive(
             } else {
                 HashSet::new()
             }
-        },
+        }
         object::File::Elf64(elf) => {
             let data = elf.data();
             let elf = object::elf::FileHeader64::<Endianness>::parse(data)?;
             let endian = elf.endian()?;
             let sections = elf.sections(endian, data)?;
             info!("Searching Sections");
-            
-            if let Some((mut verneed, link))  = sections.gnu_verneed(endian, data)? {
+
+            if let Some((mut verneed, link)) = sections.gnu_verneed(endian, data)? {
                 let strings = sections.strings(endian, data, link).unwrap_or_default();
-                
+
                 let mut dependencies = HashSet::new();
                 while let Ok(Some((need, _))) = verneed.next() {
                     let name = std::str::from_utf8(need.file(endian, strings)?)?;
@@ -215,7 +215,7 @@ fn process_dependencies_recursive(
                 info!("No Need");
                 HashSet::new()
             }
-        },
+        }
         file => {
             let imports = file.imports()?;
             imports
@@ -248,9 +248,7 @@ fn process_dependencies_recursive(
     }
     dependencies.insert(
         current_library_name.to_string(),
-        dependency_vec
-            .into_iter()
-            .collect(),
+        dependency_vec.into_iter().collect(),
     );
     Ok(())
 }

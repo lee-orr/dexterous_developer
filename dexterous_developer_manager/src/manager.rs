@@ -169,7 +169,7 @@ mod tests {
         fn root_lib_name(&self) -> Option<String> {
             Some("root_lib".to_string())
         }
-        
+
         fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
         }

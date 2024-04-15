@@ -23,7 +23,7 @@ struct Args {
     /// If this is true, it will fail immediately if the libraries aren't found.
     /// Otherwise - it will try spawning a child process that sets the environment variables first.
     #[arg(long)]
-    env_vars_preset: bool
+    env_vars_preset: bool,
 }
 
 #[tokio::main]
@@ -44,7 +44,9 @@ async fn main() {
         .or_else(|| url::Url::parse("http://localhost:1234").ok())
         .expect("Couldn't set up remote");
 
-    info!("Setting up connection to {server} in {working_directory} with libraries in{library_path}");
+    info!(
+        "Setting up connection to {server} in {working_directory} with libraries in{library_path}"
+    );
 
     if !working_directory.exists() {
         tokio::fs::create_dir_all(&working_directory)

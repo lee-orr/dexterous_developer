@@ -128,7 +128,7 @@ impl Target {
             Target::Mac => "dylib",
             Target::MacArm => "dylib",
             Target::IOS => "dylib",
-            _ => "so"
+            _ => "so",
         }
     }
 
@@ -201,5 +201,5 @@ pub enum HotReloadMessage {
     UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,
     BuildStarted(u32),
-    BuildCompleted(u32)
+    BuildCompleted(u32),
 }
