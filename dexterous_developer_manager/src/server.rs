@@ -28,7 +28,7 @@ use crate::{Manager, ManagerError};
 pub async fn run_server(port: u16, manager: Manager) -> Result<(), Error> {
     let app = Router::new()
         .route("/targets", get(list_targets))
-        .route("target/:target", get(connect_to_target))
+        .route("/target/:target", get(connect_to_target))
         .route("/files/:target/:file", get(target_file_loader));
 
     let app = app.with_state(ServerState {
@@ -121,6 +121,8 @@ async fn connected_to_target(
                 .iter()
                 .map(|asset| (asset.key().clone(), asset.hash))
                 .collect(),
+            most_recent_started_build: initial_build_state.most_recent_started_build.load(std::sync::atomic::Ordering::SeqCst),
+            most_recent_completed_build: initial_build_state.most_recent_completed_build.load(std::sync::atomic::Ordering::SeqCst),
         };
         let Ok(message) = rmp_serde::to_vec(&initial_state_message) else {
             error!("Failed to serialize initial state message for {id}");
@@ -138,10 +140,12 @@ async fn connected_to_target(
     while let Ok(msg) = tokio::select! {
         val = builder_rx.recv() => {
             val.map(|msg| match msg {
-                BuildOutputMessages::RootLibraryName(local_path) => Some(HotReloadMessage::RootLibPath(local_path)),
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {  local_path, hash, .. }) => Some(HotReloadMessage::UpdatedLibs(local_path, hash)),
+                BuildOutputMessages::RootLibraryName(name) => Some(HotReloadMessage::RootLibPath(name)),
+                BuildOutputMessages::LibraryUpdated(HashedFileRecord {  name, hash, dependencies, .. }) => Some(HotReloadMessage::UpdatedLibs(name, hash, dependencies.clone())),
                 BuildOutputMessages::AssetUpdated(HashedFileRecord {  local_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(local_path, hash)),
                 BuildOutputMessages::KeepAlive => None,
+                BuildOutputMessages::StartedBuild(id) => Some(HotReloadMessage::BuildStarted(id)),
+                BuildOutputMessages::EndedBuild(id) => Some(HotReloadMessage::BuildCompleted(id)),
             })
         }
         _ = tokio::time::sleep(Duration::from_secs(5)) => Ok(Some(HotReloadMessage::KeepAlive))

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{atomic::{AtomicU32, Ordering}, Arc};
 
 use camino::{FromPathBufError, Utf8PathBuf};
 
@@ -17,7 +17,7 @@ pub trait Builder: 'static + Send + Sync {
         tokio::sync::broadcast::Receiver<BuilderOutgoingMessages>,
         tokio::sync::broadcast::Receiver<BuildOutputMessages>,
     );
-    fn root_lib_name(&self) -> Option<Utf8PathBuf>;
+    fn root_lib_name(&self) -> Option<String>;
     fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf>;
     fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf>;
 }
@@ -53,6 +53,8 @@ pub enum WatcherError {
     NotifyError(#[from] notify::Error),
     #[error("Couldn't Parse Path Buf {0}")]
     Utf8PathBufError(#[from] FromPathBufError),
+    #[error("Path is not a file {0}")]
+    NotAFile(Utf8PathBuf)
 }
 
 #[derive(Debug, Clone)]
@@ -70,28 +72,33 @@ pub enum BuilderOutgoingMessages {
 
 #[derive(Clone, Debug)]
 pub struct CurrentBuildState {
-    pub root_library: Arc<Mutex<Option<Utf8PathBuf>>>,
+    pub root_library: Arc<Mutex<Option<String>>>,
     pub libraries: DashMap<Utf8PathBuf, HashedFileRecord>,
     pub assets: DashMap<Utf8PathBuf, HashedFileRecord>,
+    pub most_recent_completed_build: Arc<AtomicU32>,
+    pub most_recent_started_build: Arc<AtomicU32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HashedFileRecord {
     pub relative_path: Utf8PathBuf,
+    pub name: String,
     pub local_path: Utf8PathBuf,
     pub hash: [u8; 32],
-    pub dependencies: Vec<Utf8PathBuf>
+    pub dependencies: Vec<String>
 }
 
 impl HashedFileRecord {
     pub fn new(
         relative_path: impl Into<Utf8PathBuf>,
         local_path: impl Into<Utf8PathBuf>,
+        name: impl ToString,
         hash: [u8; 32],
     ) -> Self {
         Self {
             relative_path: relative_path.into(),
             local_path: local_path.into(),
+            name: name.to_string(),
             hash,
             dependencies: Vec::new()
         }
@@ -100,18 +107,22 @@ impl HashedFileRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BuildOutputMessages {
-    RootLibraryName(Utf8PathBuf),
+    StartedBuild(u32),
+    EndedBuild(u32),
+    RootLibraryName(String),
     LibraryUpdated(HashedFileRecord),
     AssetUpdated(HashedFileRecord),
     KeepAlive,
 }
 
 impl CurrentBuildState {
-    pub fn new(root_library: Option<Utf8PathBuf>) -> Self {
+    pub fn new(root_library: Option<String>) -> Self {
         Self {
             root_library: Arc::new(Mutex::new(root_library)),
             libraries: Default::default(),
             assets: Default::default(),
+            most_recent_completed_build: Arc::new(AtomicU32::new(0)),
+            most_recent_started_build: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -128,6 +139,12 @@ impl CurrentBuildState {
                 let _ = lock.replace(name);
             }
             BuildOutputMessages::KeepAlive => {}
+            BuildOutputMessages::StartedBuild(id) => {
+                self.most_recent_started_build.fetch_max(id, Ordering::SeqCst);
+            },
+            BuildOutputMessages::EndedBuild(id) => {
+                self.most_recent_completed_build.fetch_max(id, Ordering::SeqCst);
+            },
         }
         self
     }

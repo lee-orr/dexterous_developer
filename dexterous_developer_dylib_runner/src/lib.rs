@@ -28,7 +28,9 @@ pub async fn run_reloadable_app(
 
     let current_target = Target::current().ok_or(DylibRunnerError::NoCurrentTarget)?;
 
-    let mut address = server.join("connect")?.join(current_target.as_str())?;
+    let address = server.join("target/")?;
+    info!("Setting Up Route {address}");
+    let mut address = address.join(current_target.as_str())?;
     let initial_scheme = address.scheme();
     let new_scheme = match initial_scheme {
         "http" => "ws",
@@ -41,6 +43,8 @@ pub async fn run_reloadable_app(
     address
         .set_scheme(new_scheme)
         .map_err(|_e| DylibRunnerError::InvalidScheme(server, "Unknown".to_string()))?;
+
+    info!("Connecting To {address}");
 
     let (ws_stream, _) = connect_async(address).await?;
 

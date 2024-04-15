@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 use std::{env, process};
-use tracing::error;
+use tracing::{error, info, warn};
 
 use clap::Parser;
 use dexterous_developer_types::cargo_path_utils::add_to_dylib_path;
@@ -19,6 +19,11 @@ struct Args {
     /// The Url for the process handling compilation, defaults to "http://localhost:1234"
     #[arg(short, long)]
     server: Option<url::Url>,
+    /// Used to indicate that the environment variables for finding libraries should already have been set.
+    /// If this is true, it will fail immediately if the libraries aren't found.
+    /// Otherwise - it will try spawning a child process that sets the environment variables first.
+    #[arg(long)]
+    env_vars_preset: bool
 }
 
 #[tokio::main]
@@ -33,10 +38,13 @@ async fn main() {
 
     let working_directory = args.working_directory.unwrap_or_else(|| cwd.clone());
     let library_path = args.library_path.unwrap_or_else(|| cwd.clone());
+
     let server = args
         .server
         .or_else(|| url::Url::parse("http://localhost:1234").ok())
         .expect("Couldn't set up remote");
+
+    info!("Setting up connection to {server} in {working_directory} with libraries in{library_path}");
 
     if !working_directory.exists() {
         tokio::fs::create_dir_all(&working_directory)
@@ -58,6 +66,11 @@ async fn main() {
     {
         match e {
             dexterous_developer_dylib_runner::DylibRunnerError::DylibPathsMissingLibraries => {
+                if args.env_vars_preset {
+                    error!("Couldn't find missing libraries");
+                    process::exit(1);
+                }
+                warn!("Couldn't find library path - adding it to the environment variables and restarting");
                 let executable = env::current_exe().expect("Couldn't get current executable");
                 let (env_var, env_val) = add_to_dylib_path(&library_path)
                     .expect("Failed to add library path to dylib path");
@@ -68,6 +81,7 @@ async fn main() {
                     .arg(library_path)
                     .arg("--server")
                     .arg(server.to_string())
+                    .arg("--env-vars-preset")
                     .env(env_var, env_val)
                     .status()
                     .await

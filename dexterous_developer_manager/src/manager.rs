@@ -166,10 +166,10 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
-            Some(Utf8PathBuf::from("root_lib"))
+        fn root_lib_name(&self) -> Option<String> {
+            Some("root_lib".to_string())
         }
-
+        
         fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
         }
@@ -199,8 +199,8 @@ mod tests {
             (broadcast::channel(1).1, broadcast::channel(1).1)
         }
 
-        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
-            Some(Utf8PathBuf::from("root_lib"))
+        fn root_lib_name(&self) -> Option<String> {
+            Some("root_lib".to_string())
         }
 
         fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {
@@ -271,6 +271,7 @@ mod tests {
                                 .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord::new(
                                     "root_lib_path",
                                     Utf8PathBuf::new(),
+                                    "root_lib_path",
                                     [
                                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -286,6 +287,7 @@ mod tests {
                                 .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord::new(
                                     "root_lib_path",
                                     Utf8PathBuf::new(),
+                                    "root_lib_path",
                                     [
                                         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -325,8 +327,8 @@ mod tests {
             (self.outgoing.subscribe(), self.output.subscribe())
         }
 
-        fn root_lib_name(&self) -> Option<Utf8PathBuf> {
-            Some(Utf8PathBuf::from("root_lib"))
+        fn root_lib_name(&self) -> Option<String> {
+            Some("root_lib".to_string())
         }
 
         fn get_code_subscriptions(&self) -> Vec<Utf8PathBuf> {

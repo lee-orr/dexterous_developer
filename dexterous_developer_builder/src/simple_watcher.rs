@@ -96,7 +96,14 @@ impl Watcher for SimpleWatcher {
                                                 })
                                                 .and_then(|path| {
                                                     std::fs::read(&path)
-                                                        .map(|file| {
+                                                        .map_err(WatcherError::from)
+                                                        .and_then(|file| {
+                                                            let name = match path.file_name() {
+                                                                Some(n) => n.to_string(),
+                                                                None => {
+                                                                    return Err(WatcherError::NotAFile(path.clone()))
+                                                                }
+                                                            };
                                                             let hash = blake3::hash(&file);
                                                             let relative_path = path
                                                                 .strip_prefix(&cwd)
@@ -105,10 +112,10 @@ impl Watcher for SimpleWatcher {
                                                             let record = HashedFileRecord::new(
                                                                 relative_path,
                                                                 path.clone(),
+                                                                name, 
                                                                 hash.as_bytes().to_owned());
-                                                            record
+                                                            Ok(record)
                                                         })
-                                                        .map_err(WatcherError::from)
                                                 })
                                                 .ok()
                                         })

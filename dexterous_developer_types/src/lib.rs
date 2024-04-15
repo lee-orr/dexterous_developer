@@ -190,12 +190,16 @@ impl FromStr for Target {
 pub enum HotReloadMessage {
     InitialState {
         id: uuid::Uuid,
-        root_lib: Option<Utf8PathBuf>,
+        root_lib: Option<String>,
         libraries: Vec<(Utf8PathBuf, [u8; 32])>,
         assets: Vec<(Utf8PathBuf, [u8; 32])>,
+        most_recent_started_build: u32,
+        most_recent_completed_build: u32,
     },
-    RootLibPath(Utf8PathBuf),
-    UpdatedLibs(Utf8PathBuf, [u8; 32]),
+    RootLibPath(String),
+    UpdatedLibs(String, [u8; 32], Vec<String>),
     UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,
+    BuildStarted(u32),
+    BuildCompleted(u32)
 }
