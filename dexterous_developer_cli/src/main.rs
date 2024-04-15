@@ -3,7 +3,7 @@ use std::{env, sync::Arc};
 use camino::Utf8PathBuf;
 
 use clap::Parser;
-use dexterous_developer_builder::{simple_builder::SimpleBuilder, types::Builder};
+use dexterous_developer_builder::{simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder};
 use dexterous_developer_cli::config::DexterousConfig;
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::PackageOrExample;
@@ -67,7 +67,7 @@ async fn main() {
         })
         .collect::<Vec<_>>();
 
-    let manager = Manager::default().add_builders(&builders).await;
+    let manager = Manager::new(Arc::new(SimpleWatcher::default())).add_builders(&builders).await;
 
     run_server(port, manager).await.expect("Server Error");
 }

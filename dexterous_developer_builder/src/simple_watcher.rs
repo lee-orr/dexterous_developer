@@ -102,11 +102,10 @@ impl Watcher for SimpleWatcher {
                                                                 .strip_prefix(&cwd)
                                                                 .map(|p| p.to_owned())
                                                                 .unwrap_or_else(|_| path.clone());
-                                                            let record = HashedFileRecord {
+                                                            let record = HashedFileRecord::new(
                                                                 relative_path,
-                                                                local_path: path.clone(),
-                                                                hash: hash.as_bytes().to_owned(),
-                                                            };
+                                                                path.clone(),
+                                                                hash.as_bytes().to_owned());
                                                             record
                                                         })
                                                         .map_err(WatcherError::from)

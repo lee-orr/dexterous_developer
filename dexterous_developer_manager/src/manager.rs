@@ -373,8 +373,8 @@ mod tests {
             match message {
                 BuildOutputMessages::LibraryUpdated(HashedFileRecord {
                     relative_path,
-                    local_path: _,
                     hash,
+                    ..
                 }) => {
                     assert_eq!(relative_path.to_string(), "root_lib_path");
                     hash
@@ -489,8 +489,8 @@ mod tests {
             match message {
                 BuildOutputMessages::LibraryUpdated(HashedFileRecord {
                     relative_path,
-                    local_path: _,
                     hash,
+                    ..
                 }) => {
                     assert_eq!(relative_path.to_string(), "root_lib_path");
                     hash
@@ -529,8 +529,8 @@ mod tests {
             let new_hash = match message {
                 BuildOutputMessages::LibraryUpdated(HashedFileRecord {
                     relative_path,
-                    local_path: _,
                     hash,
+                    ..
                 }) => {
                     assert_eq!(relative_path.to_string(), "root_lib_path");
                     hash

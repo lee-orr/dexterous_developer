@@ -139,8 +139,8 @@ async fn connected_to_target(
         val = builder_rx.recv() => {
             val.map(|msg| match msg {
                 BuildOutputMessages::RootLibraryName(local_path) => Some(HotReloadMessage::RootLibPath(local_path)),
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord { relative_path: _, local_path, hash }) => Some(HotReloadMessage::UpdatedLibs(local_path, hash)),
-                BuildOutputMessages::AssetUpdated(HashedFileRecord { relative_path: _, local_path, hash }) => Some(HotReloadMessage::UpdatedAssets(local_path, hash)),
+                BuildOutputMessages::LibraryUpdated(HashedFileRecord {  local_path, hash, .. }) => Some(HotReloadMessage::UpdatedLibs(local_path, hash)),
+                BuildOutputMessages::AssetUpdated(HashedFileRecord {  local_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(local_path, hash)),
                 BuildOutputMessages::KeepAlive => None,
             })
         }

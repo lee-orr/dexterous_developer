@@ -80,6 +80,7 @@ pub struct HashedFileRecord {
     pub relative_path: Utf8PathBuf,
     pub local_path: Utf8PathBuf,
     pub hash: [u8; 32],
+    pub dependencies: Vec<Utf8PathBuf>
 }
 
 impl HashedFileRecord {
@@ -92,6 +93,7 @@ impl HashedFileRecord {
             relative_path: relative_path.into(),
             local_path: local_path.into(),
             hash,
+            dependencies: Vec::new()
         }
     }
 }

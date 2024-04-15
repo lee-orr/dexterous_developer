@@ -122,6 +122,16 @@ impl Target {
         }
     }
 
+    pub fn dynamic_lib_extension(&self) -> &'static str {
+        match self {
+            Target::Windows => "dll",
+            Target::Mac => "dylib",
+            Target::MacArm => "dylib",
+            Target::IOS => "dylib",
+            _ => "so"
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         self.to_static()
     }
