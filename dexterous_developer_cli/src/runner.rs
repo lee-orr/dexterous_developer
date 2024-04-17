@@ -26,8 +26,7 @@ struct Args {
     env_vars_preset: bool,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     tracing_subscriber::fmt().pretty().init();
 
     let cwd =
@@ -49,13 +48,13 @@ async fn main() {
     );
 
     if !working_directory.exists() {
-        tokio::fs::create_dir_all(&working_directory)
-            .await
+        std::fs::create_dir_all(&working_directory)
+            
             .expect("Failed to create working directory");
     }
     if !library_path.exists() {
-        tokio::fs::create_dir_all(&library_path)
-            .await
+        std::fs::create_dir_all(&library_path)
+            
             .expect("Failed to create library path");
     }
 
@@ -64,7 +63,6 @@ async fn main() {
         &library_path,
         server.clone(),
     )
-    .await
     {
         match e {
             dexterous_developer_dylib_runner::DylibRunnerError::DylibPathsMissingLibraries => {
@@ -76,7 +74,7 @@ async fn main() {
                 let executable = env::current_exe().expect("Couldn't get current executable");
                 let (env_var, env_val) = add_to_dylib_path(&library_path)
                     .expect("Failed to add library path to dylib path");
-                let status = tokio::process::Command::new(executable)
+                let status = std::process::Command::new(executable)
                     .arg("--working-directory")
                     .arg(working_directory)
                     .arg("--library-path")
@@ -86,7 +84,6 @@ async fn main() {
                     .arg("--env-vars-preset")
                     .env(env_var, env_val)
                     .status()
-                    .await
                     .expect("Couldn't run with env variables");
                 if let Some(code) = status.code() {
                     process::exit(code);

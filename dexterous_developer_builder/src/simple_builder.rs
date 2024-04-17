@@ -5,6 +5,7 @@ use std::{
     fs,
     process::{Command, Stdio},
     str::FromStr,
+    sync::{atomic::AtomicU32, Arc},
 };
 
 use anyhow::bail;
@@ -38,6 +39,7 @@ fn build(
         ..
     }: TargetBuildSettings,
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
+    id: u32,
 ) -> Result<(), anyhow::Error> {
     let mut cargo = Command::new("cargo");
     cargo
@@ -52,7 +54,7 @@ fn build(
         .arg("--target")
         .arg(target.to_string());
 
-    match package_or_example {
+    match &package_or_example {
         dexterous_developer_types::PackageOrExample::DefaulPackage => {}
         dexterous_developer_types::PackageOrExample::Package(package) => {
             cargo.arg("-p").arg(package.as_str());
@@ -67,6 +69,7 @@ fn build(
         cargo.arg(features.join(",").as_str());
     }
 
+    let _ = sender.send(BuildOutputMessages::StartedBuild(id));
     let mut child = cargo.stdout(Stdio::piped()).spawn()?;
 
     let reader =
@@ -102,11 +105,30 @@ fn build(
     let mut libraries = HashMap::<String, Utf8PathBuf>::with_capacity(20);
     let mut root_dir = HashSet::new();
 
+    let mut root_library = None;
+
     for artifact in artifacts.iter() {
         for path in artifact.filenames.iter() {
             if let Some(ext) = path.extension() {
                 if ext == target.dynamic_lib_extension() {
                     if let Some(name) = path.file_name() {
+                        match &package_or_example {
+                            dexterous_developer_types::PackageOrExample::DefaulPackage => {
+                                root_library = Some(name);
+                            }
+                            dexterous_developer_types::PackageOrExample::Package(p) => {
+                                if &artifact.package_id.repr == p {
+                                    root_library = Some(name);
+                                }
+                            }
+                            dexterous_developer_types::PackageOrExample::Example(e) => {
+                                if artifact.target.kind.contains(&"example".to_string())
+                                    && &artifact.target.name == e
+                                {
+                                    root_library = Some(name);
+                                }
+                            }
+                        }
                         let path = path.canonicalize_utf8()?;
                         let parent = path
                             .parent()
@@ -162,6 +184,12 @@ fn build(
             dependencies: dependencies.get(library).cloned().unwrap_or_default(),
         }));
     }
+
+    if let Some(root_library) = root_library {
+        let _ = sender.send(BuildOutputMessages::RootLibraryName(root_library.to_string()));
+    }
+
+    let _ = sender.send(BuildOutputMessages::EndedBuild(id));
     Ok(())
 }
 
@@ -258,11 +286,13 @@ impl SimpleBuilder {
         let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
+        let id = Arc::new(AtomicU32::new(1));
 
         let handle = {
             let outgoing_tx = outgoing_tx.clone();
             let output_tx = output_tx.clone();
             let settings = settings.clone();
+            let id = id.clone();
             tokio::spawn(async move {
                 let mut should_build = false;
 
@@ -270,13 +300,15 @@ impl SimpleBuilder {
                     match recv {
                         BuilderIncomingMessages::RequestBuild => {
                             should_build = true;
+                            let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                             let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                            let _ = build(target, settings.clone(), output_tx.clone());
+                            let _ = build(target, settings.clone(), output_tx.clone(), id);
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
+                                let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                                 let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                                let _ = build(target, settings.clone(), output_tx.clone());
+                                let _ = build(target, settings.clone(), output_tx.clone(), id);
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {

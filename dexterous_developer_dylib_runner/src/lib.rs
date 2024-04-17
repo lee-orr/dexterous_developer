@@ -1,11 +1,17 @@
+pub mod library_holder;
+
 use camino::{Utf8Path, Utf8PathBuf};
+use crossbeam::{channel::Sender, thread};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use thiserror::Error;
 use tokio_tungstenite::connect_async;
 use tracing::info;
+use url::Url;
 
-pub async fn run_reloadable_app(
+use crate::library_holder::LibraryHolder;
+
+pub fn run_reloadable_app(
     working_directory: &Utf8Path,
     library_path: &Utf8Path,
     server: url::Url,
@@ -37,13 +43,68 @@ pub async fn run_reloadable_app(
         "https" => "wss",
         "ws" => "ws",
         "wss" => "wss",
-        scheme => return Err(DylibRunnerError::InvalidScheme(server, scheme.to_string())),
+        scheme => {
+            return Err(DylibRunnerError::InvalidScheme(
+                server.clone(),
+                scheme.to_string(),
+            ))
+        }
     };
 
     address
         .set_scheme(new_scheme)
-        .map_err(|_e| DylibRunnerError::InvalidScheme(server, "Unknown".to_string()))?;
+        .map_err(|_e| DylibRunnerError::InvalidScheme(server.clone(), "Unknown".to_string()))?;
 
+    let (tx, rx) = crossbeam::channel::unbounded::<DylibRunnerMessage>();
+
+    let handle = {
+        let server = server.clone();
+        let address = address.clone();
+        let library_path = library_path.clone();
+        let working_directory = working_directory.clone();
+
+        std::thread::spawn(move || {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on({
+                    let result = remote_connection(address, server, tx.clone());
+                    let _ = tx.send(DylibRunnerMessage::ConnectionClosed);
+                    result
+                })
+        })
+    };
+
+    loop {
+        let initial = rx.recv()?;
+        match initial {
+            DylibRunnerMessage::ConnectionClosed => {
+                let _ = handle
+                    .join()
+                    .map_err(DylibRunnerError::JoinHandleFailed)?;
+                return Ok(())
+            }
+            DylibRunnerMessage::LoadRootLib {
+                build_id,
+                local_path,
+            } => {
+                let library = LibraryHolder::new(&local_path)?;
+            },
+            DylibRunnerMessage::AssetUpdated { .. } => {
+                continue;
+            },
+        }
+    }
+
+    Ok(())
+}
+
+async fn remote_connection(
+    address: Url,
+    server: Url,
+    tx: Sender<DylibRunnerMessage>,
+) -> Result<(), DylibRunnerError> {
     info!("Connecting To {address}");
 
     let (ws_stream, _) = connect_async(address).await?;
@@ -69,6 +130,19 @@ pub async fn run_reloadable_app(
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum DylibRunnerMessage {
+    ConnectionClosed,
+    LoadRootLib {
+        build_id: u32,
+        local_path: Utf8PathBuf,
+    },
+    AssetUpdated {
+        local_path: Utf8PathBuf,
+        name: String,
+    },
+}
+
 #[derive(Error, Debug)]
 pub enum DylibRunnerError {
     #[error("Dylib Runner IO Error {0}")]
@@ -88,5 +162,11 @@ pub enum DylibRunnerError {
     #[error("WebSocket Error {0}")]
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
     #[error("RMP Parse Error {0}")]
-    RmpPArseError(#[from] rmp_serde::decode::Error),
+    RmpParseError(#[from] rmp_serde::decode::Error),
+    #[error("Crossbeam Channel Failed {0}")]
+    CrosbeamChannelError(#[from] crossbeam::channel::RecvError),
+    #[error("Join Handle Failed")]
+    JoinHandleFailed(std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>),
+    #[error("Library Holder Error {0}")]
+    LibraryError(#[from]library_holder::LibraryError)
 }

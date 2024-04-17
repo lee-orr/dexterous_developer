@@ -51,6 +51,7 @@ pub struct TargetBuildSettings {
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
 }
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Target {
     Linux,

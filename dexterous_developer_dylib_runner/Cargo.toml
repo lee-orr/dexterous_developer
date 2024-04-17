@@ -36,3 +36,4 @@ futures-util = { version = "0.3", default-features = false,  features = [
     "std",
 ] }
 camino = "1"
+crossbeam = "0.8"
