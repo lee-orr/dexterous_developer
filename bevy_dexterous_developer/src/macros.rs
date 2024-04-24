@@ -8,8 +8,8 @@ mod hot {
             fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 
             #[no_mangle]
-            pub extern "system" fn dexterous_developer_internal_main(library_paths: std::ffi::CString, closure: fn() -> ()) {
-                reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(library_paths, closure));
+            pub extern "system" fn dexterous_developer_internal_main(info: bevy_dexterous_developer::dexterous_developer_internal::HotReloadInfo) {
+                reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(info));
             }
 
             pub fn $f() {

@@ -8,11 +8,11 @@ use thiserror::Error;
 use tracing::debug;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LibPathSet {
+pub struct LibraryPath {
     path: Utf8PathBuf,
 }
 
-impl LibPathSet {
+impl LibraryPath {
     pub fn new(path: impl Into<Utf8PathBuf>) -> Self {
         debug!("Creating path");
         Self { path: path.into() }

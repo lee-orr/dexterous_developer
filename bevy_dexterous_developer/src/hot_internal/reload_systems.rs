@@ -1,9 +1,7 @@
 use bevy::{
-    log::{debug, error, info},
-    prelude::*,
-    utils::Instant,
+    core::FrameCount, log::{debug, error, info}, prelude::*, utils::Instant
 };
-use dexterous_developer_internal::internal_shared::update_lib::update_lib;
+use dexterous_developer_internal::{HotReloadInfo};
 
 use crate::{
     hot_internal::{
@@ -16,24 +14,14 @@ use crate::{
 use super::super::ReloadableSetup;
 
 #[derive(Resource)]
-pub struct InternalHotReload(pub dexterous_developer_internal::hot_internal::InternalHotReload);
-
-pub fn update_lib_system(mut internal: ResMut<InternalHotReload>) {
-    let internal = &mut internal.0;
-    internal.updated_this_frame = false;
-
-    if let Some(lib) = update_lib(&internal.libs) {
-        info!("Got Update");
-        internal.last_lib = internal.library.clone();
-        internal.library = Some(lib);
-        internal.updated_this_frame = true;
-        internal.last_update_time = Instant::now();
-        internal.last_update_date_time = chrono::Local::now();
-    }
-}
+pub struct InternalHotReload(pub HotReloadInfo, pub chrono::DateTime<chrono::Local>, pub bool);
 
 #[derive(Resource, Clone, Debug, Default)]
 pub struct ReloadableElementList(pub Vec<&'static str>);
+
+pub fn reset_update_frame(mut reload: ResMut<InternalHotReload>) {
+    reload.2 = false;
+}
 
 pub fn reload(world: &mut World) {
     {
@@ -53,9 +41,11 @@ pub fn reload(world: &mut World) {
             false
         };
 
-        if !internal_state.0.updated_this_frame && !manual_reload {
+        if !internal_state.0.update_ready() && !manual_reload {
             return;
         }
+
+        let inner = internal_state.0;
 
         let should_serialize = reload_mode.should_serialize();
         let should_run_setups = reload_mode.should_run_setups();
@@ -70,6 +60,8 @@ pub fn reload(world: &mut World) {
         }
         debug!("Cleanup Schedules...");
         let _ = world.try_run_schedule(CleanupSchedules);
+        debug!("Swapping Libraries");
+        inner.update();
         debug!("Setup...");
         let _ = world.try_run_schedule(SetupReload);
         debug!("Set Schedules...");
@@ -86,7 +78,8 @@ pub fn reload(world: &mut World) {
 
     {
         let mut internal_state = world.resource_mut::<InternalHotReload>();
-        internal_state.0.last_update_date_time = chrono::Local::now();
+        internal_state.1 = chrono::Local::now();
+        internal_state.2 = true;
     }
 }
 
@@ -107,7 +100,6 @@ pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut 
 #[derive(Debug, Clone)]
 enum ReloadableSetupCallError {
     InternalHotReloadStateMissing,
-    LibraryHolderNotSet,
     CallFailed,
     ReloadableAppContentsMissing,
 }
@@ -118,7 +110,6 @@ impl std::fmt::Display for ReloadableSetupCallError {
             ReloadableSetupCallError::InternalHotReloadStateMissing => {
                 "No Internal Hot Reload Resource Available"
             }
-            ReloadableSetupCallError::LibraryHolderNotSet => "Missing a library holder",
             ReloadableSetupCallError::CallFailed => "Library Call Failed",
             ReloadableSetupCallError::ReloadableAppContentsMissing => {
                 "No Reloadable App Contents - Called out of order"
@@ -139,10 +130,7 @@ fn setup_reloadable_app_inner(
 
     debug!("got internal reload state");
 
-    let Some(lib) = &internal_state.0.library else {
-        return Err(ReloadableSetupCallError::LibraryHolderNotSet);
-    };
-    let lib = lib.clone();
+    let lib = internal_state.0;
 
     let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
@@ -212,10 +200,6 @@ pub fn cleanup_schedules(
     debug!("Cleanup complete");
 }
 
-pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
-    reload.0.updated_this_frame
-}
-
 pub fn toggle_reload_mode(
     settings: Option<ResMut<ReloadSettings>>,
     input: Option<Res<ButtonInput<KeyCode>>>,
@@ -272,4 +256,8 @@ pub fn toggle_reloadable_elements(
         };
         settings.reloadable_element_selection = next;
     }
+}
+
+pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
+    reload.2
 }

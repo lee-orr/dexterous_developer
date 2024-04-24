@@ -27,8 +27,7 @@ pub fn draw_internal_hot_reload(
         .replace("_internal_reloadable_context", "_");
 
     let update = internal
-        .0
-        .last_update_date_time
+        .1
         .format("%H:%M:%S")
         .to_string();
 
