@@ -10,7 +10,6 @@ use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
-use bevy::log::{debug, info};
 use dexterous_developer_internal::internal::HotReloadInfo;
 
 pub extern crate libloading;
@@ -64,7 +63,7 @@ impl Plugin for HotReloadPlugin {
             .add_schedule(deserialize_schedule)
             .add_schedule(reload_complete);
 
-            println!("scheduled attached");
+        println!("scheduled attached");
 
         app.init_resource::<ReloadableAppElements>()
             .init_resource::<ReloadableAppCleanupData>()
@@ -85,6 +84,6 @@ impl Plugin for HotReloadPlugin {
                     toggle_reloadable_elements,
                 ),
             );
-            println!("Finished build");
+        println!("Finished build");
     }
 }

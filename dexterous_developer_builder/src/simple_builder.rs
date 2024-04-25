@@ -1,10 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
-    env,
-    ffi::OsString,
-    fs,
+    env, fs,
     process::{Command, Stdio},
-    str::FromStr,
     sync::{atomic::AtomicU32, Arc},
 };
 
@@ -12,7 +9,7 @@ use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use tracing::{error, info, trace};
+use tracing::{error, info};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -115,8 +112,14 @@ fn build(
                                 root_library = Some(name);
                             }
                             dexterous_developer_types::PackageOrExample::Package(p) => {
-                                let file_section = artifact.package_id.repr.split("/").last().unwrap_or_default();
-                                let package_name = file_section.split("#").next().unwrap_or_default();
+                                let file_section = artifact
+                                    .package_id
+                                    .repr
+                                    .split('/')
+                                    .last()
+                                    .unwrap_or_default();
+                                let package_name =
+                                    file_section.split('#').next().unwrap_or_default();
                                 info!("Checking if {package_name} == {p}");
                                 if package_name == p {
                                     root_library = Some(name);
@@ -157,29 +160,65 @@ fn build(
     let mut root_dirs = root_dir.into_iter().collect::<Vec<_>>();
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
+    path_var.push(
+        Utf8PathBuf::from_path_buf(env::current_dir()?)
+            .unwrap_or_default()
+            .join("target")
+            .join("hot-reload")
+            .join(target.to_string())
+            .join(target.to_string())
+            .join("debug")
+            .join("deps"),
+    );
+
+    {
+        let rustup_home = home::rustup_home()?;
+        let toolchains = rustup_home.join("toolchains");
+        let dir = std::fs::read_dir(toolchains)?;
+
+        for child in dir {
+            let Ok(child) = child else {
+                continue;
+            };
+            if child.file_type()?.is_dir() {
+                let path = Utf8PathBuf::from_path_buf(child.path()).unwrap_or_default();
+                path_var.push(path.join("lib"));
+            }
+        }
+    }
 
     info!("Path Var for DyLib Search: {path_var:?}");
 
-    let searchable_files = path_var.iter().map(|dir| {
-        std::fs::read_dir(dir).map(|value| {
-            let files = value.filter_map(|value| {
-                if let Ok(value) = value {
-                    if let Ok(t) = value.file_type() {
-                        if t.is_file() {
-                            let path = Utf8PathBuf::from_path_buf(value.path());
-                            if let Ok(path) = path {
-                                if let Some(name) = path.file_name() {
-                                    return Some((name.to_string(), path));
+    let mut searchable_files = HashMap::new();
+
+    for (name, path) in path_var
+        .iter()
+        .map(|dir| {
+            std::fs::read_dir(dir).map(|value| {
+                let files = value.filter_map(|value| {
+                    if let Ok(value) = value {
+                        if let Ok(t) = value.file_type() {
+                            if t.is_file() {
+                                let path = Utf8PathBuf::from_path_buf(value.path());
+                                if let Ok(path) = path {
+                                    if let Some(name) = path.file_name() {
+                                        return Some((name.to_string(), path));
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                None
-            });
-            files.collect::<Vec<(String, Utf8PathBuf)>>()
+                    None
+                });
+                files.collect::<Vec<(String, Utf8PathBuf)>>()
+            })
         })
-    }).collect::<std::io::Result<Vec<Vec<(String, Utf8PathBuf)>>>>()?.into_iter().flatten().collect::<HashMap<_,_>>();
+        .collect::<std::io::Result<Vec<Vec<(String, Utf8PathBuf)>>>>()?
+        .into_iter()
+        .flatten()
+    {
+        searchable_files.entry(name).or_insert(path);
+    }
 
     let mut dependencies = HashMap::new();
 
@@ -231,25 +270,33 @@ fn process_dependencies_recursive(
     let dependency_vec = match file {
         goblin::Object::Elf(elf) => {
             let str_table = elf.dynstrtab;
-            elf.dynamic.map(|dynamic| dynamic.get_libraries(&str_table).iter().map(|v| v.to_string()).collect()).unwrap_or_default()
-        },
-        goblin::Object::PE(pe) => {
-            pe.libraries.iter().map(|import| import.to_string()).collect()
-        },
-        goblin::Object::Mach(mach) => {
-            match mach {
-                goblin::mach::Mach::Fat(fat) => {
-                    let mut vec = HashSet::new();
-                    while let Some(Ok(goblin::mach::SingleArch::MachO(arch))) = fat.into_iter().next() {
-                        let imports = arch.imports()?;
-                        let inner = imports.iter().map(|v| v.dylib.to_string());
-                        vec.extend(inner);
-                    }
-                    vec
-                },
-                goblin::mach::Mach::Binary(std) => {
-                    std.imports()?.iter().map(|v| v.dylib.to_string()).collect()
-                },
+            elf.dynamic
+                .map(|dynamic| {
+                    dynamic
+                        .get_libraries(&str_table)
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect()
+                })
+                .unwrap_or_default()
+        }
+        goblin::Object::PE(pe) => pe
+            .libraries
+            .iter()
+            .map(|import| import.to_string())
+            .collect(),
+        goblin::Object::Mach(mach) => match mach {
+            goblin::mach::Mach::Fat(fat) => {
+                let mut vec = HashSet::new();
+                while let Some(Ok(goblin::mach::SingleArch::MachO(arch))) = fat.into_iter().next() {
+                    let imports = arch.imports()?;
+                    let inner = imports.iter().map(|v| v.dylib.to_string());
+                    vec.extend(inner);
+                }
+                vec
+            }
+            goblin::mach::Mach::Binary(std) => {
+                std.imports()?.iter().map(|v| v.dylib.to_string()).collect()
             }
         },
         _ => HashSet::default(),

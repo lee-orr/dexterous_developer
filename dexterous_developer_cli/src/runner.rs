@@ -13,7 +13,7 @@ struct Args {
     #[arg(short, long)]
     working_directory: Option<Utf8PathBuf>,
     /// The library directory - this is where the compiled dynamic libraries
-    /// will be stored, and where they are loaded from. Defaults to "./target/reload_libs"
+    /// will be stored, and where they are loaded from. Defaults to "./reload_libs"
     #[arg(short, long)]
     library_path: Option<Utf8PathBuf>,
     /// The Url for the process handling compilation, defaults to "http://localhost:1234"
@@ -36,7 +36,9 @@ fn main() {
     let args = Args::parse();
 
     let working_directory = args.working_directory.unwrap_or_else(|| cwd.clone());
-    let library_path = args.library_path.unwrap_or_else(|| cwd.clone());
+    let library_path = args
+        .library_path
+        .unwrap_or_else(|| cwd.clone().join("reload_libs"));
 
     let server = args
         .server

@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 pub mod library_holder;
 
 use std::{
@@ -6,16 +8,16 @@ use std::{
 };
 
 use camino::{Utf8Path, Utf8PathBuf};
-use crossbeam::{atomic::AtomicCell};
-use dashmap::{DashMap, DashSet};
+use crossbeam::atomic::AtomicCell;
+use dashmap::DashSet;
 use dexterous_developer_internal::hot::{CallResponse, HotReloadInfo, UpdatedAsset};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use safer_ffi::prelude::{c_slice, ffi_export};
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tokio_tungstenite::{connect_async, tungstenite::http::request};
+use tokio_tungstenite::connect_async;
 use tracing::{error, info};
 use url::Url;
 
@@ -88,7 +90,7 @@ pub fn run_reloadable_app(
                         library_path,
                         working_directory,
                     );
-                    let _ = tx.send(DylibRunnerMessage::ConnectionClosed);
+                    let _ = tx.send_blocking(DylibRunnerMessage::ConnectionClosed);
                     result
                 })
         })
@@ -99,7 +101,7 @@ pub fn run_reloadable_app(
         let mut library = None;
         let mut id = None;
         loop {
-            if library.is_some() {
+            if library.is_some() || id.is_some() {
                 info!("We have a root set already...");
             }
             let initial = rx.recv_blocking()?;
@@ -176,7 +178,7 @@ async fn remote_connection(
     let mut last_started_id = 0;
     let mut last_completed_id = 0;
     let mut last_triggered_id = 0;
-    let mut root_lib_path : Option<Utf8PathBuf> = None;
+    let mut root_lib_path: Option<Utf8PathBuf> = None;
     let pending_downloads = DashSet::<[u8; 32]>::new();
 
     loop {
@@ -297,16 +299,24 @@ fn download_file(
     let server = server.clone();
     let base_path = base_path.to_owned();
     tokio::spawn(async move {
-        let result = execute_download(server.clone(), target, base_path, remote_path.clone(), hash, pending.clone()).await;
+        let result = execute_download(
+            server.clone(),
+            target,
+            base_path,
+            remote_path.clone(),
+            hash,
+            pending.clone(),
+        )
+        .await;
         pending.remove(&hash);
         match result {
             Ok(path) => {
                 let name = remote_path.to_string();
                 let _ = tx.send((name, path, is_asset));
-            },
+            }
             Err(e) => {
                 error!("Failed To Download File {e:?}");
-            },
+            }
         }
     });
 }
@@ -318,16 +328,21 @@ async fn execute_download(
     base_path: Utf8PathBuf,
     remote_path: Utf8PathBuf,
     hash: [u8; 32],
-    pending: DashSet<[u8; 32]>
+    pending: DashSet<[u8; 32]>,
 ) -> Result<Utf8PathBuf, DylibRunnerError> {
     let local_path = base_path.join(&remote_path);
     pending.insert(hash);
 
-    let address = server.join("files/")?.join(&format!("{target}/"))?.join(remote_path.as_str())?;
+    let address = server
+        .join("files/")?
+        .join(&format!("{target}/"))?
+        .join(remote_path.as_str())?;
     info!("downloading {remote_path} from {address:?}");
     let req = reqwest::get(address).await?.error_for_status()?;
 
-    let dir = local_path.parent().ok_or_else(|| DylibRunnerError::NoAssedDirectory(local_path.clone()))?;
+    let dir = local_path
+        .parent()
+        .ok_or_else(|| DylibRunnerError::NoAssedDirectory(local_path.clone()))?;
     if !tokio::fs::try_exists(dir).await.unwrap_or(false) {
         tokio::fs::create_dir_all(dir).await?;
     }
@@ -436,7 +451,7 @@ pub enum DylibRunnerError {
     #[error("Download Failed: {0}")]
     DownloadError(#[from] reqwest::Error),
     #[error("Couldn'y Determine Downloaded Asset Directory: {0}")]
-    NoAssedDirectory(Utf8PathBuf)
+    NoAssedDirectory(Utf8PathBuf),
 }
 
 pub static LAST_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
