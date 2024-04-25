@@ -11,7 +11,7 @@ use tokio::{
     sync::{broadcast, mpsc},
     task::JoinHandle,
 };
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Default, Clone)]
 
@@ -40,6 +40,8 @@ pub enum ManagerError {
     SubscriptionFailed(Target),
     #[error("Failed to receive message {0}")]
     ReceiveError(#[from] tokio::sync::broadcast::error::RecvError),
+    #[error("Requested File Isn't Available")]
+    NoSuchFile(Utf8PathBuf),
 }
 
 impl Manager {
@@ -121,7 +123,7 @@ impl Manager {
         &self,
         target: &Target,
         path: &Utf8Path,
-    ) -> Result<Option<Utf8PathBuf>, ManagerError> {
+    ) -> Result<Utf8PathBuf, ManagerError> {
         let target_ref = self
             .targets
             .get(target)
@@ -132,9 +134,13 @@ impl Manager {
         let file = current_state
             .libraries
             .get(path)
-            .or_else(|| current_state.assets.get(path));
+            .or_else(|| current_state.assets.get(path))
+            .ok_or_else(|| {
+                error!("Known Libraries: {:?}", current_state.libraries);
+                ManagerError::NoSuchFile(path.to_owned())
+            })?;
 
-        Ok(file.map(|v| v.local_path.clone()))
+        Ok(file.local_path.clone())
     }
 }
 

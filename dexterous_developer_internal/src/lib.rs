@@ -53,7 +53,10 @@ pub mod internal {
         }
 
         pub fn update(&self) -> bool {
-            (self.internal_update)()
+            println!("Called Update");
+            let result = (self.internal_update)();
+            println!("Update Result: {result}");
+            result
         }
 
         pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {

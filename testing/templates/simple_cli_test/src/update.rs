@@ -2,7 +2,7 @@ use bevy::prelude::{Startup, Update};
 use bevy_dexterous_developer::*;
 
 fn update() {
-    println!("Ran Update");
+    println!("Ran Update?");
 }
 
 fn startup() {
@@ -10,6 +10,7 @@ fn startup() {
 }
 
 reloadable_scope!(reloadable(app) {
+    println!("Setting Up Reloadable Scope");
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
 });

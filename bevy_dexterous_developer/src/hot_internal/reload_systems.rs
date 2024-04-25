@@ -29,6 +29,7 @@ pub fn reset_update_frame(mut reload: ResMut<InternalHotReload>) {
 }
 
 pub fn reload(world: &mut World) {
+    println!("Reloading");
     {
         let internal_state = world.resource::<InternalHotReload>();
         let input = world.get_resource::<ButtonInput<KeyCode>>();
@@ -46,7 +47,9 @@ pub fn reload(world: &mut World) {
             false
         };
 
-        if !internal_state.0.update_ready() && !manual_reload {
+        let update_ready = internal_state.0.update_ready();
+        println!("Ready: {update_ready} Manual: {manual_reload}");
+        if !update_ready && !manual_reload {
             return;
         }
 
@@ -65,7 +68,7 @@ pub fn reload(world: &mut World) {
         }
         debug!("Cleanup Schedules...");
         let _ = world.try_run_schedule(CleanupSchedules);
-        debug!("Swapping Libraries");
+        println!("Swapping Libraries");
         inner.update();
         debug!("Setup...");
         let _ = world.try_run_schedule(SetupReload);

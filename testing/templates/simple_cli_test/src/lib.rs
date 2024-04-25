@@ -19,6 +19,7 @@ fn terminal_runner(mut app: App) {
 }
 
 reloadable_main!( bevy_main(initial_plugins) {
+    println!("RUNNING INTERNAL MAIN");
     App::new()
         .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
         .set_runner(terminal_runner)

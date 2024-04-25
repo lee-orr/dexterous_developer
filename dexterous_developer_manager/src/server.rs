@@ -178,10 +178,15 @@ async fn target_file_loader(
     state: State<ServerState>,
     request: Request<Body>,
 ) -> Result<Response, Error> {
+    let file = Utf8PathBuf::from("./").join(file);
     let target: Target = target.parse()?;
     println!("Requested file {file:?} from {target}");
-    let Some(file) = state.manager.get_filepath(&target, &file)? else {
-        return Ok(StatusCode::NOT_FOUND.into_response());
+    let file = match state.manager.get_filepath(&target, &file) {
+        Ok(file) => file,
+        Err(e) => {
+            error!("Couldn't Find File For Download {e:?}");
+            return Ok(StatusCode::NOT_FOUND.into_response());
+        }
     };
     println!("Found File path: {file:?}");
     let serve = ServeFile::new(file);

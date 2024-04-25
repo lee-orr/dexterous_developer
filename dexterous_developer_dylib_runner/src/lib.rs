@@ -6,15 +6,17 @@ use std::{
 };
 
 use camino::{Utf8Path, Utf8PathBuf};
-use crossbeam::{atomic::AtomicCell, channel::Sender};
+use crossbeam::{atomic::AtomicCell};
+use dashmap::{DashMap, DashSet};
 use dexterous_developer_internal::hot::{CallResponse, HotReloadInfo, UpdatedAsset};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use safer_ffi::prelude::{c_slice, ffi_export};
 use thiserror::Error;
-use tokio_tungstenite::connect_async;
-use tracing::info;
+use tokio::io::AsyncWriteExt;
+use tokio_tungstenite::{connect_async, tungstenite::http::request};
+use tracing::{error, info};
 use url::Url;
 
 use crate::library_holder::LibraryHolder;
@@ -63,13 +65,14 @@ pub fn run_reloadable_app(
         .set_scheme(new_scheme)
         .map_err(|_e| DylibRunnerError::InvalidScheme(server.clone(), "Unknown".to_string()))?;
 
-    let (tx, rx) = crossbeam::channel::unbounded::<DylibRunnerMessage>();
+    let (tx, rx) = async_channel::unbounded::<DylibRunnerMessage>();
 
     let handle = {
         let server = server.clone();
         let address = address.clone();
-        let _library_path = library_path;
-        let _working_directory = working_directory;
+        let library_path = library_path.to_owned();
+        let working_directory = working_directory.to_owned();
+        let target = current_target;
 
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
@@ -77,7 +80,14 @@ pub fn run_reloadable_app(
                 .build()
                 .unwrap()
                 .block_on({
-                    let result = remote_connection(address, server, tx.clone());
+                    let result = remote_connection(
+                        address,
+                        server,
+                        target,
+                        tx.clone(),
+                        library_path,
+                        working_directory,
+                    );
                     let _ = tx.send(DylibRunnerMessage::ConnectionClosed);
                     result
                 })
@@ -85,13 +95,14 @@ pub fn run_reloadable_app(
     };
 
     let (initial, id) = {
+        info!("Getting Initial Root");
         let mut library = None;
         let mut id = None;
         loop {
             if library.is_some() {
-                break;
+                info!("We have a root set already...");
             }
-            let initial = rx.recv()?;
+            let initial = rx.recv_blocking()?;
             match initial {
                 DylibRunnerMessage::ConnectionClosed => {
                     let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
@@ -101,22 +112,27 @@ pub fn run_reloadable_app(
                     build_id,
                     local_path,
                 } => {
+                    info!("Loading Initial Root");
                     library = Some(LibraryHolder::new(&local_path)?);
                     id = Some(build_id);
+                    break;
                 }
                 DylibRunnerMessage::AssetUpdated { .. } => {
                     continue;
                 }
             }
         }
+        info!("Initial Root ID: {id:?}");
         (
             library.ok_or(DylibRunnerError::NoInitialLibrary)?,
             id.ok_or(DylibRunnerError::NoInitialLibrary)?,
         )
     };
+
     let initial = Arc::new(initial);
 
-    LAST_UPDATE_VERSION.store(id, std::sync::atomic::Ordering::SeqCst);
+    NEXT_UPDATE_VERSION.store(id, std::sync::atomic::Ordering::SeqCst);
+    NEXT_LIBRARY.store(Some(initial.clone()));
     ORIGINAL_LIBRARY
         .set(initial.clone())
         .map_err(|_| DylibRunnerError::OnceCellError)?;
@@ -132,15 +148,21 @@ pub fn run_reloadable_app(
 
     let _handle = std::thread::spawn(|| update_loop(rx, handle));
 
-    initial.call::<HotReloadInfo>("dexterous_developer_internal_main", &mut info)?;
+    info!("Calling Internal Main");
+    initial.call("dexterous_developer_internal_main", &mut info)?;
+
+    info!("Done.");
 
     Ok(())
 }
 
 async fn remote_connection(
     address: Url,
-    _server: Url,
-    _tx: Sender<DylibRunnerMessage>,
+    server: Url,
+    target: Target,
+    tx: async_channel::Sender<DylibRunnerMessage>,
+    library_path: Utf8PathBuf,
+    working_directory: Utf8PathBuf,
 ) -> Result<(), DylibRunnerError> {
     info!("Connecting To {address}");
 
@@ -148,31 +170,185 @@ async fn remote_connection(
 
     let (_, mut read) = ws_stream.split();
 
+    let (download_tx, mut download_rx) =
+        tokio::sync::mpsc::unbounded_channel::<(String, Utf8PathBuf, bool)>();
+
+    let mut last_started_id = 0;
+    let mut last_completed_id = 0;
+    let mut last_triggered_id = 0;
+    let mut root_lib_path : Option<Utf8PathBuf> = None;
+    let pending_downloads = DashSet::<[u8; 32]>::new();
+
     loop {
-        let Some(msg) = read.next().await else {
-            return Ok(());
-        };
-
-        let msg = msg?;
-
-        match msg {
-            tokio_tungstenite::tungstenite::Message::Binary(binary) => {
-                let msg: HotReloadMessage = rmp_serde::from_slice(&binary)?;
-                info!("Received Hot Reload Message: {msg:?}");
+        tokio::select! {
+            Some((name, local_path, is_asset)) = download_rx.recv() => {
+                if is_asset {
+                    info!("downloaded asset {name}");
+                    let _ = tx.send(DylibRunnerMessage::AssetUpdated { local_path, name }).await;
+                } else if pending_downloads.is_empty() {
+                    info!("all downloads completed");
+                    if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
+                        if let Some(local_path) = root_lib_path.as_ref().cloned() {
+                            if local_path.exists() {
+                                info!("local root lib exists -triggering a reload");
+                                last_triggered_id = last_completed_id;
+                                let _ = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
+                            } else {
+                                info!("local root doesn't exist yet - did download actually complete?");
+                            }
+                        } else {
+                            info!("no local root path exists - not triggering a reload");
+                        }
+                    } else {
+                        info!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
+                    }
+                }
             }
-            _ => {
+            Some(msg) = read.next() => {
+                let msg = msg?;
+
+                match msg {
+                    tokio_tungstenite::tungstenite::Message::Binary(binary) => {
+                        let msg: HotReloadMessage = rmp_serde::from_slice(&binary)?;
+                        info!("Received Hot Reload Message: {msg:?}");
+                        match msg {
+                            HotReloadMessage::InitialState {
+                                root_lib: initial_root_lib,
+                                libraries,
+                                assets,
+                                most_recent_started_build,
+                                most_recent_completed_build,
+                                ..
+                            } => {
+                                info!(r#"Got Initial State:
+                                root library: {initial_root_lib:?}
+                                most recent started build: {most_recent_started_build}
+                                most_recent_completed_build: {most_recent_completed_build}"#);
+                                root_lib_path = initial_root_lib.as_ref().map(|path| library_path.join(path));
+                                for (path, hash) in libraries {
+                                    download_file(&server, target, &library_path, path, hash, pending_downloads.clone(), download_tx.clone(), false);
+                                }
+                                for (path, hash) in assets {
+                                    download_file(&server, target, &working_directory, path, hash, pending_downloads.clone(), download_tx.clone(), true);
+                                }
+                                last_started_id = most_recent_started_build;
+                                last_completed_id = most_recent_completed_build;
+
+                            },
+                            HotReloadMessage::RootLibPath(path) => {
+                                let local_path = library_path.join(&path);
+                                root_lib_path = Some(local_path.clone());
+                                info!("root library: {root_lib_path:?}");
+                                if pending_downloads.is_empty() {
+                                    info!("no remaining downloads");
+                                    if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
+                                        info!("triggering a reload");
+                                        last_triggered_id = last_completed_id;
+                                        let _ = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;                                    } else {
+                                        info!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
+                                    }
+                                }
+
+                            },
+                            HotReloadMessage::UpdatedLibs(path, hash, _) => {
+                                download_file(&server,target,  &library_path, Utf8PathBuf::from(path), hash, pending_downloads.clone(), download_tx.clone(), false);
+                            },
+                            HotReloadMessage::UpdatedAssets(path, hash) => {
+                                download_file(&server, target, &working_directory, path, hash, pending_downloads.clone(), download_tx.clone(), true);
+                            },
+                            HotReloadMessage::BuildStarted(id) => {
+                                if id > last_started_id {
+                                    info!("build started: {id:?}");
+                                    last_started_id = id;
+                                }
+                            },
+                            HotReloadMessage::BuildCompleted(id) => {
+                                info!("build completed: {id:?}");
+                                if id > last_completed_id {
+                                    last_completed_id = id;
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                    _ => {
+                        return Ok(());
+                    }
+                }
+            }
+            else => {
                 return Ok(());
             }
-        }
+        };
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn download_file(
+    server: &url::Url,
+    target: Target,
+    base_path: &Utf8Path,
+    remote_path: Utf8PathBuf,
+    hash: [u8; 32],
+    pending: DashSet<[u8; 32]>,
+    tx: tokio::sync::mpsc::UnboundedSender<(String, Utf8PathBuf, bool)>,
+    is_asset: bool,
+) {
+    let server = server.clone();
+    let base_path = base_path.to_owned();
+    tokio::spawn(async move {
+        let result = execute_download(server.clone(), target, base_path, remote_path.clone(), hash, pending.clone()).await;
+        pending.remove(&hash);
+        match result {
+            Ok(path) => {
+                let name = remote_path.to_string();
+                let _ = tx.send((name, path, is_asset));
+            },
+            Err(e) => {
+                error!("Failed To Download File {e:?}");
+            },
+        }
+    });
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_download(
+    server: url::Url,
+    target: Target,
+    base_path: Utf8PathBuf,
+    remote_path: Utf8PathBuf,
+    hash: [u8; 32],
+    pending: DashSet<[u8; 32]>
+) -> Result<Utf8PathBuf, DylibRunnerError> {
+    let local_path = base_path.join(&remote_path);
+    pending.insert(hash);
+
+    let address = server.join("files/")?.join(&format!("{target}/"))?.join(remote_path.as_str())?;
+    info!("downloading {remote_path} from {address:?}");
+    let req = reqwest::get(address).await?.error_for_status()?;
+
+    let dir = local_path.parent().ok_or_else(|| DylibRunnerError::NoAssedDirectory(local_path.clone()))?;
+    if !tokio::fs::try_exists(dir).await.unwrap_or(false) {
+        tokio::fs::create_dir_all(dir).await?;
+    }
+
+    let bytes = req.bytes().await?;
+
+    let mut file = tokio::fs::File::create(&local_path).await?;
+
+    file.write_all(&bytes).await?;
+    info!("downloaded {remote_path}");
+
+    Ok(local_path)
+}
+
 fn update_loop(
-    rx: crossbeam::channel::Receiver<DylibRunnerMessage>,
+    rx: async_channel::Receiver<DylibRunnerMessage>,
     handle: std::thread::JoinHandle<Result<(), DylibRunnerError>>,
 ) -> Result<(), DylibRunnerError> {
+    info!("Starting Secondary Update Loop");
     loop {
-        let message = rx.recv()?;
+        let message = rx.recv_blocking()?;
         match message {
             DylibRunnerMessage::ConnectionClosed => {
                 let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
@@ -247,8 +423,8 @@ pub enum DylibRunnerError {
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
     #[error("RMP Parse Error {0}")]
     RmpParseError(#[from] rmp_serde::decode::Error),
-    #[error("Crossbeam Channel Failed {0}")]
-    CrosbeamChannelError(#[from] crossbeam::channel::RecvError),
+    #[error("Async Channel Failed {0}")]
+    AsyncChannelError(#[from] async_channel::RecvError),
     #[error("Join Handle Failed")]
     JoinHandleFailed(std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>),
     #[error("Library Holder Error {0}")]
@@ -257,6 +433,10 @@ pub enum DylibRunnerError {
     NoInitialLibrary,
     #[error("Original Library Already Set")]
     OnceCellError,
+    #[error("Download Failed: {0}")]
+    DownloadError(#[from] reqwest::Error),
+    #[error("Couldn'y Determine Downloaded Asset Directory: {0}")]
+    NoAssedDirectory(Utf8PathBuf)
 }
 
 pub static LAST_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
@@ -278,17 +458,22 @@ fn last_update_version() -> u32 {
 fn update_ready() -> bool {
     let last = LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
+    info!("Checking Readiness: {last} {next}");
     next > last
 }
 
 #[ffi_export]
 fn update() -> bool {
+    println!("Updating");
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
-    let old = LAST_UPDATE_VERSION.fetch_max(next, std::sync::atomic::Ordering::SeqCst);
+    let old = LAST_UPDATE_VERSION.swap(next, std::sync::atomic::Ordering::SeqCst);
+
     if old < next {
+        println!("Updated Version");
         LAST_LIBRARY.store(CURRENT_LIBRARY.swap(NEXT_LIBRARY.take()));
         true
     } else {
+        println!("Didn't update version");
         false
     }
 }

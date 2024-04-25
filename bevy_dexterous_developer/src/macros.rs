@@ -10,10 +10,12 @@ mod hot {
             #[no_mangle]
             pub extern "C" fn dexterous_developer_internal_main(info: &mut bevy_dexterous_developer::dexterous_developer_internal::internal::HotReloadInfo) {
                 let info = info.clone();
+                println!("Setting Up With Hot Reload Plugin");
                 reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin::new(info));
             }
 
             pub fn $f() {
+                println!("Setting Up Without Hot Reload Plugin");
                 reloadable_main_implementation(bevy_dexterous_developer::InitialPluginsEmpty);
             }
         };

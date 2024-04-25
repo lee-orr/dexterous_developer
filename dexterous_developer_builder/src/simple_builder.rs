@@ -12,9 +12,7 @@ use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use object::{read::elf::FileHeader, Endianness, Object};
-use tracing::{error, info};
-use which::WhichConfig;
+use tracing::{error, info, trace};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -117,7 +115,10 @@ fn build(
                                 root_library = Some(name);
                             }
                             dexterous_developer_types::PackageOrExample::Package(p) => {
-                                if &artifact.package_id.repr == p {
+                                let file_section = artifact.package_id.repr.split("/").last().unwrap_or_default();
+                                let package_name = file_section.split("#").next().unwrap_or_default();
+                                info!("Checking if {package_name} == {p}");
+                                if package_name == p {
                                     root_library = Some(name);
                                 }
                             }
@@ -156,15 +157,35 @@ fn build(
     let mut root_dirs = root_dir.into_iter().collect::<Vec<_>>();
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
-    let path_var = env::join_paths(&path_var)?;
 
     info!("Path Var for DyLib Search: {path_var:?}");
+
+    let searchable_files = path_var.iter().map(|dir| {
+        std::fs::read_dir(dir).map(|value| {
+            let files = value.filter_map(|value| {
+                if let Ok(value) = value {
+                    if let Ok(t) = value.file_type() {
+                        if t.is_file() {
+                            let path = Utf8PathBuf::from_path_buf(value.path());
+                            if let Ok(path) = path {
+                                if let Some(name) = path.file_name() {
+                                    return Some((name.to_string(), path));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            });
+            files.collect::<Vec<(String, Utf8PathBuf)>>()
+        })
+    }).collect::<std::io::Result<Vec<Vec<(String, Utf8PathBuf)>>>>()?.into_iter().flatten().collect::<HashMap<_,_>>();
 
     let mut dependencies = HashMap::new();
 
     for (name, library) in initial_libraries.iter() {
         process_dependencies_recursive(
-            &path_var,
+            &searchable_files,
             &mut libraries,
             &mut dependencies,
             name,
@@ -189,6 +210,8 @@ fn build(
         let _ = sender.send(BuildOutputMessages::RootLibraryName(
             root_library.to_string(),
         ));
+    } else {
+        error!("No Root Library");
     }
 
     let _ = sender.send(BuildOutputMessages::EndedBuild(id));
@@ -196,67 +219,40 @@ fn build(
 }
 
 fn process_dependencies_recursive(
-    path_var: &OsString,
+    searchable_files: &HashMap<String, Utf8PathBuf>,
     libraries: &mut HashMap<String, Utf8PathBuf>,
     dependencies: &mut HashMap<String, Vec<String>>,
     current_library_name: &str,
     current_library: &Utf8Path,
 ) -> Result<(), anyhow::Error> {
     let file = fs::read(current_library)?;
-    let file = object::File::parse(&*file)?;
+    let file = goblin::Object::parse(&file)?;
 
     let dependency_vec = match file {
-        object::File::Elf32(elf) => {
-            let data = elf.data();
-            let elf = object::elf::FileHeader32::<Endianness>::parse(data)?;
-            let endian = elf.endian()?;
-            let sections = elf.sections(endian, data)?;
-
-            if let Some((mut verneed, link)) = sections.gnu_verneed(endian, data)? {
-                let strings = sections.strings(endian, data, link).unwrap_or_default();
-
-                let mut dependencies = HashSet::new();
-                while let Ok(Some((need, _))) = verneed.next() {
-                    let name = std::str::from_utf8(need.file(endian, strings)?)?;
-                    dependencies.insert(name.to_string());
-                }
-                dependencies
-            } else {
-                HashSet::new()
+        goblin::Object::Elf(elf) => {
+            let str_table = elf.dynstrtab;
+            elf.dynamic.map(|dynamic| dynamic.get_libraries(&str_table).iter().map(|v| v.to_string()).collect()).unwrap_or_default()
+        },
+        goblin::Object::PE(pe) => {
+            pe.libraries.iter().map(|import| import.to_string()).collect()
+        },
+        goblin::Object::Mach(mach) => {
+            match mach {
+                goblin::mach::Mach::Fat(fat) => {
+                    let mut vec = HashSet::new();
+                    while let Some(Ok(goblin::mach::SingleArch::MachO(arch))) = fat.into_iter().next() {
+                        let imports = arch.imports()?;
+                        let inner = imports.iter().map(|v| v.dylib.to_string());
+                        vec.extend(inner);
+                    }
+                    vec
+                },
+                goblin::mach::Mach::Binary(std) => {
+                    std.imports()?.iter().map(|v| v.dylib.to_string()).collect()
+                },
             }
-        }
-        object::File::Elf64(elf) => {
-            let data = elf.data();
-            let elf = object::elf::FileHeader64::<Endianness>::parse(data)?;
-            let endian = elf.endian()?;
-            let sections = elf.sections(endian, data)?;
-            info!("Searching Sections");
-
-            if let Some((mut verneed, link)) = sections.gnu_verneed(endian, data)? {
-                let strings = sections.strings(endian, data, link).unwrap_or_default();
-
-                let mut dependencies = HashSet::new();
-                while let Ok(Some((need, _))) = verneed.next() {
-                    let name = std::str::from_utf8(need.file(endian, strings)?)?;
-                    dependencies.insert(name.to_string());
-                }
-                dependencies
-            } else {
-                info!("No Need");
-                HashSet::new()
-            }
-        }
-        file => {
-            let imports = file.imports()?;
-            imports
-                .iter()
-                .map(|v| std::str::from_utf8(v.library()).map(|v| v.to_owned()))
-                .filter(|v| match v {
-                    Ok(s) => !s.is_empty(),
-                    Err(_) => true,
-                })
-                .collect::<Result<HashSet<_>, _>>()?
-        }
+        },
+        _ => HashSet::default(),
     };
 
     for library_name in dependency_vec.iter() {
@@ -266,15 +262,11 @@ fn process_dependencies_recursive(
         if libraries.contains_key(library_name) {
             continue;
         }
-        let which = WhichConfig::default()
-            .custom_path_list(path_var.clone())
-            .binary_name(OsString::from_str(library_name)?);
-        let Ok(library_path) = which.first_result() else {
+        let Some(library_path) = searchable_files.get(library_name) else {
             error!("Couldn't find library with name {library_name}");
             continue;
         };
-        let library_path = Utf8PathBuf::try_from(library_path)?;
-        libraries.insert(library_name.to_string(), library_path);
+        libraries.insert(library_name.to_string(), library_path.clone());
     }
     dependencies.insert(
         current_library_name.to_string(),

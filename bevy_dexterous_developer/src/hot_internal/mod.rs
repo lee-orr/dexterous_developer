@@ -33,14 +33,14 @@ pub struct HotReloadPlugin(HotReloadInfo);
 
 impl HotReloadPlugin {
     pub fn new(info: HotReloadInfo) -> Self {
-        info!("Building Hot Reload Plugin");
+        println!("Building Hot Reload Plugin");
         Self(info)
     }
 }
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        debug!(
+        println!(
             "Build Hot Reload Plugin Thread: {:?}",
             std::thread::current().id()
         );
@@ -51,11 +51,11 @@ impl Plugin for HotReloadPlugin {
         let deserialize_schedule = Schedule::new(DeserializeReloadables);
         let reload_complete = Schedule::new(OnReloadComplete);
 
-        debug!("Schedules ready");
+        println!("Schedules ready");
 
         let hot_reload = self.0;
 
-        debug!("Set up internal hot reload resources");
+        println!("Set up internal hot reload resources");
 
         app.add_schedule(reload_schedule)
             .add_schedule(cleanup_reloaded_schedule)
@@ -64,14 +64,14 @@ impl Plugin for HotReloadPlugin {
             .add_schedule(deserialize_schedule)
             .add_schedule(reload_complete);
 
-        debug!("scheduled attached");
+            println!("scheduled attached");
 
         app.init_resource::<ReloadableAppElements>()
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
             .insert_resource(InternalHotReload(hot_reload, chrono::Local::now(), false));
-        debug!("Added resources to app");
+        println!("Added resources to app");
 
         app.add_systems(PreStartup, reload)
             .add_systems(CleanupSchedules, cleanup_schedules)
@@ -85,6 +85,6 @@ impl Plugin for HotReloadPlugin {
                     toggle_reloadable_elements,
                 ),
             );
-        debug!("Finished build");
+            println!("Finished build");
     }
 }
