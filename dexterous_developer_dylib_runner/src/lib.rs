@@ -1,9 +1,17 @@
 pub mod library_holder;
 
+use std::{
+    ffi::c_void,
+    sync::{atomic::AtomicU32, Arc},
+};
+
 use camino::{Utf8Path, Utf8PathBuf};
-use crossbeam::{channel::Sender, thread};
+use crossbeam::{atomic::AtomicCell, channel::Sender};
+use dexterous_developer_internal::hot::{CallResponse, HotReloadInfo, UpdatedAsset};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
+use once_cell::sync::OnceCell;
+use safer_ffi::prelude::{c_slice, ffi_export};
 use thiserror::Error;
 use tokio_tungstenite::connect_async;
 use tracing::info;
@@ -60,8 +68,8 @@ pub fn run_reloadable_app(
     let handle = {
         let server = server.clone();
         let address = address.clone();
-        let library_path = library_path.clone();
-        let working_directory = working_directory.clone();
+        let _library_path = library_path;
+        let _working_directory = working_directory;
 
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
@@ -76,34 +84,63 @@ pub fn run_reloadable_app(
         })
     };
 
-    loop {
-        let initial = rx.recv()?;
-        match initial {
-            DylibRunnerMessage::ConnectionClosed => {
-                let _ = handle
-                    .join()
-                    .map_err(DylibRunnerError::JoinHandleFailed)?;
-                return Ok(())
+    let (initial, id) = {
+        let mut library = None;
+        let mut id = None;
+        loop {
+            if library.is_some() {
+                break;
             }
-            DylibRunnerMessage::LoadRootLib {
-                build_id,
-                local_path,
-            } => {
-                let library = LibraryHolder::new(&local_path)?;
-            },
-            DylibRunnerMessage::AssetUpdated { .. } => {
-                continue;
-            },
+            let initial = rx.recv()?;
+            match initial {
+                DylibRunnerMessage::ConnectionClosed => {
+                    let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
+                    return Ok(());
+                }
+                DylibRunnerMessage::LoadRootLib {
+                    build_id,
+                    local_path,
+                } => {
+                    library = Some(LibraryHolder::new(&local_path)?);
+                    id = Some(build_id);
+                }
+                DylibRunnerMessage::AssetUpdated { .. } => {
+                    continue;
+                }
+            }
         }
-    }
+        (
+            library.ok_or(DylibRunnerError::NoInitialLibrary)?,
+            id.ok_or(DylibRunnerError::NoInitialLibrary)?,
+        )
+    };
+    let initial = Arc::new(initial);
+
+    LAST_UPDATE_VERSION.store(id, std::sync::atomic::Ordering::SeqCst);
+    ORIGINAL_LIBRARY
+        .set(initial.clone())
+        .map_err(|_| DylibRunnerError::OnceCellError)?;
+
+    let mut info: HotReloadInfo = HotReloadInfo {
+        internal_last_update_version: last_update_version,
+        internal_update_ready: update_ready,
+        internal_call_on_current: call,
+        internal_set_update_callback: update_callback,
+        internal_update: update,
+        internal_set_asset_update_callback: update_asset_callback,
+    };
+
+    let _handle = std::thread::spawn(|| update_loop(rx, handle));
+
+    initial.call::<HotReloadInfo>("dexterous_developer_internal_main", &mut info)?;
 
     Ok(())
 }
 
 async fn remote_connection(
     address: Url,
-    server: Url,
-    tx: Sender<DylibRunnerMessage>,
+    _server: Url,
+    _tx: Sender<DylibRunnerMessage>,
 ) -> Result<(), DylibRunnerError> {
     info!("Connecting To {address}");
 
@@ -126,6 +163,53 @@ async fn remote_connection(
             _ => {
                 return Ok(());
             }
+        }
+    }
+}
+
+fn update_loop(
+    rx: crossbeam::channel::Receiver<DylibRunnerMessage>,
+    handle: std::thread::JoinHandle<Result<(), DylibRunnerError>>,
+) -> Result<(), DylibRunnerError> {
+    loop {
+        let message = rx.recv()?;
+        match message {
+            DylibRunnerMessage::ConnectionClosed => {
+                let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
+                eprintln!("Connection Closed");
+                return Ok(());
+            }
+            DylibRunnerMessage::LoadRootLib {
+                build_id,
+                local_path,
+            } => {
+                let library = LibraryHolder::new(&local_path)?;
+                NEXT_UPDATE_VERSION.store(build_id, std::sync::atomic::Ordering::SeqCst);
+                NEXT_LIBRARY.store(Some(Arc::new(library)));
+                unsafe {
+                    if let Some(Some(callback)) = UPDATED_CALLBACK.as_ptr().as_ref() {
+                        callback(build_id);
+                    }
+                }
+            }
+            DylibRunnerMessage::AssetUpdated { local_path, name } => unsafe {
+                if let Some(Some(callback)) = UPDATED_ASSET_CALLBACK.as_ptr().as_ref() {
+                    let inner_local_path = c_slice::Box::from(
+                        local_path
+                            .to_string()
+                            .as_bytes()
+                            .iter()
+                            .copied()
+                            .collect::<Box<[u8]>>(),
+                    );
+                    let inner_name =
+                        c_slice::Box::from(name.as_bytes().iter().copied().collect::<Box<[u8]>>());
+                    callback(UpdatedAsset {
+                        inner_name,
+                        inner_local_path,
+                    });
+                }
+            },
         }
     }
 }
@@ -168,5 +252,118 @@ pub enum DylibRunnerError {
     #[error("Join Handle Failed")]
     JoinHandleFailed(std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>),
     #[error("Library Holder Error {0}")]
-    LibraryError(#[from]library_holder::LibraryError)
+    LibraryError(#[from] library_holder::LibraryError),
+    #[error("Couldn't Open Initial Library")]
+    NoInitialLibrary,
+    #[error("Original Library Already Set")]
+    OnceCellError,
+}
+
+pub static LAST_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
+pub static NEXT_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
+pub static ORIGINAL_LIBRARY: OnceCell<Arc<LibraryHolder>> = OnceCell::new();
+pub static LAST_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
+pub static CURRENT_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
+pub static NEXT_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
+pub static UPDATED_CALLBACK: AtomicCell<Option<extern "C" fn(u32) -> ()>> = AtomicCell::new(None);
+pub static UPDATED_ASSET_CALLBACK: AtomicCell<Option<extern "C" fn(UpdatedAsset) -> ()>> =
+    AtomicCell::new(None);
+
+#[ffi_export]
+fn last_update_version() -> u32 {
+    LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+#[ffi_export]
+fn update_ready() -> bool {
+    let last = LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
+    let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
+    next > last
+}
+
+#[ffi_export]
+fn update() -> bool {
+    let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
+    let old = LAST_UPDATE_VERSION.fetch_max(next, std::sync::atomic::Ordering::SeqCst);
+    if old < next {
+        LAST_LIBRARY.store(CURRENT_LIBRARY.swap(NEXT_LIBRARY.take()));
+        true
+    } else {
+        false
+    }
+}
+
+#[ffi_export]
+fn update_callback(callback: extern "C" fn(u32) -> ()) {
+    UPDATED_CALLBACK.store(Some(callback))
+}
+
+#[ffi_export]
+fn update_asset_callback(callback: extern "C" fn(UpdatedAsset) -> ()) {
+    UPDATED_ASSET_CALLBACK.store(Some(callback))
+}
+
+#[ffi_export]
+fn call(name: c_slice::Ref<'_, u8>, mut args: *mut c_void) -> CallResponse {
+    unsafe {
+        let name = std::str::from_utf8(name.as_slice());
+        let name = match name {
+            Ok(name) => name,
+            Err(e) => {
+                return CallResponse {
+                    success: false,
+                    error: c_slice::Box::from(
+                        format!("Couldn't Parse Function Name: {e}")
+                            .as_bytes()
+                            .iter()
+                            .copied()
+                            .collect::<Box<[u8]>>(),
+                    ),
+                };
+            }
+        };
+        let Some(current) = CURRENT_LIBRARY.as_ptr().as_ref() else {
+            return CallResponse {
+                success: false,
+                error: c_slice::Box::from(
+                    "Failed to get current library"
+                        .to_string()
+                        .as_bytes()
+                        .iter()
+                        .copied()
+                        .collect::<Box<[u8]>>(),
+                ),
+            };
+        };
+        let Some(current) = current.as_ref().cloned() else {
+            return CallResponse {
+                success: false,
+                error: c_slice::Box::from(
+                    "Current Library Not Set"
+                        .to_string()
+                        .as_bytes()
+                        .iter()
+                        .copied()
+                        .collect::<Box<[u8]>>(),
+                ),
+            };
+        };
+        let result = current.call(name, &mut args);
+        match result {
+            Ok(_) => CallResponse {
+                success: true,
+                error: c_slice::Box::default(),
+            },
+            Err(e) => CallResponse {
+                success: false,
+                error: c_slice::Box::from(
+                    format!("Error Running Function: {e}")
+                        .as_bytes()
+                        .iter()
+                        .copied()
+                        .collect::<Box<[u8]>>(),
+                ),
+            },
+        }
+    }
 }

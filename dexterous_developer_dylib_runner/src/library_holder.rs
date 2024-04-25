@@ -1,6 +1,6 @@
-use std::{sync::Arc, time::Duration};
 use camino::{Utf8Path, Utf8PathBuf};
 use libloading::Library;
+use std::{sync::Arc, time::Duration};
 
 use dexterous_developer_types::cargo_path_utils;
 use thiserror::Error;
@@ -106,7 +106,6 @@ impl LibraryHolder {
     }
 }
 
-
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Library {0} Couldn't Be Found")]
@@ -116,5 +115,5 @@ pub enum LibraryError {
     #[error("File System Error {0}")]
     FsError(#[from] std::io::Error),
     #[error("Utf8 Path Error {0}")]
-    Utf8PathError(#[from] camino::FromPathBufError)
+    Utf8PathError(#[from] camino::FromPathBufError),
 }

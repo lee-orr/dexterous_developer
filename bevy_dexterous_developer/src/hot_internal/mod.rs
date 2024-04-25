@@ -10,19 +10,16 @@ use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
-use bevy::utils::Instant;
-
 use bevy::log::{debug, info};
-use dexterous_developer_internal::HotReloadInfo;
+use dexterous_developer_internal::internal::HotReloadInfo;
 
 pub extern crate libloading;
 
 use crate::hot_internal::hot_reload_internal::draw_internal_hot_reload;
 use crate::hot_internal::reload_systems::{
-    reset_update_frame, toggle_reload_mode, toggle_reloadable_elements, InternalHotReload
+    reset_update_frame, toggle_reload_mode, toggle_reloadable_elements, InternalHotReload,
 };
 pub use crate::types::*;
-use dexterous_developer_types::LibraryPath;
 
 #[allow(unused_imports)]
 pub use reloadable_app_setup::*;
@@ -55,7 +52,7 @@ impl Plugin for HotReloadPlugin {
         let reload_complete = Schedule::new(OnReloadComplete);
 
         debug!("Schedules ready");
-        
+
         let hot_reload = self.0;
 
         debug!("Set up internal hot reload resources");

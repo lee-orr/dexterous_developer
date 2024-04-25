@@ -1,7 +1,8 @@
 use bevy::{
-    core::FrameCount, log::{debug, error, info}, prelude::*, utils::Instant
+    log::{debug, error, info},
+    prelude::*,
 };
-use dexterous_developer_internal::{HotReloadInfo};
+use dexterous_developer_internal::internal::HotReloadInfo;
 
 use crate::{
     hot_internal::{
@@ -14,7 +15,11 @@ use crate::{
 use super::super::ReloadableSetup;
 
 #[derive(Resource)]
-pub struct InternalHotReload(pub HotReloadInfo, pub chrono::DateTime<chrono::Local>, pub bool);
+pub struct InternalHotReload(
+    pub HotReloadInfo,
+    pub chrono::DateTime<chrono::Local>,
+    pub bool,
+);
 
 #[derive(Resource, Clone, Debug, Default)]
 pub struct ReloadableElementList(pub Vec<&'static str>);

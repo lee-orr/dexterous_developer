@@ -186,7 +186,9 @@ fn build(
     }
 
     if let Some(root_library) = root_library {
-        let _ = sender.send(BuildOutputMessages::RootLibraryName(root_library.to_string()));
+        let _ = sender.send(BuildOutputMessages::RootLibraryName(
+            root_library.to_string(),
+        ));
     }
 
     let _ = sender.send(BuildOutputMessages::EndedBuild(id));

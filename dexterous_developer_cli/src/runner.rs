@@ -48,22 +48,17 @@ fn main() {
     );
 
     if !working_directory.exists() {
-        std::fs::create_dir_all(&working_directory)
-            
-            .expect("Failed to create working directory");
+        std::fs::create_dir_all(&working_directory).expect("Failed to create working directory");
     }
     if !library_path.exists() {
-        std::fs::create_dir_all(&library_path)
-            
-            .expect("Failed to create library path");
+        std::fs::create_dir_all(&library_path).expect("Failed to create library path");
     }
 
     if let Err(e) = dexterous_developer_dylib_runner::run_reloadable_app(
         &working_directory,
         &library_path,
         server.clone(),
-    )
-    {
+    ) {
         match e {
             dexterous_developer_dylib_runner::DylibRunnerError::DylibPathsMissingLibraries => {
                 if args.env_vars_preset {
