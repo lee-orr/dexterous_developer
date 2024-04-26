@@ -1,4 +1,4 @@
 features = [
-    "bevy/dynamic_linking", "bevy/embedded_watcher", "bevy_dexterous_developer/hot_internal"
+    "bevy/embedded_watcher", "bevy_dexterous_developer/hot_internal"
 ]
 

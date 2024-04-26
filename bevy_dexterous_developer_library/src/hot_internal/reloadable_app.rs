@@ -61,19 +61,21 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         schedule: L,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
+        info!("Adding To Schedule {schedule:?}");
         let schedules = &mut self.schedules;
         let wrapped: WrappedSchedule = WrappedSchedule::new(schedule.clone());
 
         if let Some((schedule, _)) = schedules.get_mut(&wrapped) {
-            debug!("Adding systems to schedule");
+            info!("Adding systems to schedule");
             schedule.add_systems(systems);
         } else {
-            debug!("Creating schedule with systems");
+            info!("Creating schedule with systems");
             let reloadable = ReloadableSchedule::new(wrapped.clone());
             let mut new_schedule = Schedule::new(reloadable.clone());
             new_schedule.add_systems(systems);
             schedules.insert(wrapped, (new_schedule, reloadable));
         }
+        info!("Adding To Schedule Complete");
 
         self
     }

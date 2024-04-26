@@ -1,19 +1,6 @@
-pub mod macros;
-mod types;
-
-#[cfg(not(feature = "hot_internal"))]
-mod cold;
+pub use bevy_dexterous_developer_library::*;
 
 #[cfg(feature = "hot_internal")]
-mod hot_internal;
-
-pub use types::*;
-
-#[cfg(feature = "hot_internal")]
-pub use hot_internal::{HotReloadPlugin, ReloadableAppContents};
-
-#[cfg(not(feature = "hot_internal"))]
-pub use cold::*;
-
-#[cfg(feature = "hot_internal")]
-pub use dexterous_developer_internal;
+#[allow(unused_imports)]
+#[allow(clippy::single_component_path_imports)]
+use bevy_dexterous_developer_dynamic;

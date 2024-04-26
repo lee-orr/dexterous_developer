@@ -1,35 +1,49 @@
+use safer_ffi::{derive_ReprC, prelude::c_slice};
+use std::ffi::c_void;
+
+#[derive_ReprC]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HotReloadInfo {
+    internal_last_update_version: extern "C" fn() -> u32,
+    internal_update_ready: extern "C" fn() -> bool,
+    internal_call_on_current: extern "C" fn(c_slice::Box<u8>, *mut c_void) -> CallResponse,
+    internal_set_update_callback: extern "C" fn(extern "C" fn(u32) -> ()),
+    internal_set_asset_update_callback: extern "C" fn(extern "C" fn(UpdatedAsset) -> ()),
+    internal_update: extern "C" fn() -> bool,
+}
+
+#[derive_ReprC]
+#[repr(C)]
+#[derive(Clone)]
+pub struct UpdatedAsset {
+    pub inner_name: c_slice::Box<u8>,
+    pub inner_local_path: c_slice::Box<u8>,
+}
+
+#[derive_ReprC]
+#[repr(C)]
+pub struct CallResponse {
+    pub success: bool,
+    pub error: c_slice::Box<u8>,
+}
+
 #[cfg(feature = "hot_internal")]
 pub mod internal {
     use camino::Utf8PathBuf;
-    use safer_ffi::{derive_ReprC, prelude::c_slice};
+    use once_cell::sync::OnceCell;
+    use safer_ffi::{ffi_export, prelude::c_slice};
     use std::{ffi::c_void, str::Utf8Error};
     use thiserror::Error;
 
-    #[derive_ReprC]
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    pub struct HotReloadInfo {
-        internal_last_update_version: extern "C" fn() -> u32,
-        internal_update_ready: extern "C" fn() -> bool,
-        internal_call_on_current: extern "C" fn(c_slice::Ref<u8>, *mut c_void) -> CallResponse,
-        internal_set_update_callback: extern "C" fn(extern "C" fn(u32) -> ()),
-        internal_set_asset_update_callback: extern "C" fn(extern "C" fn(UpdatedAsset) -> ()),
-        internal_update: extern "C" fn() -> bool,
-    }
+    use crate::{HotReloadInfo, UpdatedAsset};
 
-    #[derive_ReprC]
-    #[repr(C)]
-    struct CallResponse {
-        success: bool,
-        error: c_slice::Box<u8>,
-    }
+    pub static HOT_RELOAD_INFO: OnceCell<HotReloadInfo> = OnceCell::new();
 
-    #[derive_ReprC]
-    #[repr(C)]
-    #[derive(Clone)]
-    pub struct UpdatedAsset {
-        inner_name: c_slice::Box<u8>,
-        inner_local_path: c_slice::Box<u8>,
+    #[ffi_export]
+    fn dexterous_developer_internal_set_hot_reload_info(info: HotReloadInfo) {
+        eprintln!("Setting Hot Reload Info");
+        let _ = HOT_RELOAD_INFO.set(info);
     }
 
     impl UpdatedAsset {
@@ -60,8 +74,8 @@ pub mod internal {
         }
 
         pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
-            let name = name.as_bytes();
-            let name = c_slice::Ref::from(name);
+            let name = name.as_bytes().iter().copied().collect::<Box<[_]>>();
+            let name = c_slice::Box::from(name);
 
             let ptr: *mut T = &mut *args;
             let ptr = ptr.cast::<c_void>();
@@ -94,33 +108,39 @@ pub mod internal {
 
 #[cfg(feature = "hot")]
 pub mod hot {
-    use safer_ffi::{derive_ReprC, prelude::c_slice};
     use std::ffi::c_void;
 
-    #[derive_ReprC]
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    pub struct HotReloadInfo {
+    use safer_ffi::prelude::c_slice;
+
+    use crate::{CallResponse, HotReloadInfo, UpdatedAsset};
+
+    pub struct HotReloadInfoBuilder {
         pub internal_last_update_version: extern "C" fn() -> u32,
         pub internal_update_ready: extern "C" fn() -> bool,
-        pub internal_call_on_current: extern "C" fn(c_slice::Ref<u8>, *mut c_void) -> CallResponse,
+        pub internal_call_on_current: extern "C" fn(c_slice::Box<u8>, *mut c_void) -> CallResponse,
         pub internal_set_update_callback: extern "C" fn(extern "C" fn(u32) -> ()),
-        pub internal_update: extern "C" fn() -> bool,
         pub internal_set_asset_update_callback: extern "C" fn(extern "C" fn(UpdatedAsset) -> ()),
+        pub internal_update: extern "C" fn() -> bool,
     }
 
-    #[derive_ReprC]
-    #[repr(C)]
-    #[derive(Clone)]
-    pub struct UpdatedAsset {
-        pub inner_name: c_slice::Box<u8>,
-        pub inner_local_path: c_slice::Box<u8>,
-    }
-
-    #[derive_ReprC]
-    #[repr(C)]
-    pub struct CallResponse {
-        pub success: bool,
-        pub error: c_slice::Box<u8>,
+    impl HotReloadInfoBuilder {
+        pub fn build(self) -> HotReloadInfo {
+            let HotReloadInfoBuilder {
+                internal_last_update_version,
+                internal_update_ready,
+                internal_call_on_current,
+                internal_set_update_callback,
+                internal_set_asset_update_callback,
+                internal_update,
+            } = self;
+            HotReloadInfo {
+                internal_last_update_version,
+                internal_update_ready,
+                internal_call_on_current,
+                internal_set_update_callback,
+                internal_set_asset_update_callback,
+                internal_update,
+            }
+        }
     }
 }

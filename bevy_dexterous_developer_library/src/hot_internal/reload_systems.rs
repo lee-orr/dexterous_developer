@@ -1,8 +1,8 @@
 use bevy::{
-    log::{debug, error, info},
+    log::{debug, info},
     prelude::*,
 };
-use dexterous_developer_internal::internal::HotReloadInfo;
+use dexterous_developer_internal::internal::HOT_RELOAD_INFO;
 
 use crate::{
     hot_internal::{
@@ -15,23 +15,18 @@ use crate::{
 use super::super::ReloadableSetup;
 
 #[derive(Resource)]
-pub struct InternalHotReload(
-    pub HotReloadInfo,
-    pub chrono::DateTime<chrono::Local>,
-    pub bool,
-);
+pub struct InternalHotReload(pub chrono::DateTime<chrono::Local>, pub bool);
 
 #[derive(Resource, Clone, Debug, Default)]
 pub struct ReloadableElementList(pub Vec<&'static str>);
 
 pub fn reset_update_frame(mut reload: ResMut<InternalHotReload>) {
-    reload.2 = false;
+    reload.1 = false;
 }
 
 pub fn reload(world: &mut World) {
     println!("Reloading");
     {
-        let internal_state = world.resource::<InternalHotReload>();
         let input = world.get_resource::<ButtonInput<KeyCode>>();
 
         let (reload_mode, manual_reload) = world
@@ -47,13 +42,15 @@ pub fn reload(world: &mut World) {
             false
         };
 
-        let update_ready = internal_state.0.update_ready();
+        let info = HOT_RELOAD_INFO
+            .get()
+            .expect("Hot Reload Info hasn't been set");
+
+        let update_ready = info.update_ready();
         println!("Ready: {update_ready} Manual: {manual_reload}");
         if !update_ready && !manual_reload {
             return;
         }
-
-        let inner = internal_state.0;
 
         let should_serialize = reload_mode.should_serialize();
         let should_run_setups = reload_mode.should_run_setups();
@@ -69,7 +66,7 @@ pub fn reload(world: &mut World) {
         debug!("Cleanup Schedules...");
         let _ = world.try_run_schedule(CleanupSchedules);
         println!("Swapping Libraries");
-        inner.update();
+        info.update();
         debug!("Setup...");
         let _ = world.try_run_schedule(SetupReload);
         debug!("Set Schedules...");
@@ -86,28 +83,29 @@ pub fn reload(world: &mut World) {
 
     {
         let mut internal_state = world.resource_mut::<InternalHotReload>();
-        internal_state.1 = chrono::Local::now();
-        internal_state.2 = true;
+        internal_state.0 = chrono::Local::now();
+        internal_state.1 = true;
     }
 }
 
 pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
+    println!("Running Setup For {name}");
     if let Err(e) = setup_reloadable_app_inner(name, world) {
-        error!("Reloadable App Error: {e:?}");
+        eprintln!("Reloadable App Error: {e:?}");
         let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
             return;
         };
-        info!("setup default");
+        println!("setup default");
 
         let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
 
         T::default_function(&mut inner_app);
     }
+    println!("Setup Successful");
 }
 
 #[derive(Debug, Clone)]
 enum ReloadableSetupCallError {
-    InternalHotReloadStateMissing,
     CallFailed,
     ReloadableAppContentsMissing,
 }
@@ -115,9 +113,6 @@ enum ReloadableSetupCallError {
 impl std::fmt::Display for ReloadableSetupCallError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let v = match self {
-            ReloadableSetupCallError::InternalHotReloadStateMissing => {
-                "No Internal Hot Reload Resource Available"
-            }
             ReloadableSetupCallError::CallFailed => "Library Call Failed",
             ReloadableSetupCallError::ReloadableAppContentsMissing => {
                 "No Reloadable App Contents - Called out of order"
@@ -132,13 +127,10 @@ fn setup_reloadable_app_inner(
     world: &mut World,
 ) -> Result<(), ReloadableSetupCallError> {
     info!("Setting up reloadables at {name}");
-    let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
-        return Err(ReloadableSetupCallError::InternalHotReloadStateMissing);
-    };
 
-    debug!("got internal reload state");
-
-    let lib = internal_state.0;
+    let lib = HOT_RELOAD_INFO
+        .get()
+        .expect("Hot Reload Info hasn't been set");
 
     let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
         return Err(ReloadableSetupCallError::ReloadableAppContentsMissing);
@@ -146,7 +138,8 @@ fn setup_reloadable_app_inner(
 
     let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
 
-    if let Err(_e) = lib.call(name, &mut inner_app) {
+    if let Err(e) = lib.call(name, &mut inner_app) {
+        eprintln!("Ran Into Error {e}");
         return Err(ReloadableSetupCallError::CallFailed);
     }
 
@@ -267,5 +260,5 @@ pub fn toggle_reloadable_elements(
 }
 
 pub fn dexterous_developer_occured(reload: Res<InternalHotReload>) -> bool {
-    reload.2
+    reload.1
 }

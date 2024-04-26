@@ -4,13 +4,18 @@ pub mod library_holder;
 
 use std::{
     ffi::c_void,
-    sync::{atomic::AtomicU32, Arc},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
+    thread::sleep,
+    time::Duration,
 };
 
 use camino::{Utf8Path, Utf8PathBuf};
 use crossbeam::atomic::AtomicCell;
-use dashmap::DashSet;
-use dexterous_developer_internal::hot::{CallResponse, HotReloadInfo, UpdatedAsset};
+
+use dexterous_developer_internal::{hot::HotReloadInfoBuilder, CallResponse, UpdatedAsset};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use once_cell::sync::OnceCell;
@@ -18,7 +23,7 @@ use safer_ffi::prelude::{c_slice, ffi_export};
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::connect_async;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use url::Url;
 
 use crate::library_holder::LibraryHolder;
@@ -81,7 +86,7 @@ pub fn run_reloadable_app(
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on({
+                .block_on(async {
                     let result = remote_connection(
                         address,
                         server,
@@ -89,8 +94,9 @@ pub fn run_reloadable_app(
                         tx.clone(),
                         library_path,
                         working_directory,
-                    );
-                    let _ = tx.send_blocking(DylibRunnerMessage::ConnectionClosed);
+                    )
+                    .await;
+                    let _ = tx.send(DylibRunnerMessage::ConnectionClosed).await;
                     result
                 })
         })
@@ -102,9 +108,10 @@ pub fn run_reloadable_app(
         let mut id = None;
         loop {
             if library.is_some() || id.is_some() {
-                info!("We have a root set already...");
+                warn!("We have a root set already...");
             }
             let initial = rx.recv_blocking()?;
+            warn!("Got Message While Looking For Root");
             match initial {
                 DylibRunnerMessage::ConnectionClosed => {
                     let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
@@ -139,19 +146,24 @@ pub fn run_reloadable_app(
         .set(initial.clone())
         .map_err(|_| DylibRunnerError::OnceCellError)?;
 
-    let mut info: HotReloadInfo = HotReloadInfo {
+    let _handle = std::thread::spawn(|| update_loop(rx, handle));
+
+    info!("Setting Info");
+
+    let info = HotReloadInfoBuilder {
         internal_last_update_version: last_update_version,
         internal_update_ready: update_ready,
         internal_call_on_current: call,
         internal_set_update_callback: update_callback,
         internal_update: update,
         internal_set_asset_update_callback: update_asset_callback,
-    };
+    }
+    .build();
 
-    let _handle = std::thread::spawn(|| update_loop(rx, handle));
+    initial.varied_call("dexterous_developer_internal_set_hot_reload_info", info)?;
 
     info!("Calling Internal Main");
-    initial.call("dexterous_developer_internal_main", &mut info)?;
+    initial.call("dexterous_developer_internal_main", &mut ())?;
 
     info!("Done.");
 
@@ -179,7 +191,7 @@ async fn remote_connection(
     let mut last_completed_id = 0;
     let mut last_triggered_id = 0;
     let mut root_lib_path: Option<Utf8PathBuf> = None;
-    let pending_downloads = DashSet::<[u8; 32]>::new();
+    let pending_downloads = Arc::new(AtomicU32::new(0));
 
     loop {
         tokio::select! {
@@ -187,14 +199,19 @@ async fn remote_connection(
                 if is_asset {
                     info!("downloaded asset {name}");
                     let _ = tx.send(DylibRunnerMessage::AssetUpdated { local_path, name }).await;
-                } else if pending_downloads.is_empty() {
+                } else if pending_downloads.load(Ordering::SeqCst) == 0 {
                     info!("all downloads completed");
                     if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
                         if let Some(local_path) = root_lib_path.as_ref().cloned() {
-                            if local_path.exists() {
+                            if local_path.exists() || ({
+                                info!("waiting for library to be created");
+                                sleep(Duration::from_millis(100));
+                                local_path.exists()
+                            }){
                                 info!("local root lib exists -triggering a reload");
                                 last_triggered_id = last_completed_id;
-                                let _ = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
+                                let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
+                                error!("Sent Reload Trigger: {e:?}");
                             } else {
                                 info!("local root doesn't exist yet - did download actually complete?");
                             }
@@ -241,7 +258,7 @@ async fn remote_connection(
                                 let local_path = library_path.join(&path);
                                 root_lib_path = Some(local_path.clone());
                                 info!("root library: {root_lib_path:?}");
-                                if pending_downloads.is_empty() {
+                                if pending_downloads.load(Ordering::SeqCst) == 0 {
                                     info!("no remaining downloads");
                                     if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
                                         info!("triggering a reload");
@@ -291,24 +308,18 @@ fn download_file(
     target: Target,
     base_path: &Utf8Path,
     remote_path: Utf8PathBuf,
-    hash: [u8; 32],
-    pending: DashSet<[u8; 32]>,
+    _hash: [u8; 32],
+    pending: Arc<AtomicU32>,
     tx: tokio::sync::mpsc::UnboundedSender<(String, Utf8PathBuf, bool)>,
     is_asset: bool,
 ) {
+    info!("Starting Download of {remote_path}");
+    pending.fetch_add(1, Ordering::SeqCst);
     let server = server.clone();
     let base_path = base_path.to_owned();
     tokio::spawn(async move {
-        let result = execute_download(
-            server.clone(),
-            target,
-            base_path,
-            remote_path.clone(),
-            hash,
-            pending.clone(),
-        )
-        .await;
-        pending.remove(&hash);
+        let result = execute_download(server.clone(), target, base_path, remote_path.clone()).await;
+        pending.fetch_sub(1, Ordering::SeqCst);
         match result {
             Ok(path) => {
                 let name = remote_path.to_string();
@@ -327,11 +338,8 @@ async fn execute_download(
     target: Target,
     base_path: Utf8PathBuf,
     remote_path: Utf8PathBuf,
-    hash: [u8; 32],
-    pending: DashSet<[u8; 32]>,
 ) -> Result<Utf8PathBuf, DylibRunnerError> {
     let local_path = base_path.join(&remote_path);
-    pending.insert(hash);
 
     let address = server
         .join("files/")?
@@ -504,7 +512,7 @@ fn update_asset_callback(callback: extern "C" fn(UpdatedAsset) -> ()) {
 }
 
 #[ffi_export]
-fn call(name: c_slice::Ref<'_, u8>, mut args: *mut c_void) -> CallResponse {
+fn call(name: c_slice::Box<u8>, mut args: *mut c_void) -> CallResponse {
     unsafe {
         let name = std::str::from_utf8(name.as_slice());
         let name = match name {

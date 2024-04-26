@@ -13,4 +13,5 @@ reloadable_scope!(reloadable(app) {
     println!("Setting Up Reloadable Scope");
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
+    println!("Setup Scope");
 });

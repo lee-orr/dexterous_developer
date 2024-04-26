@@ -54,3 +54,4 @@ dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_develope
 camino = "1"
 thiserror = "1"
 safer-ffi = "0.1"
+once_cell = "1"

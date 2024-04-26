@@ -1,0 +1,43 @@
+[package]
+name = "bevy_dexterous_developer_library"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+hot = [
+    "dexterous_developer_internal/hot"
+]
+hot_internal = [
+    "dexterous_developer_internal/hot_internal",
+    "dep:libloading",
+    "dep:uuid",
+    "dep:chrono",
+]
+
+
+[dependencies]
+anyhow = { version = "1" }
+dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
+dexterous_developer_internal = { version = "0.2.0", path = "../dexterous_developer_internal"}
+bevy = { version = "0.13", default-features = false, features = [
+    "serialize",
+]}
+serde = { version = "1", features = ["derive"] }
+rmp-serde = { version = "1" }
+chrono = { version = "0.4", optional = true }
+libloading = { version = "0.8", optional = true }
+uuid = { version = "1", features = ["v4"], optional = true }
+tracing = { version = "0.1" }
+tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
+paste = { version = "1" }
+once_cell = "1"

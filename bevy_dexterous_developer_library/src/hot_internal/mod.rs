@@ -10,8 +10,6 @@ use bevy::ecs::prelude::*;
 
 use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
-use dexterous_developer_internal::internal::HotReloadInfo;
-
 pub extern crate libloading;
 
 use crate::hot_internal::hot_reload_internal::draw_internal_hot_reload;
@@ -28,14 +26,7 @@ pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents, Reload
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
-pub struct HotReloadPlugin(HotReloadInfo);
-
-impl HotReloadPlugin {
-    pub fn new(info: HotReloadInfo) -> Self {
-        println!("Building Hot Reload Plugin");
-        Self(info)
-    }
-}
+pub struct HotReloadPlugin;
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
@@ -52,10 +43,6 @@ impl Plugin for HotReloadPlugin {
 
         println!("Schedules ready");
 
-        let hot_reload = self.0;
-
-        println!("Set up internal hot reload resources");
-
         app.add_schedule(reload_schedule)
             .add_schedule(cleanup_reloaded_schedule)
             .add_schedule(cleanup_schedules_schedule)
@@ -69,7 +56,7 @@ impl Plugin for HotReloadPlugin {
             .init_resource::<ReloadableAppCleanupData>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
-            .insert_resource(InternalHotReload(hot_reload, chrono::Local::now(), false));
+            .insert_resource(InternalHotReload(chrono::Local::now(), false));
         println!("Added resources to app");
 
         app.add_systems(PreStartup, reload)

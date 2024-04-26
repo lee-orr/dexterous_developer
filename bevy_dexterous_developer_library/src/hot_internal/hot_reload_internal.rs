@@ -26,7 +26,7 @@ pub fn draw_internal_hot_reload(
         .unwrap_or("all reloadables")
         .replace("_internal_reloadable_context", "_");
 
-    let update = internal.1.format("%H:%M:%S").to_string();
+    let update = internal.0.format("%H:%M:%S").to_string();
 
     let update = match reload_mode {
         crate::ReloadMode::Full => {
