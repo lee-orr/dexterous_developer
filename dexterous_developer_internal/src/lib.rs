@@ -1,16 +1,20 @@
-use safer_ffi::{derive_ReprC, prelude::c_slice};
 use std::ffi::c_void;
+
+use safer_ffi::{derive_ReprC, prelude::c_slice};
+
+#[cfg(feature = "dylib")]
+pub mod library_holder;
 
 #[derive_ReprC]
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HotReloadInfo {
     internal_last_update_version: extern "C" fn() -> u32,
-    internal_update_ready: extern "C" fn() -> bool,
-    internal_call_on_current: extern "C" fn(c_slice::Box<u8>, *mut c_void) -> CallResponse,
-    internal_set_update_callback: extern "C" fn(extern "C" fn(u32) -> ()),
-    internal_set_asset_update_callback: extern "C" fn(extern "C" fn(UpdatedAsset) -> ()),
+    internal_update_ready:  extern "C" fn() -> bool,
+    internal_set_update_callback: extern "C" fn( extern "C" fn(u32) -> ()),
+    internal_set_asset_update_callback:  extern "C" fn( extern "C" fn(UpdatedAsset) -> ()),
     internal_update: extern "C" fn() -> bool,
+    internal_validate_setup: extern "C" fn(u32) -> u32,
 }
 
 #[derive_ReprC]
@@ -31,9 +35,10 @@ pub struct CallResponse {
 #[cfg(feature = "hot_internal")]
 pub mod internal {
     use camino::Utf8PathBuf;
+    use chrono::{DateTime, Local, Timelike};
     use once_cell::sync::OnceCell;
-    use safer_ffi::{ffi_export, prelude::c_slice};
-    use std::{ffi::c_void, str::Utf8Error};
+    use safer_ffi::{derive_ReprC, ffi_export, prelude::c_slice};
+    use std::{ffi::c_void, str::Utf8Error, sync::Mutex};
     use thiserror::Error;
 
     use crate::{HotReloadInfo, UpdatedAsset};
@@ -43,7 +48,63 @@ pub mod internal {
     #[ffi_export]
     fn dexterous_developer_internal_set_hot_reload_info(info: HotReloadInfo) {
         eprintln!("Setting Hot Reload Info");
+        let value = Local::now();
+        let value = value.nanosecond();
+        let validation = (info.internal_validate_setup)(value);
+        assert_eq!(value, validation, "Couldn't Validate Hot Reload Connection");
         let _ = HOT_RELOAD_INFO.set(info);
+    }
+
+    #[cfg(feature = "dylib")]
+    mod dylib {
+        use std::sync::RwLock;
+
+        use camino::Utf8PathBuf;
+        use safer_ffi::ffi_export;
+        use tracing::error;
+
+        use crate::library_holder::{LibraryHolder};
+
+        use super::HotReloadAccessError;
+
+        static CURRENT_LIBRARY : RwLock<Option<LibraryHolder>> = RwLock::new(None); 
+
+        #[ffi_export]
+        fn load_internal_library(path: safer_ffi::String) {
+            let path = Utf8PathBuf::from(path.to_string());
+            let holder = match LibraryHolder::new(&path, true) {
+                Ok(holder) => holder,
+                Err(e) => {
+                    error!("Failed to load library {path} - {e}");
+                    return;
+                }
+            };
+
+            let mut writer = match CURRENT_LIBRARY.write() {
+                Ok(w) => w,
+                Err(e) => {
+                    error!("Failed To Set CurrentLibrary {e}");
+                    return;
+                },
+            };
+
+            *writer = Some(holder);
+        }
+
+        pub(crate) fn call_dylib<T>(name: &str, args: &mut T) -> Result<(), HotReloadAccessError>  {
+            let current = CURRENT_LIBRARY.try_read().map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
+
+            match current.as_ref() {
+                Some(current) => {
+                    current.call(name, args).map_err(|e| HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}")))?;
+                },
+                None => {
+                    return Err(HotReloadAccessError::LibraryError("No Library Loaded".to_string()))
+                },
+            }
+
+            Ok(())
+        }
     }
 
     impl UpdatedAsset {
@@ -63,6 +124,7 @@ pub mod internal {
         }
 
         pub fn update_ready(&self) -> bool {
+            println!("Checking readiness...");
             (self.internal_update_ready)()
         }
 
@@ -74,18 +136,8 @@ pub mod internal {
         }
 
         pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
-            let name = name.as_bytes().iter().copied().collect::<Box<[_]>>();
-            let name = c_slice::Box::from(name);
-
-            let ptr: *mut T = &mut *args;
-            let ptr = ptr.cast::<c_void>();
-            let result = (self.internal_call_on_current)(name, ptr);
-            if result.success {
-                Ok(())
-            } else {
-                let error = std::str::from_utf8(result.error.as_slice())?;
-                Err(HotReloadAccessError::LibraryError(error.to_string()))
-            }
+            #[cfg(feature = "dylib")]
+            dylib::call_dylib(name, args)
         }
 
         pub fn update_callback(&mut self, callback: extern "C" fn(u32) -> ()) {
@@ -103,6 +155,8 @@ pub mod internal {
         LibraryError(String),
         #[error("Couldn't decode error {0}")]
         Utf8Error(#[from] Utf8Error),
+        #[error("{0}")]
+        AtomicError(String)
     }
 }
 
@@ -117,10 +171,10 @@ pub mod hot {
     pub struct HotReloadInfoBuilder {
         pub internal_last_update_version: extern "C" fn() -> u32,
         pub internal_update_ready: extern "C" fn() -> bool,
-        pub internal_call_on_current: extern "C" fn(c_slice::Box<u8>, *mut c_void) -> CallResponse,
-        pub internal_set_update_callback: extern "C" fn(extern "C" fn(u32) -> ()),
-        pub internal_set_asset_update_callback: extern "C" fn(extern "C" fn(UpdatedAsset) -> ()),
-        pub internal_update: extern "C" fn() -> bool,
+        pub internal_set_update_callback: extern "C" fn( extern "C" fn(u32) -> ()),
+        pub internal_set_asset_update_callback: extern "C" fn( extern "C" fn(UpdatedAsset) -> ()),
+        pub internal_update:  extern "C" fn() -> bool,
+        pub internal_validate_setup: extern "C" fn(u32) -> u32,
     }
 
     impl HotReloadInfoBuilder {
@@ -128,18 +182,18 @@ pub mod hot {
             let HotReloadInfoBuilder {
                 internal_last_update_version,
                 internal_update_ready,
-                internal_call_on_current,
                 internal_set_update_callback,
                 internal_set_asset_update_callback,
                 internal_update,
+                internal_validate_setup
             } = self;
             HotReloadInfo {
                 internal_last_update_version,
                 internal_update_ready,
-                internal_call_on_current,
                 internal_set_update_callback,
                 internal_set_asset_update_callback,
                 internal_update,
+                internal_validate_setup
             }
         }
     }

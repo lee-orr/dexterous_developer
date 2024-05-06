@@ -15,43 +15,28 @@ version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = []
+default = ["dylib"]
 hot = [
-    "dep:libloading",
-    "dep:uuid",
-    "dep:cargo_metadata",
-    "dep:notify",
-    "dep:debounce",
-    "dep:which",
     "dep:tracing-subscriber",
-    "dep:dexterous_developer_builder"
 ]
 hot_internal = [
-    "dep:libloading",
-    "dep:uuid",
-    "dep:chrono",
 ]
-cli = ["hot", "dep:tokio", "blake3"]
+dylib = ["dep:libloading"]
+
 
 
 [dependencies]
 anyhow = { version = "1" }
 libloading = { version = "0.8", optional = true }
-uuid = { version = "1", features = ["v4"], optional = true }
-cargo_metadata = { version = "0.18", optional = true }
-notify = { version = "6", optional = true }
-debounce = { version = "0.2", optional = true }
-which = { version = "6", optional = true }
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
-tokio = { version = "1", features = ["full"], optional = true }
-blake3 = { version = "1", optional = true }
-chrono = { version = "0.4", optional = true }
 dunce = "1"
 serde = { version = "1"}
 dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
-dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder", optional = true }
 camino = "1"
 thiserror = "1"
 safer-ffi = "0.1"
 once_cell = "1"
+chrono = "0.4"
+crossbeam = "0.8"
+uuid = { version =  "1", features = ["v4"] }

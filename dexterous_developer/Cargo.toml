@@ -25,7 +25,6 @@ hot_internal = [
     "dexterous_developer_dynamic/bevy",
 ]
 bevy = ["dep:bevy_dexterous_developer"]
-cli = ["dexterous_developer_internal/cli"]
 
 
 [dependencies]

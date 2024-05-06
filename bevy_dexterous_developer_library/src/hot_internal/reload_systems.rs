@@ -28,11 +28,14 @@ pub fn reload(world: &mut World) {
     println!("Reloading");
     {
         let input = world.get_resource::<ButtonInput<KeyCode>>();
+        println!("Here");
 
         let (reload_mode, manual_reload) = world
             .get_resource::<ReloadSettings>()
             .map(|v| (v.reload_mode, v.manual_reload))
             .unwrap_or_default();
+
+        println!("There");
 
         let manual_reload = if let Some(input) = input {
             manual_reload
@@ -41,10 +44,13 @@ pub fn reload(world: &mut World) {
         } else {
             false
         };
+        println!("And everywhere");
 
         let info = HOT_RELOAD_INFO
             .get()
             .expect("Hot Reload Info hasn't been set");
+
+        println!("Checking for readiness");
 
         let update_ready = info.update_ready();
         println!("Ready: {update_ready} Manual: {manual_reload}");
@@ -126,7 +132,7 @@ fn setup_reloadable_app_inner(
     name: &'static str,
     world: &mut World,
 ) -> Result<(), ReloadableSetupCallError> {
-    info!("Setting up reloadables at {name}");
+    println!("Setting up reloadables at {name}");
 
     let lib = HOT_RELOAD_INFO
         .get()
@@ -138,6 +144,7 @@ fn setup_reloadable_app_inner(
 
     let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
 
+    println!("Calling Inner Function {name}");
     if let Err(e) = lib.call(name, &mut inner_app) {
         eprintln!("Ran Into Error {e}");
         return Err(ReloadableSetupCallError::CallFailed);

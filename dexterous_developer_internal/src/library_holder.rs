@@ -16,32 +16,36 @@ impl Drop for LibraryHolderInner {
 }
 
 impl LibraryHolderInner {
-    pub fn new(path: &Utf8Path) -> Result<Self, LibraryError> {
+    pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
         let path = path.to_owned();
-        let extension = path.extension();
-        let uuid = uuid::Uuid::new_v4();
-        let new_path = path.clone();
-        let mut new_path = new_path.with_file_name(uuid.to_string());
-        let mut archival_path = path.clone();
-        if let Some(extension) = extension {
-            new_path.set_extension(extension);
-            archival_path.set_extension(format!("{}.backup", extension));
-        }
-        std::fs::copy(&path, archival_path)?;
-        std::fs::rename(&path, &new_path)?;
-        debug!("Copied file to new path");
-
-        await_file(10, &new_path);
-        let new_path = Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?;
+        let path = if use_original {
+            path
+        } else {
+            let extension = path.extension();
+            let uuid = uuid::Uuid::new_v4();
+            let new_path = path.clone();
+            let mut new_path = new_path.with_file_name(uuid.to_string());
+            let mut archival_path = path.clone();
+            if let Some(extension) = extension {
+                new_path.set_extension(extension);
+                archival_path.set_extension(format!("{}.backup", extension));
+            }
+            std::fs::copy(&path, archival_path)?;
+            std::fs::rename(&path, &new_path)?;
+            debug!("Copied file to new path");
+    
+            await_file(10, &new_path);
+            Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?
+        };
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
-        match unsafe { libloading::Library::new(&new_path) } {
+        match unsafe { libloading::Library::new(&path) } {
             Ok(lib) => {
                 info!("Loaded library");
-                Ok(Self(Some(lib), new_path))
+                Ok(Self(Some(lib), path))
             }
             Err(err) => {
-                error!("Error loading library - {new_path:?}: {err:?}");
+                error!("Error loading library - {path:?}: {err:?}");
 
                 error!("Search Paths: ");
                 for path in cargo_path_utils::dylib_path() {
@@ -62,14 +66,14 @@ impl LibraryHolderInner {
             return Err(LibraryError::LibraryUnavailable(self.1.clone()));
         };
 
-        debug!("Preparing to call {name}");
+        info!("Preparing to call {name}");
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(T)> = lib.get(name.as_bytes())?;
-            debug!("Got symbol");
+            info!("Got symbol");
             func(args);
-            debug!("Call complete");
+            info!("Call complete");
         };
         Ok(())
     }
@@ -92,12 +96,16 @@ fn await_file(iterations: usize, path: &Utf8PathBuf) {
 pub struct LibraryHolder(Arc<LibraryHolderInner>);
 
 impl LibraryHolder {
-    pub fn new(path: &Utf8Path) -> Result<Self, LibraryError> {
-        let inner = LibraryHolderInner::new(path)?;
+    pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
+        let inner = LibraryHolderInner::new(path, use_original)?;
         Ok(Self(Arc::new(inner)))
     }
     pub fn library(&self) -> Option<&Library> {
         self.0.library()
+    }
+
+    pub fn path(&self) -> Utf8PathBuf {
+        self.0.1.clone()
     }
 
     pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), LibraryError> {

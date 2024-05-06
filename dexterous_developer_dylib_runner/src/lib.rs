@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
 
-pub mod library_holder;
-
 use std::{
     ffi::c_void,
     sync::{
@@ -19,14 +17,14 @@ use dexterous_developer_internal::{hot::HotReloadInfoBuilder, CallResponse, Upda
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use once_cell::sync::OnceCell;
-use safer_ffi::prelude::{c_slice, ffi_export};
+use safer_ffi::{ffi_export, prelude::c_slice};
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::connect_async;
 use tracing::{error, info, warn};
 use url::Url;
 
-use crate::library_holder::LibraryHolder;
+use dexterous_developer_internal::library_holder::LibraryHolder;
 
 pub fn run_reloadable_app(
     working_directory: &Utf8Path,
@@ -122,7 +120,7 @@ pub fn run_reloadable_app(
                     local_path,
                 } => {
                     info!("Loading Initial Root");
-                    library = Some(LibraryHolder::new(&local_path)?);
+                    library = Some(LibraryHolder::new(&local_path, false)?);
                     id = Some(build_id);
                     break;
                 }
@@ -153,14 +151,18 @@ pub fn run_reloadable_app(
     let info = HotReloadInfoBuilder {
         internal_last_update_version: last_update_version,
         internal_update_ready: update_ready,
-        internal_call_on_current: call,
         internal_set_update_callback: update_callback,
         internal_update: update,
         internal_set_asset_update_callback: update_asset_callback,
+        internal_validate_setup: validate_setup,
     }
     .build();
 
     initial.varied_call("dexterous_developer_internal_set_hot_reload_info", info)?;
+    initial.varied_call(
+        "load_internal_library",
+        safer_ffi::String::from(initial.path().as_str()),
+    )?;
 
     info!("Calling Internal Main");
     initial.call("dexterous_developer_internal_main", &mut ())?;
@@ -323,7 +325,17 @@ fn download_file(
         match result {
             Ok(path) => {
                 let name = remote_path.to_string();
-                let _ = tx.send((name, path, is_asset));
+                let mut wait = 0;
+                while matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false)) && wait < 3 {
+                    info!("Waiting for file to exist");
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                    wait += 1;
+                }
+                if matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false)) {
+                    error!("Failed to create file {path}");
+                } else {
+                    let _ = tx.send((name, path, is_asset));
+                }
             }
             Err(e) => {
                 error!("Failed To Download File {e:?}");
@@ -382,7 +394,7 @@ fn update_loop(
                 build_id,
                 local_path,
             } => {
-                let library = LibraryHolder::new(&local_path)?;
+                let library = LibraryHolder::new(&local_path, false)?;
                 NEXT_UPDATE_VERSION.store(build_id, std::sync::atomic::Ordering::SeqCst);
                 NEXT_LIBRARY.store(Some(Arc::new(library)));
                 unsafe {
@@ -451,7 +463,7 @@ pub enum DylibRunnerError {
     #[error("Join Handle Failed")]
     JoinHandleFailed(std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>),
     #[error("Library Holder Error {0}")]
-    LibraryError(#[from] library_holder::LibraryError),
+    LibraryError(#[from] dexterous_developer_internal::library_holder::LibraryError),
     #[error("Couldn't Open Initial Library")]
     NoInitialLibrary,
     #[error("Original Library Already Set")]
@@ -473,12 +485,20 @@ pub static UPDATED_ASSET_CALLBACK: AtomicCell<Option<extern "C" fn(UpdatedAsset)
     AtomicCell::new(None);
 
 #[ffi_export]
-fn last_update_version() -> u32 {
+extern "C" fn validate_setup(value: u32) -> u32 {
+    println!("Validating Setup - Received {value}");
+    value
+}
+
+#[ffi_export]
+extern "C" fn last_update_version() -> u32 {
+    println!("Checking Last Update Version");
     LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst)
 }
 
 #[ffi_export]
-fn update_ready() -> bool {
+extern "C" fn update_ready() -> bool {
+    println!("Running the readiness check");
     let last = LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     info!("Checking Readiness: {last} {next}");
@@ -486,7 +506,7 @@ fn update_ready() -> bool {
 }
 
 #[ffi_export]
-fn update() -> bool {
+extern "C" fn update() -> bool {
     println!("Updating");
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let old = LAST_UPDATE_VERSION.swap(next, std::sync::atomic::Ordering::SeqCst);
@@ -494,6 +514,20 @@ fn update() -> bool {
     if old < next {
         println!("Updated Version");
         LAST_LIBRARY.store(CURRENT_LIBRARY.swap(NEXT_LIBRARY.take()));
+        unsafe {
+            if let Some(Some(library)) = CURRENT_LIBRARY.as_ptr().as_ref() {
+                let path = library.path();
+                if let Some(library) = ORIGINAL_LIBRARY.get() {
+                    if let Err(e) = library.varied_call(
+                        "load_internal_library",
+                        safer_ffi::String::from(path.as_str()),
+                    ) {
+                        eprintln!("Failed to load library: {e}");
+                        return false;  
+                    }
+                }
+            }
+        }
         true
     } else {
         println!("Didn't update version");
@@ -502,76 +536,13 @@ fn update() -> bool {
 }
 
 #[ffi_export]
-fn update_callback(callback: extern "C" fn(u32) -> ()) {
+extern "C" fn update_callback(callback: extern "C" fn(u32) -> ()) {
+    println!("Setting Update Callback");
     UPDATED_CALLBACK.store(Some(callback))
 }
 
 #[ffi_export]
-fn update_asset_callback(callback: extern "C" fn(UpdatedAsset) -> ()) {
+extern "C" fn update_asset_callback(callback: extern "C" fn(UpdatedAsset) -> ()) {
+    println!("Setting Asset Callback");
     UPDATED_ASSET_CALLBACK.store(Some(callback))
-}
-
-#[ffi_export]
-fn call(name: c_slice::Box<u8>, mut args: *mut c_void) -> CallResponse {
-    unsafe {
-        let name = std::str::from_utf8(name.as_slice());
-        let name = match name {
-            Ok(name) => name,
-            Err(e) => {
-                return CallResponse {
-                    success: false,
-                    error: c_slice::Box::from(
-                        format!("Couldn't Parse Function Name: {e}")
-                            .as_bytes()
-                            .iter()
-                            .copied()
-                            .collect::<Box<[u8]>>(),
-                    ),
-                };
-            }
-        };
-        let Some(current) = CURRENT_LIBRARY.as_ptr().as_ref() else {
-            return CallResponse {
-                success: false,
-                error: c_slice::Box::from(
-                    "Failed to get current library"
-                        .to_string()
-                        .as_bytes()
-                        .iter()
-                        .copied()
-                        .collect::<Box<[u8]>>(),
-                ),
-            };
-        };
-        let Some(current) = current.as_ref().cloned() else {
-            return CallResponse {
-                success: false,
-                error: c_slice::Box::from(
-                    "Current Library Not Set"
-                        .to_string()
-                        .as_bytes()
-                        .iter()
-                        .copied()
-                        .collect::<Box<[u8]>>(),
-                ),
-            };
-        };
-        let result = current.call(name, &mut args);
-        match result {
-            Ok(_) => CallResponse {
-                success: true,
-                error: c_slice::Box::default(),
-            },
-            Err(e) => CallResponse {
-                success: false,
-                error: c_slice::Box::from(
-                    format!("Error Running Function: {e}")
-                        .as_bytes()
-                        .iter()
-                        .copied()
-                        .collect::<Box<[u8]>>(),
-                ),
-            },
-        }
-    }
 }

@@ -3,12 +3,8 @@
 {
 	"name": "Ubuntu",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "ubuntu:latest",
+	"image": "rust:latest",
 	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {
-			"version": "latest",
-			"profile": "complete"
-		},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {
 			"PACKAGES": "g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mold libssl-dev"
@@ -18,7 +14,10 @@
 		"vscode": {
 			"extensions": [
 				"DavidAnson.vscode-markdownlint",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"rust-lang.rust-analyzer",
+				"serayuzgur.crates",
+				"tamasfe.even-better-toml"
 			]
 		}
 	}
