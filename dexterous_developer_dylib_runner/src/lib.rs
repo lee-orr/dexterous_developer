@@ -100,10 +100,11 @@ pub fn run_reloadable_app(
         })
     };
 
-    let (initial, id) = {
+    let (initial, id, path) = {
         info!("Getting Initial Root");
         let mut library = None;
         let mut id = None;
+        let mut path = None;
         loop {
             if library.is_some() || id.is_some() {
                 warn!("We have a root set already...");
@@ -121,6 +122,7 @@ pub fn run_reloadable_app(
                 } => {
                     info!("Loading Initial Root");
                     library = Some(LibraryHolder::new(&local_path, false)?);
+                    path = Some(local_path);
                     id = Some(build_id);
                     break;
                 }
@@ -133,13 +135,14 @@ pub fn run_reloadable_app(
         (
             library.ok_or(DylibRunnerError::NoInitialLibrary)?,
             id.ok_or(DylibRunnerError::NoInitialLibrary)?,
+            path.ok_or(DylibRunnerError::NoInitialLibrary)?
         )
     };
 
     let initial = Arc::new(initial);
 
     NEXT_UPDATE_VERSION.store(id, std::sync::atomic::Ordering::SeqCst);
-    NEXT_LIBRARY.store(Some(initial.clone()));
+    NEXT_LIBRARY.store(Some(Arc::new(path.clone())));
     ORIGINAL_LIBRARY
         .set(initial.clone())
         .map_err(|_| DylibRunnerError::OnceCellError)?;
@@ -151,18 +154,12 @@ pub fn run_reloadable_app(
     let info = HotReloadInfoBuilder {
         internal_last_update_version: last_update_version,
         internal_update_ready: update_ready,
-        internal_set_update_callback: update_callback,
         internal_update: update,
-        internal_set_asset_update_callback: update_asset_callback,
         internal_validate_setup: validate_setup,
     }
     .build();
 
     initial.varied_call("dexterous_developer_internal_set_hot_reload_info", info)?;
-    initial.varied_call(
-        "load_internal_library",
-        safer_ffi::String::from(initial.path().as_str()),
-    )?;
 
     info!("Calling Internal Main");
     initial.call("dexterous_developer_internal_main", &mut ())?;
@@ -210,10 +207,10 @@ async fn remote_connection(
                                 sleep(Duration::from_millis(100));
                                 local_path.exists()
                             }){
-                                info!("local root lib exists -triggering a reload");
+                                info!("local root lib exists - triggering a reload");
                                 last_triggered_id = last_completed_id;
                                 let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
-                                error!("Sent Reload Trigger: {e:?}");
+                                info!("Sent Reload Trigger: {e:?}");
                             } else {
                                 info!("local root doesn't exist yet - did download actually complete?");
                             }
@@ -394,17 +391,19 @@ fn update_loop(
                 build_id,
                 local_path,
             } => {
-                let library = LibraryHolder::new(&local_path, false)?;
+                info!("Load Root New Library {local_path}");
                 NEXT_UPDATE_VERSION.store(build_id, std::sync::atomic::Ordering::SeqCst);
-                NEXT_LIBRARY.store(Some(Arc::new(library)));
-                unsafe {
-                    if let Some(Some(callback)) = UPDATED_CALLBACK.as_ptr().as_ref() {
-                        callback(build_id);
-                    }
+                info!("Stored Build ID: {build_id}");
+                NEXT_LIBRARY.store(Some(Arc::new(local_path)));
+                info!("Stored Library");
+                if let Some(library) = ORIGINAL_LIBRARY.get() {
+                    info!("Running Callback");
+                    let _ = library.varied_call("update_callback_internal", build_id);
                 }
             }
-            DylibRunnerMessage::AssetUpdated { local_path, name } => unsafe {
-                if let Some(Some(callback)) = UPDATED_ASSET_CALLBACK.as_ptr().as_ref() {
+            DylibRunnerMessage::AssetUpdated { local_path, name } => {
+                if let Some(library) = ORIGINAL_LIBRARY.get() {
+                    info!("Running Callback");
                     let inner_local_path = c_slice::Box::from(
                         local_path
                             .to_string()
@@ -415,12 +414,15 @@ fn update_loop(
                     );
                     let inner_name =
                         c_slice::Box::from(name.as_bytes().iter().copied().collect::<Box<[u8]>>());
-                    callback(UpdatedAsset {
-                        inner_name,
-                        inner_local_path,
-                    });
+                    let _ = library.varied_call(
+                        "update_asset_callback_internal",
+                        UpdatedAsset {
+                            inner_name,
+                            inner_local_path,
+                        },
+                    );
                 }
-            },
+            }
         }
     }
 }
@@ -477,12 +479,7 @@ pub enum DylibRunnerError {
 pub static LAST_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
 pub static NEXT_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
 pub static ORIGINAL_LIBRARY: OnceCell<Arc<LibraryHolder>> = OnceCell::new();
-pub static LAST_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
-pub static CURRENT_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
-pub static NEXT_LIBRARY: AtomicCell<Option<Arc<LibraryHolder>>> = AtomicCell::new(None);
-pub static UPDATED_CALLBACK: AtomicCell<Option<extern "C" fn(u32) -> ()>> = AtomicCell::new(None);
-pub static UPDATED_ASSET_CALLBACK: AtomicCell<Option<extern "C" fn(UpdatedAsset) -> ()>> =
-    AtomicCell::new(None);
+pub static NEXT_LIBRARY: AtomicCell<Option<Arc<Utf8PathBuf>>> = AtomicCell::new(None);
 
 #[ffi_export]
 extern "C" fn validate_setup(value: u32) -> u32 {
@@ -513,18 +510,14 @@ extern "C" fn update() -> bool {
 
     if old < next {
         println!("Updated Version");
-        LAST_LIBRARY.store(CURRENT_LIBRARY.swap(NEXT_LIBRARY.take()));
-        unsafe {
-            if let Some(Some(library)) = CURRENT_LIBRARY.as_ptr().as_ref() {
-                let path = library.path();
-                if let Some(library) = ORIGINAL_LIBRARY.get() {
-                    if let Err(e) = library.varied_call(
-                        "load_internal_library",
-                        safer_ffi::String::from(path.as_str()),
-                    ) {
-                        eprintln!("Failed to load library: {e}");
-                        return false;  
-                    }
+        if let Some(path) = NEXT_LIBRARY.take() {
+            if let Some(library) = ORIGINAL_LIBRARY.get() {
+                if let Err(e) = library.varied_call(
+                    "load_internal_library",
+                    safer_ffi::String::from(path.as_str()),
+                ) {
+                    eprintln!("Failed to load library: {e}");
+                    return false;
                 }
             }
         }
@@ -533,16 +526,4 @@ extern "C" fn update() -> bool {
         println!("Didn't update version");
         false
     }
-}
-
-#[ffi_export]
-extern "C" fn update_callback(callback: extern "C" fn(u32) -> ()) {
-    println!("Setting Update Callback");
-    UPDATED_CALLBACK.store(Some(callback))
-}
-
-#[ffi_export]
-extern "C" fn update_asset_callback(callback: extern "C" fn(UpdatedAsset) -> ()) {
-    println!("Setting Asset Callback");
-    UPDATED_ASSET_CALLBACK.store(Some(callback))
 }

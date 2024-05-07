@@ -17,10 +17,13 @@ impl Drop for LibraryHolderInner {
 
 impl LibraryHolderInner {
     pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
+        info!("Loading {path:?}");
         let path = path.to_owned();
         let path = if use_original {
+            info!("Using Original");
             path
         } else {
+            info!("Copying To Temporary File");
             let extension = path.extension();
             let uuid = uuid::Uuid::new_v4();
             let new_path = path.clone();
@@ -38,6 +41,7 @@ impl LibraryHolderInner {
             Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?
         };
 
+        info!("Loading Library");
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&path) } {
             Ok(lib) => {

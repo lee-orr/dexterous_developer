@@ -2,7 +2,7 @@ use bevy::prelude::{Startup, Update};
 use bevy_dexterous_developer::*;
 
 fn update() {
-    println!("Ran Update!!!!");
+    println!("Ran Update!!");
 }
 
 fn startup() {

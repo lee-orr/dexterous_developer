@@ -10,9 +10,7 @@ pub mod library_holder;
 #[derive(Clone, Copy)]
 pub struct HotReloadInfo {
     internal_last_update_version: extern "C" fn() -> u32,
-    internal_update_ready:  extern "C" fn() -> bool,
-    internal_set_update_callback: extern "C" fn( extern "C" fn(u32) -> ()),
-    internal_set_asset_update_callback:  extern "C" fn( extern "C" fn(UpdatedAsset) -> ()),
+    internal_update_ready: extern "C" fn() -> bool,
     internal_update: extern "C" fn() -> bool,
     internal_validate_setup: extern "C" fn(u32) -> u32,
 }
@@ -57,22 +55,25 @@ pub mod internal {
 
     #[cfg(feature = "dylib")]
     mod dylib {
-        use std::sync::RwLock;
+        use std::sync::{Arc, RwLock};
 
         use camino::Utf8PathBuf;
         use safer_ffi::ffi_export;
         use tracing::error;
 
-        use crate::library_holder::{LibraryHolder};
+        use crate::{library_holder::LibraryHolder, UpdatedAsset};
 
         use super::HotReloadAccessError;
 
-        static CURRENT_LIBRARY : RwLock<Option<LibraryHolder>> = RwLock::new(None); 
+        static CURRENT_LIBRARY: RwLock<Option<LibraryHolder>> = RwLock::new(None);
+        static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn(u32) + Send + Sync>>> = RwLock::new(None);
+        static UPDATED_ASSET_CALLBACK: RwLock<Option<Arc<dyn Fn(UpdatedAsset) + Send + Sync>>> =
+            RwLock::new(None);
 
         #[ffi_export]
         fn load_internal_library(path: safer_ffi::String) {
             let path = Utf8PathBuf::from(path.to_string());
-            let holder = match LibraryHolder::new(&path, true) {
+            let holder = match LibraryHolder::new(&path, false) {
                 Ok(holder) => holder,
                 Err(e) => {
                     error!("Failed to load library {path} - {e}");
@@ -85,26 +86,83 @@ pub mod internal {
                 Err(e) => {
                     error!("Failed To Set CurrentLibrary {e}");
                     return;
-                },
+                }
             };
 
             *writer = Some(holder);
         }
 
-        pub(crate) fn call_dylib<T>(name: &str, args: &mut T) -> Result<(), HotReloadAccessError>  {
-            let current = CURRENT_LIBRARY.try_read().map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
+        #[ffi_export]
+        fn update_callback_internal() {
+            let current = UPDATE_CALLBACK
+                .try_read()
+                .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")));
+
+            if let Ok(current) = current.as_ref() {
+                if let Some(current) = current.as_ref() {
+                    current(id);
+                }
+            }
+        }
+
+        #[ffi_export]
+        fn update_asset_callback_internal(id: UpdatedAsset) {
+            let current = UPDATED_ASSET_CALLBACK
+                .try_read()
+                .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")));
+
+            if let Ok(current) = current.as_ref() {
+                if let Some(current) = current.as_ref() {
+                    current(id);
+                }
+            }
+        }
+
+        pub(crate) fn call_dylib<T>(name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
+            let current = CURRENT_LIBRARY
+                .try_read()
+                .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
 
             match current.as_ref() {
                 Some(current) => {
-                    current.call(name, args).map_err(|e| HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}")))?;
-                },
+                    current.call(name, args).map_err(|e| {
+                        HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}"))
+                    })?;
+                }
                 None => {
-                    return Err(HotReloadAccessError::LibraryError("No Library Loaded".to_string()))
-                },
+                    return Err(HotReloadAccessError::LibraryError(
+                        "No Library Loaded".to_string(),
+                    ))
+                }
             }
 
             Ok(())
         }
+
+        pub(crate) fn update_callback(callback: impl Fn(u32) + Send + Sync + 'static) {
+            let mut writer =
+                match UPDATE_CALLBACK.write() {
+                    Ok(w) => w,
+                    Err(e) => {
+                        error!("Failed To Set CurrentLibrary {e}");
+                        return;
+                    }
+                };
+
+            *writer = Some(Arc::new(callback));
+        }
+
+        pub(crate) fn update_asset_callback(callback: impl Fn(UpdatedAsset) + Send + Sync + 'static) {
+            let mut writer =
+                match UPDATED_ASSET_CALLBACK.write() {
+                    Ok(w) => w,
+                    Err(e) => {
+                        error!("Failed To Set CurrentLibrary {e}");
+                        return;
+                    }
+                };
+
+            *writer = Some(Arc::new(callback));}
     }
 
     impl UpdatedAsset {
@@ -140,12 +198,17 @@ pub mod internal {
             dylib::call_dylib(name, args)
         }
 
-        pub fn update_callback(&mut self, callback: extern "C" fn(u32) -> ()) {
-            (self.internal_set_update_callback)(callback);
+        pub fn update_callback(&mut self, callback: impl Fn(u32) + Send + Sync + 'static) {
+            #[cfg(feature = "dylib")]
+            dylib::update_callback(callback);
         }
 
-        pub fn update_asset_callback(&mut self, callback: extern "C" fn(UpdatedAsset) -> ()) {
-            (self.internal_set_asset_update_callback)(callback);
+        pub fn update_asset_callback(
+            &mut self,
+            callback: impl Fn(UpdatedAsset) + Send + Sync + 'static,
+        ) {
+            #[cfg(feature = "dylib")]
+            dylib::update_asset_callback(callback);
         }
     }
 
@@ -156,7 +219,7 @@ pub mod internal {
         #[error("Couldn't decode error {0}")]
         Utf8Error(#[from] Utf8Error),
         #[error("{0}")]
-        AtomicError(String)
+        AtomicError(String),
     }
 }
 
@@ -171,9 +234,7 @@ pub mod hot {
     pub struct HotReloadInfoBuilder {
         pub internal_last_update_version: extern "C" fn() -> u32,
         pub internal_update_ready: extern "C" fn() -> bool,
-        pub internal_set_update_callback: extern "C" fn( extern "C" fn(u32) -> ()),
-        pub internal_set_asset_update_callback: extern "C" fn( extern "C" fn(UpdatedAsset) -> ()),
-        pub internal_update:  extern "C" fn() -> bool,
+        pub internal_update: extern "C" fn() -> bool,
         pub internal_validate_setup: extern "C" fn(u32) -> u32,
     }
 
@@ -182,18 +243,14 @@ pub mod hot {
             let HotReloadInfoBuilder {
                 internal_last_update_version,
                 internal_update_ready,
-                internal_set_update_callback,
-                internal_set_asset_update_callback,
                 internal_update,
-                internal_validate_setup
+                internal_validate_setup,
             } = self;
             HotReloadInfo {
                 internal_last_update_version,
                 internal_update_ready,
-                internal_set_update_callback,
-                internal_set_asset_update_callback,
                 internal_update,
-                internal_validate_setup
+                internal_validate_setup,
             }
         }
     }

@@ -5,7 +5,6 @@ use bevy_dexterous_developer::{reloadable_main, ReloadableElementsSetup};
 fn terminal_runner(mut app: App) {
     app.update();
     for line in std::io::stdin().lines() {
-        println!("Runner Got {line:?}");
         let typed: String = line.unwrap_or_default();
         if typed == "exit" {
             println!("Exiting");

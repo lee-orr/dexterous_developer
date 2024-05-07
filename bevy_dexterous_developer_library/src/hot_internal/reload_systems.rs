@@ -28,14 +28,12 @@ pub fn reload(world: &mut World) {
     println!("Reloading");
     {
         let input = world.get_resource::<ButtonInput<KeyCode>>();
-        println!("Here");
 
         let (reload_mode, manual_reload) = world
             .get_resource::<ReloadSettings>()
             .map(|v| (v.reload_mode, v.manual_reload))
             .unwrap_or_default();
 
-        println!("There");
 
         let manual_reload = if let Some(input) = input {
             manual_reload
@@ -44,13 +42,11 @@ pub fn reload(world: &mut World) {
         } else {
             false
         };
-        println!("And everywhere");
 
         let info = HOT_RELOAD_INFO
             .get()
             .expect("Hot Reload Info hasn't been set");
 
-        println!("Checking for readiness");
 
         let update_ready = info.update_ready();
         println!("Ready: {update_ready} Manual: {manual_reload}");
@@ -101,13 +97,11 @@ pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut 
         let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppElements>() else {
             return;
         };
-        println!("setup default");
 
         let mut inner_app = ReloadableAppContents::new(name, &mut reloadable);
 
         T::default_function(&mut inner_app);
     }
-    println!("Setup Successful");
 }
 
 #[derive(Debug, Clone)]

@@ -5,6 +5,7 @@ use dashmap::DashMap;
 
 use notify::{INotifyWatcher, Watcher as NotifyWatcher};
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::{error, info, warn};
 
 use crate::types::{self, BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
 
@@ -23,29 +24,49 @@ impl Watcher for SimpleWatcher {
         directories: &[camino::Utf8PathBuf],
         subscriber: (usize, UnboundedSender<types::BuilderIncomingMessages>),
     ) -> Result<(), WatcherError> {
+        info!("Watching Directories: {directories:?}");
         for directory in directories.iter() {
-            let subscribers = self.code_subscribers.entry(directory.clone()).or_default();
-            subscribers.insert(subscriber.0, subscriber.1.clone());
+            {
+                info!("Checking {directory:?}");
+                let subscribers = self.code_subscribers.entry(directory.clone()).or_default();
+                info!("Got Subscribers");
+                subscribers.insert(subscriber.0, subscriber.1.clone());
+            }
+            info!("Inserting a new subscriber");
             let _ = self
                 .watchers
                 .entry(directory.clone())
                 .or_try_insert_with::<WatcherError>(|| {
+                    info!("Adding watcher entry");
                     let code_subscribers = self.code_subscribers.clone();
+                    info!("Getting Code Subscribers");
                     let directory = directory.clone();
 
                     let mut watcher = {
                         let directory = directory.clone();
                         notify::recommended_watcher(move |_| {
+                            info!("Got Watch Event");
                             let Some(subscribers) = code_subscribers.get(&directory) else {
+                                error!("Couldn't Get Subscribers");
                                 return;
                             };
-                            let _ = subscribers.iter().map(|subscriber| {
-                                subscriber.send(BuilderIncomingMessages::CodeChanged)
-                            });
+                            if subscribers.is_empty() {
+                                warn!("No Subscribers");
+                                return;
+                            }
+                            for subscriber in subscribers.iter() {
+                                info!("Sending Code Changed Message to {}", subscriber.key());
+                                let _ = subscriber.send(BuilderIncomingMessages::CodeChanged);
+                            };
+                            info!("Finished Sending Code Changed Messages");
                         })?
                     };
 
+                    info!("Watching Directory");
+
                     watcher.watch(directory.as_std_path(), notify::RecursiveMode::Recursive)?;
+
+                    info!("Returning Watcher");
 
                     Ok(watcher)
                 })?;
