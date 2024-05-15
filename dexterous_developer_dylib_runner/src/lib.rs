@@ -306,7 +306,7 @@ fn download_file(
     target: Target,
     base_path: &Utf8Path,
     remote_path: Utf8PathBuf,
-    _hash: [u8; 32],
+    hash: [u8; 32],
     pending: Arc<AtomicU32>,
     tx: tokio::sync::mpsc::UnboundedSender<(String, Utf8PathBuf, bool)>,
     is_asset: bool,
@@ -316,7 +316,7 @@ fn download_file(
     let server = server.clone();
     let base_path = base_path.to_owned();
     tokio::spawn(async move {
-        let result = execute_download(server.clone(), target, base_path, remote_path.clone()).await;
+        let result = execute_download(server.clone(), target, base_path, remote_path.clone(), hash).await;
         pending.fetch_sub(1, Ordering::SeqCst);
         match result {
             Ok(path) => {
@@ -346,8 +346,17 @@ async fn execute_download(
     target: Target,
     base_path: Utf8PathBuf,
     remote_path: Utf8PathBuf,
+    hash: [u8;32],
 ) -> Result<Utf8PathBuf, DylibRunnerError> {
     let local_path = base_path.join(&remote_path);
+
+    if local_path.exists() {
+        let file = tokio::fs::read(&local_path).await?;
+        let existing_hash = blake3::hash(&file);
+        if hash == existing_hash.as_bytes().to_owned() {
+            return Ok(local_path);
+        }
+    }
 
     let address = server
         .join("files/")?
