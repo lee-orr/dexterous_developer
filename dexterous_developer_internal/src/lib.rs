@@ -1,4 +1,3 @@
-
 use safer_ffi::{derive_ReprC, prelude::c_slice};
 
 #[cfg(feature = "dylib")]
@@ -225,11 +224,8 @@ pub mod internal {
 
 #[cfg(feature = "hot")]
 pub mod hot {
-    
 
-    
-
-    use crate::{HotReloadInfo};
+    use crate::HotReloadInfo;
 
     pub struct HotReloadInfoBuilder {
         pub internal_last_update_version: extern "C" fn() -> u32,
