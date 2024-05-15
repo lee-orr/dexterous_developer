@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/bevy_dexterous_developer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_builder/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_dylib_runner/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_dynamic/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_example/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_internal/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_types/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/asset_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/example_cli_test/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/example_cli_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/reloadables_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/templates/simple_cli_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/testing/tmp/placeholder/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bevy_dexterous_developer/crates/bevy_dexterous_developer_library/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

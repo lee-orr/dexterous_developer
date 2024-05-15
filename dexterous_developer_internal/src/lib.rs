@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 
 use safer_ffi::{derive_ReprC, prelude::c_slice};
 
@@ -66,7 +65,7 @@ pub mod internal {
         use super::HotReloadAccessError;
 
         static CURRENT_LIBRARY: RwLock<Option<LibraryHolder>> = RwLock::new(None);
-        static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn(u32) + Send + Sync>>> = RwLock::new(None);
+        static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn() + Send + Sync>>> = RwLock::new(None);
         static UPDATED_ASSET_CALLBACK: RwLock<Option<Arc<dyn Fn(UpdatedAsset) + Send + Sync>>> =
             RwLock::new(None);
 
@@ -100,20 +99,20 @@ pub mod internal {
 
             if let Ok(current) = current.as_ref() {
                 if let Some(current) = current.as_ref() {
-                    current(id);
+                    current();
                 }
             }
         }
 
         #[ffi_export]
-        fn update_asset_callback_internal(id: UpdatedAsset) {
+        fn update_asset_callback_internal(asset: UpdatedAsset) {
             let current = UPDATED_ASSET_CALLBACK
                 .try_read()
                 .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")));
 
             if let Ok(current) = current.as_ref() {
                 if let Some(current) = current.as_ref() {
-                    current(id);
+                    current(asset);
                 }
             }
         }
@@ -139,30 +138,31 @@ pub mod internal {
             Ok(())
         }
 
-        pub(crate) fn update_callback(callback: impl Fn(u32) + Send + Sync + 'static) {
-            let mut writer =
-                match UPDATE_CALLBACK.write() {
-                    Ok(w) => w,
-                    Err(e) => {
-                        error!("Failed To Set CurrentLibrary {e}");
-                        return;
-                    }
-                };
+        pub(crate) fn update_callback(callback: impl Fn() + Send + Sync + 'static) {
+            let mut writer = match UPDATE_CALLBACK.write() {
+                Ok(w) => w,
+                Err(e) => {
+                    error!("Failed To Set CurrentLibrary {e}");
+                    return;
+                }
+            };
 
             *writer = Some(Arc::new(callback));
         }
 
-        pub(crate) fn update_asset_callback(callback: impl Fn(UpdatedAsset) + Send + Sync + 'static) {
-            let mut writer =
-                match UPDATED_ASSET_CALLBACK.write() {
-                    Ok(w) => w,
-                    Err(e) => {
-                        error!("Failed To Set CurrentLibrary {e}");
-                        return;
-                    }
-                };
+        pub(crate) fn update_asset_callback(
+            callback: impl Fn(UpdatedAsset) + Send + Sync + 'static,
+        ) {
+            let mut writer = match UPDATED_ASSET_CALLBACK.write() {
+                Ok(w) => w,
+                Err(e) => {
+                    error!("Failed To Set CurrentLibrary {e}");
+                    return;
+                }
+            };
 
-            *writer = Some(Arc::new(callback));}
+            *writer = Some(Arc::new(callback));
+        }
     }
 
     impl UpdatedAsset {
@@ -198,7 +198,7 @@ pub mod internal {
             dylib::call_dylib(name, args)
         }
 
-        pub fn update_callback(&mut self, callback: impl Fn(u32) + Send + Sync + 'static) {
+        pub fn update_callback(&mut self, callback: impl Fn() + Send + Sync + 'static) {
             #[cfg(feature = "dylib")]
             dylib::update_callback(callback);
         }
@@ -225,11 +225,11 @@ pub mod internal {
 
 #[cfg(feature = "hot")]
 pub mod hot {
-    use std::ffi::c_void;
+    
 
-    use safer_ffi::prelude::c_slice;
+    
 
-    use crate::{CallResponse, HotReloadInfo, UpdatedAsset};
+    use crate::{HotReloadInfo};
 
     pub struct HotReloadInfoBuilder {
         pub internal_last_update_version: extern "C" fn() -> u32,

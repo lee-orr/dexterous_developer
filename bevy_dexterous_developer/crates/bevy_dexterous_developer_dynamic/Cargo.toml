@@ -18,5 +18,5 @@ crate-type = ["dylib"]
 [dependencies]
 bevy = { version = "0.13", default-features = false}
 bevy_dexterous_developer_library = { version = "0.2.0", path = "../bevy_dexterous_developer_library" }
-dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
-dexterous_developer_internal = { version = "0.2.0", path = "../dexterous_developer_internal"}
+dexterous_developer_types = { version = "0.2.0", path = "../../../dexterous_developer_types" }
+dexterous_developer_internal = { version = "0.2.0", path = "../../../dexterous_developer_internal" }

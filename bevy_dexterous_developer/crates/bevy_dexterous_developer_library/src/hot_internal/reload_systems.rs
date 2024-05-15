@@ -34,7 +34,6 @@ pub fn reload(world: &mut World) {
             .map(|v| (v.reload_mode, v.manual_reload))
             .unwrap_or_default();
 
-
         let manual_reload = if let Some(input) = input {
             manual_reload
                 .map(|v| input.just_pressed(v))
@@ -46,7 +45,6 @@ pub fn reload(world: &mut World) {
         let info = HOT_RELOAD_INFO
             .get()
             .expect("Hot Reload Info hasn't been set");
-
 
         let update_ready = info.update_ready();
         println!("Ready: {update_ready} Manual: {manual_reload}");

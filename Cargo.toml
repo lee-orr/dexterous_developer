@@ -13,7 +13,9 @@ members = [
     "dexterous_developer_builder",
     "dexterous_developer_types",
     "dexterous_developer_manager",
-    "dexterous_developer_dylib_runner", "bevy_dexterous_developer_dynamic", "bevy_dexterous_developer_library",
+    "dexterous_developer_dylib_runner",
+    "bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic",
+    "bevy_dexterous_developer/crates/bevy_dexterous_developer_library",
 ]
 
 exclude = [

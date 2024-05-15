@@ -57,7 +57,7 @@ impl Watcher for SimpleWatcher {
                             for subscriber in subscribers.iter() {
                                 info!("Sending Code Changed Message to {}", subscriber.key());
                                 let _ = subscriber.send(BuilderIncomingMessages::CodeChanged);
-                            };
+                            }
                             info!("Finished Sending Code Changed Messages");
                         })?
                     };

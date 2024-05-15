@@ -36,7 +36,7 @@ impl LibraryHolderInner {
             std::fs::copy(&path, archival_path)?;
             std::fs::rename(&path, &new_path)?;
             debug!("Copied file to new path");
-    
+
             await_file(10, &new_path);
             Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?
         };
@@ -109,7 +109,7 @@ impl LibraryHolder {
     }
 
     pub fn path(&self) -> Utf8PathBuf {
-        self.0.1.clone()
+        self.0 .1.clone()
     }
 
     pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), LibraryError> {

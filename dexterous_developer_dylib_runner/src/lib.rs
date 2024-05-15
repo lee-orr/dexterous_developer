@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use std::{
-    ffi::c_void,
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc,
@@ -13,7 +12,7 @@ use std::{
 use camino::{Utf8Path, Utf8PathBuf};
 use crossbeam::atomic::AtomicCell;
 
-use dexterous_developer_internal::{hot::HotReloadInfoBuilder, CallResponse, UpdatedAsset};
+use dexterous_developer_internal::{hot::HotReloadInfoBuilder, UpdatedAsset};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use once_cell::sync::OnceCell;
@@ -135,7 +134,7 @@ pub fn run_reloadable_app(
         (
             library.ok_or(DylibRunnerError::NoInitialLibrary)?,
             id.ok_or(DylibRunnerError::NoInitialLibrary)?,
-            path.ok_or(DylibRunnerError::NoInitialLibrary)?
+            path.ok_or(DylibRunnerError::NoInitialLibrary)?,
         )
     };
 
