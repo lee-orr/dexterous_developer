@@ -1,16 +1,15 @@
 use camino::{Utf8Path, Utf8PathBuf};
-use libloading::Library;
-use std::{sync::Arc, time::Duration};
 use dashmap::DashMap;
-use once_cell::sync::{Lazy, OnceCell};
+use libloading::Library;
+use once_cell::sync::Lazy;
+use std::time::Duration;
 
 use dexterous_developer_types::cargo_path_utils;
 use thiserror::Error;
 use tracing::{debug, error, info};
 use uuid::Uuid;
-use crate::library_holder::LibraryError::LibError;
 
-static LIBRARIES : Lazy<DashMap<Uuid, LibraryHolderInner>> = Lazy::new(|| Default::default());
+static LIBRARIES: Lazy<DashMap<Uuid, LibraryHolderInner>> = Lazy::new(Default::default);
 
 struct LibraryHolderInner(Option<Library>, Utf8PathBuf);
 
@@ -52,7 +51,7 @@ impl LibraryHolderInner {
         match unsafe { libloading::Library::new(&path) } {
             Ok(lib) => {
                 info!("Loaded library");
-                Ok((Self(Some(lib), path, ), uuid))
+                Ok((Self(Some(lib), path), uuid))
             }
             Err(err) => {
                 error!("Error loading library - {path:?}: {err:?}");
@@ -65,10 +64,6 @@ impl LibraryHolderInner {
                 Err(err)?
             }
         }
-    }
-
-    pub fn library(&self) -> Option<&Library> {
-        self.0.as_ref()
     }
 
     pub fn call<T>(&self, name: &str, args: T) -> Result<(), LibraryError> {
@@ -118,8 +113,7 @@ impl LibraryHolder {
     }
 
     pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), LibraryError> {
-        let Some(inner) = LIBRARIES
-            .get(&self.0) else {
+        let Some(inner) = LIBRARIES.get(&self.0) else {
             return Err(LibraryError::MissingUuid);
         };
 
@@ -127,8 +121,7 @@ impl LibraryHolder {
     }
 
     pub fn varied_call<T>(&self, name: &str, args: T) -> Result<(), LibraryError> {
-        let Some(inner) = LIBRARIES
-            .get(&self.0) else {
+        let Some(inner) = LIBRARIES.get(&self.0) else {
             return Err(LibraryError::MissingUuid);
         };
         inner.call(name, args)
@@ -146,5 +139,5 @@ pub enum LibraryError {
     #[error("Utf8 Path Error {0}")]
     Utf8PathError(#[from] camino::FromPathBufError),
     #[error("Can't Find Library")]
-    MissingUuid
+    MissingUuid,
 }

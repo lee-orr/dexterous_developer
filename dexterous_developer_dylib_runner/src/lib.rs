@@ -103,6 +103,7 @@ pub fn run_reloadable_app(
         info!("Getting Initial Root");
         let mut library = None;
         let mut id = None;
+        #[allow(unused_assignments)]
         let mut path = None;
         loop {
             if library.is_some() || id.is_some() {
@@ -296,7 +297,7 @@ async fn remote_connection(
             else => {
                 return Ok(());
             }
-        };
+        }
     }
 }
 
@@ -316,7 +317,8 @@ fn download_file(
     let server = server.clone();
     let base_path = base_path.to_owned();
     tokio::spawn(async move {
-        let result = execute_download(server.clone(), target, base_path, remote_path.clone(), hash).await;
+        let result =
+            execute_download(server.clone(), target, base_path, remote_path.clone(), hash).await;
         pending.fetch_sub(1, Ordering::SeqCst);
         match result {
             Ok(path) => {
@@ -346,14 +348,14 @@ async fn execute_download(
     target: Target,
     base_path: Utf8PathBuf,
     remote_path: Utf8PathBuf,
-    hash: [u8;32],
+    hash: [u8; 32],
 ) -> Result<Utf8PathBuf, DylibRunnerError> {
     let local_path = base_path.join(&remote_path);
 
     if local_path.exists() {
         let file = tokio::fs::read(&local_path).await?;
         let existing_hash = blake3::hash(&file);
-        if hash == existing_hash.as_bytes().to_owned() {
+        if hash == *existing_hash.as_bytes() {
             return Ok(local_path);
         }
     }
