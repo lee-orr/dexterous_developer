@@ -1,10 +1,16 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use libloading::Library;
 use std::{sync::Arc, time::Duration};
+use dashmap::DashMap;
+use once_cell::sync::{Lazy, OnceCell};
 
 use dexterous_developer_types::cargo_path_utils;
 use thiserror::Error;
 use tracing::{debug, error, info};
+use uuid::Uuid;
+use crate::library_holder::LibraryError::LibError;
+
+static LIBRARIES : Lazy<DashMap<Uuid, LibraryHolderInner>> = Lazy::new(|| Default::default());
 
 struct LibraryHolderInner(Option<Library>, Utf8PathBuf);
 
@@ -16,22 +22,22 @@ impl Drop for LibraryHolderInner {
 }
 
 impl LibraryHolderInner {
-    pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
+    pub fn new(path: &Utf8Path, use_original: bool) -> Result<(Self, Uuid), LibraryError> {
         info!("Loading {path:?}");
         let path = path.to_owned();
+        let uuid = uuid::Uuid::new_v4();
         let path = if use_original {
             info!("Using Original");
             path
         } else {
             info!("Copying To Temporary File");
             let extension = path.extension();
-            let uuid = uuid::Uuid::new_v4();
             let new_path = path.clone();
             let mut new_path = new_path.with_file_name(uuid.to_string());
             let mut archival_path = path.clone();
             if let Some(extension) = extension {
                 new_path.set_extension(extension);
-                archival_path.set_extension(format!("{}.backup", extension));
+                archival_path.set_extension(format!("{}.{uuid}.backup", extension));
             }
             std::fs::copy(&path, archival_path)?;
             std::fs::rename(&path, &new_path)?;
@@ -46,7 +52,7 @@ impl LibraryHolderInner {
         match unsafe { libloading::Library::new(&path) } {
             Ok(lib) => {
                 info!("Loaded library");
-                Ok(Self(Some(lib), path))
+                Ok((Self(Some(lib), path, ), uuid))
             }
             Err(err) => {
                 error!("Error loading library - {path:?}: {err:?}");
@@ -97,27 +103,35 @@ fn await_file(iterations: usize, path: &Utf8PathBuf) {
 }
 
 #[derive(Clone)]
-pub struct LibraryHolder(Arc<LibraryHolderInner>);
+pub struct LibraryHolder(Uuid, Utf8PathBuf);
 
 impl LibraryHolder {
     pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
-        let inner = LibraryHolderInner::new(path, use_original)?;
-        Ok(Self(Arc::new(inner)))
-    }
-    pub fn library(&self) -> Option<&Library> {
-        self.0.library()
+        let (inner, uuid) = LibraryHolderInner::new(path, use_original)?;
+        let path = inner.1.clone();
+        LIBRARIES.insert(uuid, inner);
+        Ok(Self(uuid, path))
     }
 
     pub fn path(&self) -> Utf8PathBuf {
-        self.0 .1.clone()
+        self.1.clone()
     }
 
     pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), LibraryError> {
-        self.0.call(name, args)
+        let Some(inner) = LIBRARIES
+            .get(&self.0) else {
+            return Err(LibraryError::MissingUuid);
+        };
+
+        inner.call(name, args)
     }
 
     pub fn varied_call<T>(&self, name: &str, args: T) -> Result<(), LibraryError> {
-        self.0.call(name, args)
+        let Some(inner) = LIBRARIES
+            .get(&self.0) else {
+            return Err(LibraryError::MissingUuid);
+        };
+        inner.call(name, args)
     }
 }
 
@@ -131,4 +145,6 @@ pub enum LibraryError {
     FsError(#[from] std::io::Error),
     #[error("Utf8 Path Error {0}")]
     Utf8PathError(#[from] camino::FromPathBufError),
+    #[error("Can't Find Library")]
+    MissingUuid
 }
