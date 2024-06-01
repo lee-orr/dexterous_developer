@@ -1,6 +1,6 @@
 pub mod cargo_path_utils;
 
-use std::{fmt::Display, ops::Deref, str::FromStr};
+use std::{collections::HashMap, fmt::Display, ops::Deref, str::FromStr};
 
 use camino::Utf8PathBuf;
 use serde::{de, Deserialize, Deserializer, Serialize};
@@ -49,6 +49,7 @@ pub struct TargetBuildSettings {
     pub features: Vec<String>,
     pub asset_folders: Vec<camino::Utf8PathBuf>,
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
+    pub environment: HashMap<String, String>,
 }
 
 #[repr(C)]

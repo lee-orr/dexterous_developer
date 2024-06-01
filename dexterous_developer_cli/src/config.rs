@@ -25,6 +25,8 @@ pub struct DexterousConfig {
     pub examples: HashMap<String, ReloadTargetConfig>,
     #[serde(default)]
     pub default_package: Option<ReloadTargetConfig>,
+    #[serde(default)]
+    pub environment: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -33,6 +35,8 @@ pub struct ReloadTargetConfig {
     pub features: Vec<String>,
     #[serde(default)]
     pub asset_folders: Vec<camino::Utf8PathBuf>,
+    #[serde(default)]
+    pub environment: HashMap<String, String>,
 }
 
 impl DexterousConfig {
@@ -102,6 +106,12 @@ impl DexterousConfig {
             .chain(self.asset_folders.iter())
             .map(|s| s.as_str())
             .collect::<Vec<_>>();
+        let global_environment_variables = package_specific_config
+            .environment
+            .iter()
+            .chain(self.environment.iter())
+            .map(|(key, value)| (key.to_owned(), value.to_owned()))
+            .collect::<HashMap<_, _>>();
 
         let mut targets = self
             .targets
@@ -111,6 +121,7 @@ impl DexterousConfig {
                     *target,
                     settings.features.clone(),
                     settings.asset_folders.clone(),
+                    settings.environment.clone(),
                 )
             })
             .collect::<Vec<_>>();
@@ -118,28 +129,34 @@ impl DexterousConfig {
         if targets.is_empty() {
             let default_target =
                 Target::current().ok_or(BuildSettingsGenerationError::NoDefaultTarget)?;
-            targets.push((default_target, vec![], vec![]))
+            targets.push((default_target, vec![], vec![], HashMap::new()))
         }
 
         Ok(targets
             .into_iter()
-            .map(move |(target, mut features, mut asset_folders)| {
-                for f in global_features.iter() {
-                    features.push(f.to_string());
-                }
-                for a in global_asset_folders.iter() {
-                    asset_folders.push(Utf8PathBuf::from(*a));
-                }
-                (
-                    target,
-                    TargetBuildSettings {
-                        package_or_example: package_or_example.clone(),
-                        features,
-                        asset_folders,
-                        code_watch_folders: self.code_watch_folders.clone(),
-                    },
-                )
-            })
+            .map(
+                move |(target, mut features, mut asset_folders, mut environment)| {
+                    for f in global_features.iter() {
+                        features.push(f.to_string());
+                    }
+                    for a in global_asset_folders.iter() {
+                        asset_folders.push(Utf8PathBuf::from(*a));
+                    }
+                    for (key, value) in global_environment_variables.iter() {
+                        environment.insert(key.to_owned(), value.to_owned());
+                    }
+                    (
+                        target,
+                        TargetBuildSettings {
+                            package_or_example: package_or_example.clone(),
+                            features,
+                            asset_folders,
+                            code_watch_folders: self.code_watch_folders.clone(),
+                            environment,
+                        },
+                    )
+                },
+            )
             .collect::<Vec<_>>())
     }
 }
@@ -191,6 +208,9 @@ mod test {
                 ReloadTargetConfig {
                     features: vec!["my-feature".to_string()],
                     asset_folders: vec![Utf8PathBuf::from("/asset")],
+                    environment: [("env".to_string(), "value".to_string())]
+                        .into_iter()
+                        .collect(),
                 },
             )])
             .into_iter()
@@ -219,6 +239,7 @@ mod test {
             settings.asset_folders.first().unwrap().to_string(),
             "/asset"
         );
+        assert_eq!(settings.environment.get("env").unwrap(), "value");
     }
 
     #[test]
@@ -265,6 +286,7 @@ mod test {
                     ReloadTargetConfig {
                         features: vec!["my-feature".to_string()],
                         asset_folders: vec![Utf8PathBuf::from("/asset")],
+                        ..Default::default()
                     },
                 ),
                 (
@@ -272,6 +294,7 @@ mod test {
                     ReloadTargetConfig {
                         features: vec!["shouldnt-load".to_string()],
                         asset_folders: vec![],
+                        ..Default::default()
                     },
                 ),
             ])
@@ -320,6 +343,7 @@ mod test {
                     ReloadTargetConfig {
                         features: vec!["my-feature".to_string()],
                         asset_folders: vec![Utf8PathBuf::from("/asset")],
+                        ..Default::default()
                     },
                 ),
                 (
@@ -327,6 +351,7 @@ mod test {
                     ReloadTargetConfig {
                         features: vec!["shouldnt-load".to_string()],
                         asset_folders: vec![],
+                        ..Default::default()
                     },
                 ),
             ])
