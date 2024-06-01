@@ -45,7 +45,7 @@ locate-cargo-manifest = "0.2"
 serde = { version = "1", features = ["derive"]}
 
 
-dexterous_developer_types = { version = "0.2.0", path = "../dexterous_developer_types" }
-dexterous_developer_builder = { version = "0.2.0", path = "../dexterous_developer_builder"}
-dexterous_developer_manager = { version = "0.2.0", path = "../dexterous_developer_manager"}
-dexterous_developer_dylib_runner = {version = "0.2.0", path = "../dexterous_developer_dylib_runner"}
+dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types" }
+dexterous_developer_builder = { version = "0.3.0-pre.1", path = "../dexterous_developer_builder"}
+dexterous_developer_manager = { version = "0.3.0-pre.1", path = "../dexterous_developer_manager"}
+dexterous_developer_dylib_runner = {version = "0.3.0-pre.1", path = "../dexterous_developer_dylib_runner"}

@@ -1,6 +1,6 @@
 [package]
 name = "dexterous_developer_example"
-version = "0.2.0"
+version = "0.3.0-pre.1"
 edition = "2021"
 
 publish = false

@@ -25,5 +25,5 @@ hot_internal = [
 
 
 [dependencies]
-bevy_dexterous_developer_library = { version = "0.2.0", path = "crates/bevy_dexterous_developer_library" }
-bevy_dexterous_developer_dynamic = { version = "0.2.0", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
+bevy_dexterous_developer_library = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_library" }
+bevy_dexterous_developer_dynamic = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_dynamic", optional = true }

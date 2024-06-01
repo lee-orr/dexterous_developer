@@ -27,8 +27,8 @@ hot_internal = [
 
 [dependencies]
 anyhow = { version = "1" }
-dexterous_developer_types = { version = "0.2.0", path = "../../../dexterous_developer_types" }
-dexterous_developer_internal = { version = "0.2.0", path = "../../../dexterous_developer_internal" }
+dexterous_developer_types = { version = "0.3.0-pre.1"pre.1", path = "../../../dexterous_developer_types" }
+dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../../../dexterous_developer_internal" }
 bevy = { version = "0.13", default-features = false, features = [
     "serialize",
 ]}
