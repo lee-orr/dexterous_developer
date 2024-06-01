@@ -28,6 +28,7 @@ use dexterous_developer_internal::library_holder::LibraryHolder;
 pub fn run_reloadable_app(
     working_directory: &Utf8Path,
     library_path: &Utf8Path,
+
     server: url::Url,
 ) -> Result<(), DylibRunnerError> {
     if !library_path.exists() {
@@ -126,7 +127,8 @@ pub fn run_reloadable_app(
                     id = Some(build_id);
                     break;
                 }
-                DylibRunnerMessage::AssetUpdated { .. } => {
+                DylibRunnerMessage::AssetUpdated { local_path, name  } => {
+                    info!("Asset: {name} {local_path}");
                     continue;
                 }
             }

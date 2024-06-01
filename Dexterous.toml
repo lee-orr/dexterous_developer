@@ -2,4 +2,7 @@ features = [
     "bevy/embedded_watcher", "bevy_dexterous_developer/hot_internal"
 ]
 
-code_watch_folders = ["./testing/templates/simple_cli_test/src"]
+code_watch_folders = ["./testing/templates/asset_test/src"]
+
+[packages.asset_test]
+asset_folders = ["./assets"]

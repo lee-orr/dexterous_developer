@@ -7,8 +7,8 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "lib_asset_test"
-crate-type = ["rlib"]
+crate-type = ["rlib", "dylib"]
+
 
 
 [dependencies]
@@ -20,6 +20,7 @@ bevy = { version = "0.13", default_features = false, features = [
     "file_watcher",
 ] }
 bevy_dexterous_developer = { path = "../../../bevy_dexterous_developer" }
+
 
 [package.metadata]
 hot_reload_features = ["bevy/dynamic_linking", "bevy/embedded_watcher", "bevy_dexterous_developer/hot_internal"]

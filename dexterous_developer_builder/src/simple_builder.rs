@@ -353,6 +353,7 @@ impl SimpleBuilder {
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
+                            info!("Builder Received Asset Change - {asset:?}");
                             let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
                         }
                     }

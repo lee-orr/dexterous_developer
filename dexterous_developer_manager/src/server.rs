@@ -29,7 +29,7 @@ pub async fn run_server(port: u16, manager: Manager) -> Result<(), Error> {
     let app = Router::new()
         .route("/targets", get(list_targets))
         .route("/target/:target", get(connect_to_target))
-        .route("/files/:target/:file", get(target_file_loader));
+        .route("/files/:target/*file", get(target_file_loader));
 
     let app = app.with_state(ServerState {
         manager: Arc::new(manager),
@@ -146,7 +146,7 @@ async fn connected_to_target(
             val.map(|msg| match &msg {
                 BuildOutputMessages::RootLibraryName(name) => Some(HotReloadMessage::RootLibPath(name.clone())),
                 BuildOutputMessages::LibraryUpdated(HashedFileRecord {  name, hash, dependencies, .. }) => Some(HotReloadMessage::UpdatedLibs(name.clone(), *hash, dependencies.clone())),
-                BuildOutputMessages::AssetUpdated(HashedFileRecord {  local_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(local_path.clone(), *hash)),
+                BuildOutputMessages::AssetUpdated(HashedFileRecord {  relative_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(relative_path.clone(), *hash)),
                 BuildOutputMessages::KeepAlive => None,
                 BuildOutputMessages::StartedBuild(id) => Some(HotReloadMessage::BuildStarted(*id)),
                 BuildOutputMessages::EndedBuild(id) => Some(HotReloadMessage::BuildCompleted(*id)),
