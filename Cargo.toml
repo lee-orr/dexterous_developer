@@ -7,21 +7,12 @@ members = [
     "dexterous_developer_dynamic",
     "bevy_dexterous_developer",
     "dexterous_developer_example",
-    "testing/dexterous_developer_tests",
-    "testing/templates/*",
-    "testing/tmp/*",
     "dexterous_developer_builder",
     "dexterous_developer_types",
     "dexterous_developer_manager",
     "dexterous_developer_dylib_runner",
     "bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic",
     "bevy_dexterous_developer/crates/bevy_dexterous_developer_library",
-]
-
-exclude = [
-    "testing/templates/remote_client",
-    "testing/tmp/tmp_can_run_remote_client",
-    "testing/tmp/tmp_can_update_assets_client",
 ]
 
 [workspace.package]
