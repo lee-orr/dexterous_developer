@@ -31,10 +31,10 @@ pub struct CallResponse {
 #[cfg(feature = "hot_internal")]
 pub mod internal {
     use camino::Utf8PathBuf;
-    use chrono::{DateTime, Local, Timelike};
+    use chrono::{Local, Timelike};
     use once_cell::sync::OnceCell;
-    use safer_ffi::{derive_ReprC, ffi_export, prelude::c_slice};
-    use std::{ffi::c_void, str::Utf8Error, sync::Mutex};
+    use safer_ffi::ffi_export;
+    use std::str::Utf8Error;
     use thiserror::Error;
 
     use crate::{HotReloadInfo, UpdatedAsset};

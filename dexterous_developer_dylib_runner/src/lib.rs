@@ -127,7 +127,7 @@ pub fn run_reloadable_app(
                     id = Some(build_id);
                     break;
                 }
-                DylibRunnerMessage::AssetUpdated { local_path, name  } => {
+                DylibRunnerMessage::AssetUpdated { local_path, name } => {
                     info!("Asset: {name} {local_path}");
                     continue;
                 }
