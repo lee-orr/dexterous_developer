@@ -167,9 +167,20 @@ mod test {
     async fn current_build_state_can_update_library_record() {
         let state = CurrentBuildState::default();
 
-        let _ = state.update(BuildOutputMessages::LibraryUpdated(HashedFileRecord { relative_path: Utf8PathBuf::from("/relative/path"), name: "library".to_string(), local_path: Utf8PathBuf::from("/local/path"), hash: Default::default(), dependencies: vec![] })).await;
+        let _ = state
+            .update(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
+                relative_path: Utf8PathBuf::from("/relative/path"),
+                name: "library".to_string(),
+                local_path: Utf8PathBuf::from("/local/path"),
+                hash: Default::default(),
+                dependencies: vec![],
+            }))
+            .await;
 
-        let record = state.libraries.get(&Utf8PathBuf::from("/relative/path")).expect("Library wasn't added to current build state");
+        let record = state
+            .libraries
+            .get(&Utf8PathBuf::from("/relative/path"))
+            .expect("Library wasn't added to current build state");
         assert_eq!(record.name, "library");
         assert_eq!(record.local_path.as_str(), "/local/path");
     }
@@ -178,9 +189,20 @@ mod test {
     async fn current_build_state_can_update_asset_record() {
         let state = CurrentBuildState::default();
 
-        let _ = state.update(BuildOutputMessages::AssetUpdated(HashedFileRecord { relative_path: Utf8PathBuf::from("/relative/path"), name: "asset".to_string(), local_path: Utf8PathBuf::from("/local/path"), hash: Default::default(), dependencies: vec![] })).await;
+        let _ = state
+            .update(BuildOutputMessages::AssetUpdated(HashedFileRecord {
+                relative_path: Utf8PathBuf::from("/relative/path"),
+                name: "asset".to_string(),
+                local_path: Utf8PathBuf::from("/local/path"),
+                hash: Default::default(),
+                dependencies: vec![],
+            }))
+            .await;
 
-        let record = state.assets.get(&Utf8PathBuf::from("/relative/path")).expect("Library wasn't added to current build state");
+        let record = state
+            .assets
+            .get(&Utf8PathBuf::from("/relative/path"))
+            .expect("Library wasn't added to current build state");
         assert_eq!(record.name, "asset");
         assert_eq!(record.local_path.as_str(), "/local/path");
     }
@@ -189,7 +211,9 @@ mod test {
     async fn current_build_state_can_update_root_library() {
         let state = CurrentBuildState::default();
 
-        let _ = state.update(BuildOutputMessages::RootLibraryName("Root".to_string())).await;
+        let _ = state
+            .update(BuildOutputMessages::RootLibraryName("Root".to_string()))
+            .await;
 
         let read = state.root_library.lock().await;
         let read = read.as_ref().map(|v| v.clone()).unwrap();
@@ -204,7 +228,6 @@ mod test {
 
         assert_eq!(state.most_recent_started_build.load(Ordering::SeqCst), 1);
     }
-
 
     #[tokio::test]
     async fn starting_a_previous_build_after_a_newer_one_doesnt_update_current_state() {
@@ -226,7 +249,6 @@ mod test {
 
         assert_eq!(state.most_recent_completed_build.load(Ordering::SeqCst), 1);
     }
-
 
     #[tokio::test]
     async fn ending_a_previous_build_after_a_newer_one_doesnt_update_current_state() {
