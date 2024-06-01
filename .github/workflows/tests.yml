@@ -1,4 +1,4 @@
-name: Static Analysis
+name: Tests
 
 on:
   pull_request:
