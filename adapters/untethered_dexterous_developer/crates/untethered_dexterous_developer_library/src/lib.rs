@@ -15,3 +15,10 @@ impl<SerializableState: Serialize + DeserializeOwned + Default, SharedState: Def
     ReloadableMain<SerializableState, SharedState>
 {
 }
+
+
+#[cfg(test)]
+mod test {
+    #[tokio::test]
+    async fn 
+}

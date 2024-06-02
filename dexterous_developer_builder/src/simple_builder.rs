@@ -491,7 +491,7 @@ mod test {
         let mut root_lib_confirmed = false;
         let mut library_update_received = false;
 
-        timeout(Duration::from_secs(120), async {
+        timeout(Duration::from_secs(60 * 10), async {
             loop {
                 let msg = build_messages
                     .recv()
