@@ -10,7 +10,7 @@ use std::sync::Arc;
 use camino::Utf8Path;
 
 use dexterous_developer_internal::{hot::HotReloadInfoBuilder, UpdatedAsset};
-use dexterous_developer_types::{cargo_path_utils::dylib_path};
+use dexterous_developer_types::cargo_path_utils::dylib_path;
 use dylib_runner_message::DylibRunnerMessage;
 use error::DylibRunnerError;
 use ffi::{NEXT_LIBRARY, NEXT_UPDATE_VERSION, ORIGINAL_LIBRARY};

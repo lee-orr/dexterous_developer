@@ -4,8 +4,6 @@ pub use paste::paste;
 mod hot {
     #[macro_export]
     macro_rules! reloadable_main {
-        ($f:ident) => {
-            
-        }
+        ($f:ident) => {};
     }
 }
