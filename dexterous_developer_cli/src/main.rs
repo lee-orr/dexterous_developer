@@ -6,8 +6,8 @@ use clap::Parser;
 use dexterous_developer_builder::{
     simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder,
 };
-use dexterous_developer_cli::config::DexterousConfig;
 use dexterous_developer_manager::{server::run_server, Manager};
+use dexterous_developer_types::config::DexterousConfig;
 use dexterous_developer_types::PackageOrExample;
 use tracing::info;
 

@@ -12,6 +12,9 @@ repository.workspace = true
 documentation.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+config = ["dep:tokio", "dep:toml"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"]}
@@ -19,3 +22,5 @@ tracing = { version = "0.1" }
 thiserror = "1"
 uuid = { version = "1.8", features = ["serde"]}
 camino ={ version = "1", features = ["serde1"] }
+tokio = { version = "1", features = ["full"], optional = true }
+toml = { version = "0.8", optional = true }

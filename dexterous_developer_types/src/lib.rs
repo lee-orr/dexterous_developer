@@ -1,5 +1,8 @@
 pub mod cargo_path_utils;
 
+#[cfg(feature = "config")]
+pub mod config;
+
 use std::{collections::HashMap, fmt::Display, ops::Deref, str::FromStr};
 
 use camino::Utf8PathBuf;

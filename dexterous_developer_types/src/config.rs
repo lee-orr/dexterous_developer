@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::info;
 
+use crate::{PackageOrExample, Target, TargetBuildSettings};
 use camino::Utf8PathBuf;
-use dexterous_developer_types::{PackageOrExample, Target, TargetBuildSettings};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct DexterousConfig {
@@ -169,10 +169,10 @@ pub enum BuildSettingsGenerationError {
 
 #[cfg(test)]
 mod test {
+    use crate::{PackageOrExample, Target};
     use camino::Utf8PathBuf;
-    use dexterous_developer_types::{PackageOrExample, Target};
 
-    use crate::{DexterousConfig, ReloadTargetConfig};
+    use super::{DexterousConfig, ReloadTargetConfig};
 
     #[test]
     fn given_a_manifest_with_no_metadata_provides_default_target() {
