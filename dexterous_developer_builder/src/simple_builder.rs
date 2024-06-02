@@ -419,7 +419,7 @@ mod test {
     use super::*;
     use dexterous_developer_types::PackageOrExample;
     use test_temp_dir::*;
-    use tokio::io::{AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     use tokio::process::Command;
     use tokio::time::timeout;
 

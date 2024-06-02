@@ -396,7 +396,7 @@ fn update_loop(
         match message {
             DylibRunnerMessage::ConnectionClosed => {
                 let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
-                eprintln!("Connection Closed");
+                error!("Connection Closed");
                 return Ok(());
             }
             DylibRunnerMessage::LoadRootLib {
@@ -495,19 +495,16 @@ pub static NEXT_LIBRARY: AtomicCell<Option<Arc<Utf8PathBuf>>> = AtomicCell::new(
 
 #[ffi_export]
 extern "C" fn validate_setup(value: u32) -> u32 {
-    println!("Validating Setup - Received {value}");
     value
 }
 
 #[ffi_export]
 extern "C" fn last_update_version() -> u32 {
-    println!("Checking Last Update Version");
     LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst)
 }
 
 #[ffi_export]
 extern "C" fn update_ready() -> bool {
-    println!("Running the readiness check");
     let last = LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     info!("Checking Readiness: {last} {next}");
@@ -516,26 +513,23 @@ extern "C" fn update_ready() -> bool {
 
 #[ffi_export]
 extern "C" fn update() -> bool {
-    println!("Updating");
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let old = LAST_UPDATE_VERSION.swap(next, std::sync::atomic::Ordering::SeqCst);
 
     if old < next {
-        println!("Updated Version");
         if let Some(path) = NEXT_LIBRARY.take() {
             if let Some(library) = ORIGINAL_LIBRARY.get() {
                 if let Err(e) = library.varied_call(
                     "load_internal_library",
                     safer_ffi::String::from(path.as_str()),
                 ) {
-                    eprintln!("Failed to load library: {e}");
+                    error!("Failed to load library: {e}");
                     return false;
                 }
             }
         }
         true
     } else {
-        println!("Didn't update version");
         false
     }
 }

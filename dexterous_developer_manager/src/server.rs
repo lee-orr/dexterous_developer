@@ -180,7 +180,7 @@ async fn target_file_loader(
 ) -> Result<Response, Error> {
     let file = Utf8PathBuf::from("./").join(file);
     let target: Target = target.parse()?;
-    println!("Requested file {file:?} from {target}");
+    info!("Requested file {file:?} from {target}");
     let file = match state.manager.get_filepath(&target, &file) {
         Ok(file) => file,
         Err(e) => {
@@ -188,9 +188,9 @@ async fn target_file_loader(
             return Ok(StatusCode::NOT_FOUND.into_response());
         }
     };
-    println!("Found File path: {file:?}");
+    info!("Found File path: {file:?}");
     let serve = ServeFile::new(file);
     let result = serve.oneshot(request).await?;
-    println!("Result has status {:?}", result.status());
+    info!("Result has status {:?}", result.status());
     Ok(result.into_response())
 }

@@ -43,7 +43,6 @@ pub mod internal {
 
     #[ffi_export]
     fn dexterous_developer_internal_set_hot_reload_info(info: HotReloadInfo) {
-        eprintln!("Setting Hot Reload Info");
         let value = Local::now();
         let value = value.nanosecond();
         let validation = (info.internal_validate_setup)(value);
@@ -181,14 +180,11 @@ pub mod internal {
         }
 
         pub fn update_ready(&self) -> bool {
-            println!("Checking readiness...");
             (self.internal_update_ready)()
         }
 
         pub fn update(&self) -> bool {
-            println!("Called Update");
             let result = (self.internal_update)();
-            println!("Update Result: {result}");
             result
         }
 
