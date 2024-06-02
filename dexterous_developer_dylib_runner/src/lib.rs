@@ -10,10 +10,11 @@ use std::sync::Arc;
 use camino::Utf8Path;
 
 use dexterous_developer_internal::{hot::HotReloadInfoBuilder, UpdatedAsset};
-use dexterous_developer_types::{cargo_path_utils::dylib_path, Target};
+use dexterous_developer_types::{cargo_path_utils::dylib_path};
 use dylib_runner_message::DylibRunnerMessage;
 use error::DylibRunnerError;
 use ffi::{NEXT_LIBRARY, NEXT_UPDATE_VERSION, ORIGINAL_LIBRARY};
+use remote_connection::connect_to_server;
 use safer_ffi::prelude::c_slice;
 use tracing::{error, info, warn};
 
@@ -40,58 +41,19 @@ pub fn run_reloadable_app(
         return Err(DylibRunnerError::DylibPathsMissingLibraries);
     }
 
-    let current_target = Target::current().ok_or(DylibRunnerError::NoCurrentTarget)?;
+    run_app(|tx| connect_to_server(working_directory, library_path, server.clone(), tx))
+}
 
-    let address = server.join("target/")?;
-    info!("Setting Up Route {address}");
-    let mut address = address.join(current_target.as_str())?;
-    let initial_scheme = address.scheme();
-    let new_scheme = match initial_scheme {
-        "http" => "ws",
-        "https" => "wss",
-        "ws" => "ws",
-        "wss" => "wss",
-        scheme => {
-            return Err(DylibRunnerError::InvalidScheme(
-                server.clone(),
-                scheme.to_string(),
-            ))
-        }
-    };
-
-    address
-        .set_scheme(new_scheme)
-        .map_err(|_e| DylibRunnerError::InvalidScheme(server.clone(), "Unknown".to_string()))?;
-
+pub fn run_app<
+    T: Fn(
+        async_channel::Sender<DylibRunnerMessage>,
+    ) -> Result<std::thread::JoinHandle<Result<(), DylibRunnerError>>, DylibRunnerError>,
+>(
+    connect: T,
+) -> Result<(), DylibRunnerError> {
     let (tx, rx) = async_channel::unbounded::<DylibRunnerMessage>();
 
-    let handle = {
-        let server = server.clone();
-        let address = address.clone();
-        let library_path = library_path.to_owned();
-        let working_directory = working_directory.to_owned();
-        let target = current_target;
-
-        std::thread::spawn(move || {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(async {
-                    let result = remote_connection::remote_connection(
-                        address,
-                        server,
-                        target,
-                        tx.clone(),
-                        library_path,
-                        working_directory,
-                    )
-                    .await;
-                    let _ = tx.send(DylibRunnerMessage::ConnectionClosed).await;
-                    result
-                })
-        })
-    };
+    let handle = connect(tx)?;
 
     let (initial, id, path) = {
         info!("Getting Initial Root");

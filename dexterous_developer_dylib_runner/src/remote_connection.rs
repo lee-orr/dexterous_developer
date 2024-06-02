@@ -3,6 +3,7 @@ use std::{
         atomic::{AtomicU32, Ordering},
         Arc,
     },
+    thread::JoinHandle,
     time::Duration,
 };
 
@@ -15,6 +16,62 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::{dylib_runner_message::DylibRunnerMessage, error::DylibRunnerError};
+
+pub fn connect_to_server(
+    working_directory: &Utf8Path,
+    library_path: &Utf8Path,
+    server: url::Url,
+    tx: async_channel::Sender<DylibRunnerMessage>,
+) -> Result<JoinHandle<Result<(), DylibRunnerError>>, DylibRunnerError> {
+    let current_target = Target::current().ok_or(DylibRunnerError::NoCurrentTarget)?;
+
+    let address = server.join("target/")?;
+    info!("Setting Up Route {address}");
+    let mut address = address.join(current_target.as_str())?;
+    let initial_scheme = address.scheme();
+    let new_scheme = match initial_scheme {
+        "http" => "ws",
+        "https" => "wss",
+        "ws" => "ws",
+        "wss" => "wss",
+        scheme => {
+            return Err(DylibRunnerError::InvalidScheme(
+                server.clone(),
+                scheme.to_string(),
+            ))
+        }
+    };
+
+    address
+        .set_scheme(new_scheme)
+        .map_err(|_e| DylibRunnerError::InvalidScheme(server.clone(), "Unknown".to_string()))?;
+
+    let server = server.clone();
+    let address = address.clone();
+    let library_path = library_path.to_owned();
+    let working_directory = working_directory.to_owned();
+    let target = current_target;
+
+    Ok(std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let result = remote_connection(
+                    address,
+                    server,
+                    target,
+                    tx.clone(),
+                    library_path,
+                    working_directory,
+                )
+                .await;
+                let _ = tx.send(DylibRunnerMessage::ConnectionClosed).await;
+                result
+            })
+    }))
+}
 
 pub(crate) async fn remote_connection(
     address: Url,
