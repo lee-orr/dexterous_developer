@@ -20,14 +20,11 @@ hot = ["dexterous_developer_internal/hot",
     "bevy_dexterous_developer/hot"]
 hot_internal = [
     "dexterous_developer_internal/hot_internal",
-    "dexterous_developer_dynamic",
-    "bevy_dexterous_developer/hot_internal",
-    "dexterous_developer_dynamic/bevy",
+    "bevy_dexterous_developer/hot_internal"
 ]
 bevy = ["dep:bevy_dexterous_developer"]
 
 
 [dependencies]
 dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../dexterous_developer_internal", default-features = false }
-dexterous_developer_dynamic = { version = "0.3.0-pre.1", path = "../dexterous_developer_dynamic", optional = true }
 bevy_dexterous_developer = { version = "0.3.0-pre.1", path = "../bevy_dexterous_developer", optional = true }
