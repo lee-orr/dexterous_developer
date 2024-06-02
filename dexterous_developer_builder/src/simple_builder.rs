@@ -29,6 +29,7 @@ pub struct SimpleBuilder {
 fn build(
     target: Target,
     TargetBuildSettings {
+        working_dir,
         package_or_example,
         features,
         ..
@@ -37,6 +38,9 @@ fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     let mut cargo = Command::new("cargo");
+    if let Some(working_dir) = working_dir {
+        cargo.current_dir(&working_dir);
+    }
     cargo
         .env_remove("LD_DEBUG")
         .env("RUSTFLAGS", "-Cprefer-dynamic")
@@ -76,6 +80,7 @@ fn build(
 
     for msg in cargo_metadata::Message::parse_stream(reader) {
         let message = msg?;
+
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
                 if artifact.target.crate_types.iter().any(|v| v == "dylib") {
@@ -119,7 +124,9 @@ fn build(
                                     .last()
                                     .unwrap_or_default();
                                 let package_name =
-                                    file_section.split('#').next().unwrap_or_default();
+                                    file_section.split('#').last().unwrap_or_default();
+                                let package_name =
+                                    package_name.split('@').next().unwrap_or_default();
                                 info!("Checking if {package_name} == {p}");
                                 if package_name == p {
                                     root_library = Some(name);
@@ -402,5 +409,134 @@ impl Builder for SimpleBuilder {
 
     fn get_asset_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
         self.settings.asset_folders.clone()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::time::Duration;
+
+    use super::*;
+    use dexterous_developer_types::PackageOrExample;
+    use test_temp_dir::*;
+    use tokio::io::{AsyncWriteExt};
+    use tokio::process::Command;
+    use tokio::time::timeout;
+
+    #[tokio::test]
+    async fn can_build_a_package() {
+        let dir = test_temp_dir!();
+        let dir_path = dir.as_path_untracked().to_path_buf();
+        let cargo = dir_path.join("Cargo.toml");
+
+        let _ = Command::new("cargo")
+            .current_dir(&dir_path)
+            .arg("init")
+            .arg("--name=test_lib")
+            .arg("--vcs=none")
+            .arg("--lib")
+            .output()
+            .await
+            .expect("Failed to create test project");
+
+        {
+            let mut file = tokio::fs::File::options()
+                .append(true)
+                .open(&cargo)
+                .await
+                .expect("Couldn't open cargo toml");
+            file.write_all(
+                r#"[lib]
+            crate-type = ["rlib", "dylib"]"#
+                    .as_bytes(),
+            )
+            .await
+            .expect("Couldn't write to cargo toml");
+            file.sync_all()
+                .await
+                .expect("Couldn't flush write to cargo toml");
+        }
+
+        let target = Target::current().expect("Couldn't determine current target");
+
+        let build = SimpleBuilder::new(
+            target,
+            TargetBuildSettings {
+                package_or_example: PackageOrExample::Package("test_lib".to_string()),
+                working_dir: Utf8PathBuf::from_path_buf(dir_path).ok(),
+                code_watch_folders: vec![Utf8PathBuf::from_path_buf(
+                    dir.as_path_untracked().join("src"),
+                )
+                .unwrap()],
+                ..Default::default()
+            },
+        );
+
+        let (mut builder_messages, mut build_messages) = build.outgoing_channel();
+
+        build
+            .incoming
+            .send(BuilderIncomingMessages::RequestBuild)
+            .expect("Failed to request build");
+
+        let msg = timeout(Duration::from_secs(60), builder_messages.recv())
+            .await
+            .expect("Didn't recieve watcher message on time")
+            .expect("Didn't recieve watcher message");
+
+        assert!(matches!(msg, BuilderOutgoingMessages::BuildStarted));
+
+        let mut started = false;
+        let mut ended = false;
+        let mut root_lib_confirmed = false;
+        let mut library_update_received = false;
+
+        timeout(Duration::from_secs(120), async {
+            loop {
+                let msg = build_messages
+                    .recv()
+                    .await
+                    .expect("Couldn't get build message");
+                match msg {
+                    BuildOutputMessages::StartedBuild(id) => {
+                        if started {
+                            panic!("Started more than once");
+                        }
+                        assert_eq!(id, 1);
+                        started = true;
+                    }
+                    BuildOutputMessages::EndedBuild(id) => {
+                        assert_eq!(id, 1);
+                        ended = true;
+                        break;
+                    }
+                    BuildOutputMessages::RootLibraryName(name) => {
+                        assert_eq!(name, target.dynamic_lib_name("test_lib"));
+                        root_lib_confirmed = true;
+                    }
+                    BuildOutputMessages::LibraryUpdated(HashedFileRecord {
+                        local_path,
+                        dependencies,
+                        name,
+                        ..
+                    }) => {
+                        assert!(local_path.exists());
+                        if name == target.dynamic_lib_name("test_lib") {
+                            assert!(dependencies.len() == 1, "Dependencies: {dependencies:?}");
+                            library_update_received = true;
+                        }
+                    }
+                    BuildOutputMessages::AssetUpdated(_) => {}
+                    BuildOutputMessages::KeepAlive => {}
+                }
+            }
+        })
+        .await
+        .expect("Didn't complete build on time");
+
+        assert!(started);
+        assert!(ended);
+        assert!(root_lib_confirmed);
+        assert!(library_update_received);
     }
 }

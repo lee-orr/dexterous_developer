@@ -148,6 +148,7 @@ impl DexterousConfig {
                     (
                         target,
                         TargetBuildSettings {
+                            working_dir: Default::default(),
                             package_or_example: package_or_example.clone(),
                             features,
                             asset_folders,

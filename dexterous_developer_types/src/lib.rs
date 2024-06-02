@@ -48,6 +48,7 @@ pub enum PackageOrExample {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TargetBuildSettings {
+    pub working_dir: Option<camino::Utf8PathBuf>,
     pub package_or_example: PackageOrExample,
     pub features: Vec<String>,
     pub asset_folders: Vec<camino::Utf8PathBuf>,
@@ -135,6 +136,15 @@ impl Target {
             Target::IOS => "dylib",
             _ => "so",
         }
+    }
+
+    pub fn dynamic_lib_name(&self, name: &str) -> String {
+        let prefix = match self {
+            Target::Windows => "",
+            _ => "lib",
+        };
+        let extension = self.dynamic_lib_extension();
+        format!("{prefix}{name}.{extension}")
     }
 
     pub fn as_str(&self) -> &'static str {

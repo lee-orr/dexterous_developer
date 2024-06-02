@@ -270,8 +270,8 @@ mod test {
     use test_temp_dir::test_temp_dir;
     use tokio::fs::*;
     use tokio::io::AsyncWriteExt;
-    use tokio::sync::mpsc::*;
     use tokio::sync::mpsc::error::TryRecvError;
+    use tokio::sync::mpsc::*;
     use tokio::time::timeout;
 
     #[tokio::test]
@@ -282,15 +282,25 @@ mod test {
 
         let (tx, mut rx) = unbounded_channel();
 
-        watcher.watch_code_directories(&[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()], (0, tx)).expect("Couldn't set up watcher on temporary directory");
+        watcher
+            .watch_code_directories(
+                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
+                (0, tx),
+            )
+            .expect("Couldn't set up watcher on temporary directory");
 
         let result = rx.try_recv().expect_err("Should be empty");
-        
+
         assert!(matches!(result, TryRecvError::Empty));
 
-        let _ = File::create(dir.as_path_untracked().join("test.txt")).await.expect("Couldn't create file");
+        let _ = File::create(dir.as_path_untracked().join("test.txt"))
+            .await
+            .expect("Couldn't create file");
 
-        let result = timeout(Duration::from_millis(10), rx.recv()).await.expect("Didn't recieve watcher message on time").expect("Didn't recieve watcher message");
+        let result = timeout(Duration::from_millis(10), rx.recv())
+            .await
+            .expect("Didn't recieve watcher message on time")
+            .expect("Didn't recieve watcher message");
 
         assert!(matches!(result, BuilderIncomingMessages::CodeChanged));
     }
@@ -303,11 +313,21 @@ mod test {
 
         let (tx, mut rx) = unbounded_channel();
 
-        let _ = File::create(dir.as_path_untracked().join("test.txt")).await.expect("Couldn't create file");
+        let _ = File::create(dir.as_path_untracked().join("test.txt"))
+            .await
+            .expect("Couldn't create file");
 
-        watcher.watch_asset_directories(&[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()], (0, tx)).expect("Couldn't set up watcher on temporary directory");
-        
-        let result = timeout(Duration::from_millis(10), rx.recv()).await.expect("Didn't recieve initial asset message on time").expect("Didn't recieve initial asset message");
+        watcher
+            .watch_asset_directories(
+                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
+                (0, tx),
+            )
+            .expect("Couldn't set up watcher on temporary directory");
+
+        let result = timeout(Duration::from_millis(10), rx.recv())
+            .await
+            .expect("Didn't recieve initial asset message on time")
+            .expect("Didn't recieve initial asset message");
 
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");
@@ -324,27 +344,47 @@ mod test {
 
         let (tx, mut rx) = unbounded_channel();
 
-        let _ = File::create(dir.as_path_untracked().join("test.txt")).await.expect("Couldn't create file");
+        let _ = File::create(dir.as_path_untracked().join("test.txt"))
+            .await
+            .expect("Couldn't create file");
 
-        watcher.watch_asset_directories(&[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()], (0, tx)).expect("Couldn't set up watcher on temporary directory");
-        
-        let result = timeout(Duration::from_millis(10), rx.recv()).await.expect("Didn't recieve initial asset message on time").expect("Didn't recieve initial asset message");
+        watcher
+            .watch_asset_directories(
+                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
+                (0, tx),
+            )
+            .expect("Couldn't set up watcher on temporary directory");
+
+        let result = timeout(Duration::from_millis(10), rx.recv())
+            .await
+            .expect("Didn't recieve initial asset message on time")
+            .expect("Didn't recieve initial asset message");
 
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");
         };
 
-        let hash = record.hash.clone();
+        let hash = record.hash;
 
         assert_eq!(record.name, "test.txt");
 
-        let mut file = File::create(dir.as_path_untracked().join("test.txt")).await.expect("Couldn't create file");
+        let mut file = File::create(dir.as_path_untracked().join("test.txt"))
+            .await
+            .expect("Couldn't create file");
 
-        let _ = timeout(Duration::from_millis(10), rx.recv()).await.expect("Didn't recieve initial asset message on time").expect("Didn't recieve initial asset message");
+        let _ = timeout(Duration::from_millis(10), rx.recv())
+            .await
+            .expect("Didn't recieve initial asset message on time")
+            .expect("Didn't recieve initial asset message");
 
-        file.write_all(b"my file").await.expect("Failed to write file");
-        
-        let result = timeout(Duration::from_millis(10), rx.recv()).await.expect("Didn't recieve initial asset message on time").expect("Didn't recieve initial asset message");
+        file.write_all(b"my file")
+            .await
+            .expect("Failed to write file");
+
+        let result = timeout(Duration::from_millis(10), rx.recv())
+            .await
+            .expect("Didn't recieve initial asset message on time")
+            .expect("Didn't recieve initial asset message");
 
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");
