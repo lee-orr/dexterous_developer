@@ -7,10 +7,13 @@ use once_cell::sync::OnceCell;
 use safer_ffi::ffi_export;
 use tracing::{error, info};
 
+use crate::dylib_runner_message::DylibRunnerOutput;
+
 pub static LAST_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
 pub static NEXT_UPDATE_VERSION: AtomicU32 = AtomicU32::new(0);
 pub static ORIGINAL_LIBRARY: OnceCell<Arc<LibraryHolder>> = OnceCell::new();
 pub static NEXT_LIBRARY: AtomicCell<Option<Arc<Utf8PathBuf>>> = AtomicCell::new(None);
+pub static OUTPUT_SENDER: OnceCell<Arc<async_channel::Sender<DylibRunnerOutput>>> = OnceCell::new();
 
 #[ffi_export]
 pub extern "C" fn validate_setup(value: u32) -> u32 {
@@ -45,10 +48,21 @@ pub extern "C" fn update() -> bool {
                     error!("Failed to load library: {e}");
                     return false;
                 }
+
+                if let Some(tx) = OUTPUT_SENDER.get() {
+                    tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: next });
+                }
             }
         }
         true
     } else {
         false
+    }
+}
+
+#[ffi_export]
+pub extern "C" fn send_output(value: safer_ffi::Vec<u8>) {
+    if let Some(tx) = OUTPUT_SENDER.get() {
+        tx.send_blocking(DylibRunnerOutput::SerializedMessage { message: value.to_vec() });
     }
 }

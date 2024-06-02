@@ -11,6 +11,7 @@ pub struct HotReloadInfo {
     internal_update_ready: extern "C" fn() -> bool,
     internal_update: extern "C" fn() -> bool,
     internal_validate_setup: extern "C" fn(u32) -> u32,
+    internal_send_output: extern "C" fn(safer_ffi::Vec<u8>),
 }
 
 #[derive_ReprC]
@@ -33,7 +34,9 @@ pub mod internal {
     use camino::Utf8PathBuf;
     use chrono::{Local, Timelike};
     use once_cell::sync::OnceCell;
+    use rmp_serde::encode::Error;
     use safer_ffi::ffi_export;
+    use serde::{de::DeserializeOwned, Serialize};
     use std::str::Utf8Error;
     use thiserror::Error;
 
@@ -56,16 +59,18 @@ pub mod internal {
 
         use camino::Utf8PathBuf;
         use safer_ffi::ffi_export;
+        use serde::{de::DeserializeOwned, Serialize};
         use tracing::error;
 
-        use crate::{library_holder::LibraryHolder, UpdatedAsset};
+        use crate::{library_holder::LibraryHolder, HotReloadInfo, UpdatedAsset};
 
-        use super::HotReloadAccessError;
+        use super::{HotReloadAccessError, HOT_RELOAD_INFO};
 
         static CURRENT_LIBRARY: RwLock<Option<LibraryHolder>> = RwLock::new(None);
         static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn() + Send + Sync>>> = RwLock::new(None);
         static UPDATED_ASSET_CALLBACK: RwLock<Option<Arc<dyn Fn(UpdatedAsset) + Send + Sync>>> =
             RwLock::new(None);
+        static MESSAGE_CALLBACK: RwLock<Option<Arc<dyn Fn(safer_ffi::Vec<u8>) + Send + Sync>>> = RwLock::new(None);
 
         #[ffi_export]
         fn load_internal_library(path: safer_ffi::String) {
@@ -111,6 +116,19 @@ pub mod internal {
             if let Ok(current) = current.as_ref() {
                 if let Some(current) = current.as_ref() {
                     current(asset);
+                }
+            }
+        }
+
+        #[ffi_export]
+        fn send_message_to_reloaded_app(message: safer_ffi::Vec<u8>) {
+            let current = MESSAGE_CALLBACK
+                .try_read()
+                .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")));
+
+            if let Ok(current) = current.as_ref() {
+                if let Some(current) = current.as_ref() {
+                    current(message);
                 }
             }
         }
@@ -161,6 +179,32 @@ pub mod internal {
 
             *writer = Some(Arc::new(callback));
         }
+
+
+        pub(crate) fn register_message_callback<T: DeserializeOwned>(callback: impl Fn(T) + Send + Sync + 'static) {
+            
+            let mut writer = match MESSAGE_CALLBACK.write() {
+                Ok(w) => w,
+                Err(e) => {
+                    error!("Failed To Set CurrentLibrary {e}");
+                    return;
+                }
+            };
+
+            *writer = Some(Arc::new(move |value| {
+                let deserialized = rmp_serde::from_slice::<T>(&value);
+                if let Ok(value) = deserialized {
+                    callback(value)
+                }
+            }));
+        }
+
+        pub(crate) fn send_message(value: Vec<u8>) {
+            let Some(info) = HOT_RELOAD_INFO.get() else {
+                return;
+            };
+            (info.internal_send_output)(safer_ffi::Vec::from(value));
+        }
     }
 
     impl UpdatedAsset {
@@ -205,6 +249,18 @@ pub mod internal {
             #[cfg(feature = "dylib")]
             dylib::update_asset_callback(callback);
         }
+
+        pub fn register_message_callback<T: DeserializeOwned>(&mut self, callback: impl Fn(T) + Send + Sync + 'static) {
+            #[cfg(feature = "dylib")]
+            dylib::register_message_callback(callback);
+        }
+
+        pub fn send_message<T: Serialize>(&mut self, value: T) -> Result<(), Error>{
+            let value = rmp_serde::to_vec(&value)?;
+            #[cfg(feature = "dylib")]
+            dylib::send_message(value);
+            Ok(())
+        }
     }
 
     #[derive(Error, Debug)]
@@ -228,6 +284,7 @@ pub mod hot {
         pub internal_update_ready: extern "C" fn() -> bool,
         pub internal_update: extern "C" fn() -> bool,
         pub internal_validate_setup: extern "C" fn(u32) -> u32,
+        pub internal_send_output: extern "C" fn(safer_ffi::Vec<u8>),
     }
 
     impl HotReloadInfoBuilder {
@@ -237,12 +294,14 @@ pub mod hot {
                 internal_update_ready,
                 internal_update,
                 internal_validate_setup,
+                internal_send_output
             } = self;
             HotReloadInfo {
                 internal_last_update_version,
                 internal_update_ready,
                 internal_update,
                 internal_validate_setup,
+                internal_send_output
             }
         }
     }

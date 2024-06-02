@@ -41,3 +41,4 @@ chrono = "0.4"
 crossbeam = "0.8"
 uuid = { version =  "1", features = ["v4"] }
 dashmap = "5"
+rmp-serde = "1"

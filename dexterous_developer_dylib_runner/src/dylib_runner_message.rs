@@ -11,4 +11,17 @@ pub enum DylibRunnerMessage {
         local_path: Utf8PathBuf,
         name: String,
     },
+    SerializedMessage {
+        message: Vec<u8>
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum DylibRunnerOutput {
+    LoadedLib {
+        build_id: u32
+    },
+    SerializedMessage {
+        message: Vec<u8>
+    }
 }
