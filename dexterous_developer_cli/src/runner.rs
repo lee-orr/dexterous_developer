@@ -62,7 +62,7 @@ fn main() {
         server.clone(),
     ) {
         match e {
-            dexterous_developer_dylib_runner::DylibRunnerError::DylibPathsMissingLibraries => {
+            dexterous_developer_dylib_runner::error::DylibRunnerError::DylibPathsMissingLibraries => {
                 if args.env_vars_preset {
                     error!("Couldn't find missing libraries");
                     process::exit(1);
