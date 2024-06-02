@@ -181,7 +181,7 @@ pub trait InitialPlugins {
 /// These are dynamically adjustable settings for reloading. Ignored when not hot reloading.
 #[derive(Resource, Clone, Debug)]
 pub struct ReloadSettings {
-    /// Toggles whether the last update time is displayed in the window title. Only applicable when `reload_mode`` is not `ReloadMode::Full`.
+    /// Toggles whether the last update time is displayed in the window title. Only applicable when `reload_mode` is not `ReloadMode::Full`.
     pub display_update_time: bool,
     /// Sets the reload mode
     pub reload_mode: ReloadMode,
