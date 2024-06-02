@@ -83,7 +83,7 @@ impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
         Ok(Self::default())
     }
 }
-pub mod private {
+mod private {
     pub trait ReloadableAppSealed {}
 }
 

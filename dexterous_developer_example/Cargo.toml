@@ -13,7 +13,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 bevy = { version = "0.13" }
-bevy_dexterous_developer = { path = "../bevy_dexterous_developer"}
+bevy_dexterous_developer = { path = "../adapters/bevy_dexterous_developer"}
 serde = "*"
 
 [features]

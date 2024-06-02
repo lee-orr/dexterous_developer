@@ -1,5 +1,5 @@
 [package]
-name = "bevy_dexterous_developer_dynamic"
+name = "untethered_dexterous_developer_dynamic"
 edition = "2021"
 version.workspace = true
 authors.workspace = true
@@ -16,7 +16,6 @@ documentation.workspace = true
 crate-type = ["dylib"]
 
 [dependencies]
-bevy = { version = "0.13", default-features = false}
-bevy_dexterous_developer_library = { version = "0.3.0-pre.1", path = "../bevy_dexterous_developer_library" }
-dexterous_developer_types = { version = "0.3.0-pre.1", path = "../../../dexterous_developer_types" }
-dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../../../dexterous_developer_internal" }
+untethered_dexterous_developer_library = { version = "0.3.0-pre.1", path = "../untethered_dexterous_developer_library" }
+dexterous_developer_types = { version = "0.3.0-pre.1", path = "../../../../dexterous_developer_types" }
+dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../../../../dexterous_developer_internal" }

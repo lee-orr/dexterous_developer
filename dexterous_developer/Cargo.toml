@@ -27,4 +27,4 @@ bevy = ["dep:bevy_dexterous_developer"]
 
 [dependencies]
 dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../dexterous_developer_internal", default-features = false }
-bevy_dexterous_developer = { version = "0.3.0-pre.1", path = "../bevy_dexterous_developer", optional = true }
+bevy_dexterous_developer = { version = "0.3.0-pre.1", path = "../adapters/bevy_dexterous_developer", optional = true }
