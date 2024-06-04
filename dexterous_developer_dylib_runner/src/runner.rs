@@ -1,5 +1,3 @@
-
-
 use std::sync::Arc;
 
 use camino::Utf8Path;
@@ -15,7 +13,12 @@ use tracing::{error, info, warn};
 
 use dexterous_developer_internal::library_holder::LibraryHolder;
 
-use crate::{dylib_runner_message::{self, DylibRunnerOutput}, error, ffi::{self, send_output, OUTPUT_SENDER}, remote_connection};
+use crate::{
+    dylib_runner_message::{self, DylibRunnerOutput},
+    error,
+    ffi::{self, OUTPUT_SENDER},
+    remote_connection,
+};
 
 pub fn run_reloadable_app(
     working_directory: &Utf8Path,
@@ -43,7 +46,8 @@ pub fn run_reloadable_app(
 
 pub fn run_app<
     T: Fn(
-        async_channel::Sender<DylibRunnerMessage>, async_channel::Receiver<DylibRunnerOutput>
+        async_channel::Sender<DylibRunnerMessage>,
+        async_channel::Receiver<DylibRunnerOutput>,
     ) -> Result<std::thread::JoinHandle<Result<(), DylibRunnerError>>, DylibRunnerError>,
 >(
     connect: T,
@@ -84,8 +88,7 @@ pub fn run_app<
                     info!("Asset: {name} {local_path}");
                     continue;
                 }
-                DylibRunnerMessage::SerializedMessage { message: _ } => {},
-                
+                DylibRunnerMessage::SerializedMessage { message: _ } => {}
             }
         }
         info!("Initial Root ID: {id:?}");
@@ -103,7 +106,9 @@ pub fn run_app<
     ORIGINAL_LIBRARY
         .set(initial.clone())
         .map_err(|_| DylibRunnerError::OnceCellError)?;
-    OUTPUT_SENDER.set(Arc::new(out_tx.clone())).map_err(|_| DylibRunnerError::OnceCellError)?;
+    OUTPUT_SENDER
+        .set(Arc::new(out_tx.clone()))
+        .map_err(|_| DylibRunnerError::OnceCellError)?;
 
     let _handle = std::thread::spawn(|| update_loop(rx, handle));
 
@@ -119,7 +124,7 @@ pub fn run_app<
     .build();
 
     initial.varied_call("dexterous_developer_internal_set_hot_reload_info", info)?;
-    out_tx.send(DylibRunnerOutput::LoadedLib { build_id: id });
+    let _ = out_tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: id });
     info!("Calling Internal Main");
     initial.call("dexterous_developer_internal_main", &mut ())?;
 
@@ -185,7 +190,7 @@ fn update_loop(
                         safer_ffi::Vec::from(message),
                     );
                 }
-            },
+            }
         }
     }
 }

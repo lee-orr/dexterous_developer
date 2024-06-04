@@ -50,7 +50,7 @@ pub extern "C" fn update() -> bool {
                 }
 
                 if let Some(tx) = OUTPUT_SENDER.get() {
-                    tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: next });
+                    let _ = tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: next });
                 }
             }
         }
@@ -63,6 +63,8 @@ pub extern "C" fn update() -> bool {
 #[ffi_export]
 pub extern "C" fn send_output(value: safer_ffi::Vec<u8>) {
     if let Some(tx) = OUTPUT_SENDER.get() {
-        tx.send_blocking(DylibRunnerOutput::SerializedMessage { message: value.to_vec() });
+        let _ = tx.send_blocking(DylibRunnerOutput::SerializedMessage {
+            message: value.to_vec(),
+        });
     }
 }

@@ -23,7 +23,14 @@ hot_internal = [
     "dep:bevy_dexterous_developer_dynamic"
 ]
 
-
 [dependencies]
 bevy_dexterous_developer_library = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_library" }
 bevy_dexterous_developer_dynamic = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
+
+[dev-dependencies]
+bevy = { version = "0.13", default-features = false, featres=["dynamic_linking", "embedded_watcher"] }
+
+[[example]]
+name = "simple_cli_loaded_test"
+crate-type = ["dylib"]
+required-features = ["hot_internal"]

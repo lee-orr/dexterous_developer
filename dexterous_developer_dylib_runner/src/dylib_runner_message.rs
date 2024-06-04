@@ -12,16 +12,12 @@ pub enum DylibRunnerMessage {
         name: String,
     },
     SerializedMessage {
-        message: Vec<u8>
-    }
+        message: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub enum DylibRunnerOutput {
-    LoadedLib {
-        build_id: u32
-    },
-    SerializedMessage {
-        message: Vec<u8>
-    }
+    LoadedLib { build_id: u32 },
+    SerializedMessage { message: Vec<u8> },
 }

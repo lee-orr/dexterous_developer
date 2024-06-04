@@ -59,10 +59,10 @@ pub mod internal {
 
         use camino::Utf8PathBuf;
         use safer_ffi::ffi_export;
-        use serde::{de::DeserializeOwned, Serialize};
+        use serde::de::DeserializeOwned;
         use tracing::error;
 
-        use crate::{library_holder::LibraryHolder, HotReloadInfo, UpdatedAsset};
+        use crate::{library_holder::LibraryHolder, UpdatedAsset};
 
         use super::{HotReloadAccessError, HOT_RELOAD_INFO};
 
@@ -70,7 +70,8 @@ pub mod internal {
         static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn() + Send + Sync>>> = RwLock::new(None);
         static UPDATED_ASSET_CALLBACK: RwLock<Option<Arc<dyn Fn(UpdatedAsset) + Send + Sync>>> =
             RwLock::new(None);
-        static MESSAGE_CALLBACK: RwLock<Option<Arc<dyn Fn(safer_ffi::Vec<u8>) + Send + Sync>>> = RwLock::new(None);
+        static MESSAGE_CALLBACK: RwLock<Option<Arc<dyn Fn(safer_ffi::Vec<u8>) + Send + Sync>>> =
+            RwLock::new(None);
 
         #[ffi_export]
         fn load_internal_library(path: safer_ffi::String) {
@@ -180,9 +181,9 @@ pub mod internal {
             *writer = Some(Arc::new(callback));
         }
 
-
-        pub(crate) fn register_message_callback<T: DeserializeOwned>(callback: impl Fn(T) + Send + Sync + 'static) {
-            
+        pub(crate) fn register_message_callback<T: DeserializeOwned>(
+            callback: impl Fn(T) + Send + Sync + 'static,
+        ) {
             let mut writer = match MESSAGE_CALLBACK.write() {
                 Ok(w) => w,
                 Err(e) => {
@@ -250,12 +251,15 @@ pub mod internal {
             dylib::update_asset_callback(callback);
         }
 
-        pub fn register_message_callback<T: DeserializeOwned>(&mut self, callback: impl Fn(T) + Send + Sync + 'static) {
+        pub fn register_message_callback<T: DeserializeOwned>(
+            &mut self,
+            callback: impl Fn(T) + Send + Sync + 'static,
+        ) {
             #[cfg(feature = "dylib")]
             dylib::register_message_callback(callback);
         }
 
-        pub fn send_message<T: Serialize>(&mut self, value: T) -> Result<(), Error>{
+        pub fn send_message<T: Serialize>(&mut self, value: T) -> Result<(), Error> {
             let value = rmp_serde::to_vec(&value)?;
             #[cfg(feature = "dylib")]
             dylib::send_message(value);
@@ -294,14 +298,14 @@ pub mod hot {
                 internal_update_ready,
                 internal_update,
                 internal_validate_setup,
-                internal_send_output
+                internal_send_output,
             } = self;
             HotReloadInfo {
                 internal_last_update_version,
                 internal_update_ready,
                 internal_update,
                 internal_validate_setup,
-                internal_send_output
+                internal_send_output,
             }
         }
     }
