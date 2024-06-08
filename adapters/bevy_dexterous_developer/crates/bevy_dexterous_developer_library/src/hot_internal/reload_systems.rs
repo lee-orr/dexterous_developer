@@ -25,7 +25,6 @@ pub fn reset_update_frame(mut reload: ResMut<InternalHotReload>) {
 }
 
 pub fn reload(world: &mut World) {
-    println!("Reloading");
     {
         let input = world.get_resource::<ButtonInput<KeyCode>>();
 
@@ -47,7 +46,6 @@ pub fn reload(world: &mut World) {
             .expect("Hot Reload Info hasn't been set");
 
         let update_ready = info.update_ready();
-        println!("Ready: {update_ready} Manual: {manual_reload}");
         if !update_ready && !manual_reload {
             return;
         }

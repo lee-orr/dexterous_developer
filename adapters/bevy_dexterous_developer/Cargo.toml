@@ -28,9 +28,14 @@ bevy_dexterous_developer_library = { version = "0.3.0-pre.1", path = "crates/bev
 bevy_dexterous_developer_dynamic = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
 
 [dev-dependencies]
-bevy = { version = "0.13", default-features = false, featres=["dynamic_linking", "embedded_watcher"] }
+bevy = { version = "0.13", default-features = true, featres=["dynamic_linking", "embedded_watcher"] }
 
 [[example]]
-name = "simple_cli_loaded_test"
+name = "simple_cli"
+crate-type = ["dylib"]
+required-features = ["hot_internal"]
+
+[[example]]
+name = "simple_visual"
 crate-type = ["dylib"]
 required-features = ["hot_internal"]

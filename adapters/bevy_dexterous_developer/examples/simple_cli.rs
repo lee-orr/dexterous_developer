@@ -10,15 +10,11 @@ fn terminal_runner(mut app: App) {
             println!("Exiting");
             return;
         }
-        info!("Running The Update With Bevy Logs");
-        println!("Running Update");
         app.update();
-        println!("Update Ended");
     }
 }
 
 reloadable_main!( bevy_main(initial_plugins) {
-    println!("RUNNING INTERNAL MAIN");
     App::new()
         .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
         .set_runner(terminal_runner)
@@ -28,7 +24,7 @@ reloadable_main!( bevy_main(initial_plugins) {
 
 
 fn update() {
-    println!("Hey");
+    println!("Hey!");
 }
 
 fn startup() {
@@ -36,8 +32,6 @@ fn startup() {
 }
 
 reloadable_scope!(reloadable(app) {
-    println!("Setting Up Reloadable Scope");
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
-    println!("Setup Scope");
 });
