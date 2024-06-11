@@ -82,6 +82,24 @@ impl LibraryHolderInner {
         };
         Ok(())
     }
+
+    pub fn call_return<T, R>(&self, name: &str, args: T) -> Result<R, LibraryError> {
+        let Some(lib) = &self.0 else {
+            return Err(LibraryError::LibraryUnavailable(self.1.clone()));
+        };
+
+        info!("Preparing to call {name}");
+
+        // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
+        let result = unsafe {
+            let func: libloading::Symbol<unsafe extern "C" fn(T) -> R> = lib.get(name.as_bytes())?;
+            info!("Got symbol");
+            let result = func(args);
+            info!("Call complete");
+            result
+        };
+        Ok(result)
+    }
 }
 
 fn await_file(iterations: usize, path: &Utf8PathBuf) {
@@ -118,6 +136,14 @@ impl LibraryHolder {
         };
 
         inner.call(name, args)
+    }
+
+    pub fn call_return<T, R>(&self, name: &str, args: &mut T) -> Result<R, LibraryError> {
+        let Some(inner) = LIBRARIES.get(&self.0) else {
+            return Err(LibraryError::MissingUuid);
+        };
+
+        inner.call_return(name, args)
     }
 
     pub fn varied_call<T>(&self, name: &str, args: T) -> Result<(), LibraryError> {

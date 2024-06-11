@@ -1,47 +1,53 @@
+use serde::{de::DeserializeOwned, Serialize};
 use xilem::{AnyWidgetView, Xilem};
 
-use crate::types::{DeserializableState, SerializableState};
-
-pub trait XilemReloadableApp<Serializabe: SerializableState + DeserializableState, FixedState> {
-    fn reloadable<Logic: 'static + ReloadableAppLogic<FixedState, Serializabe>>(
+pub trait XilemReloadableApp<Serializabe: Serialize + DeserializeOwned, FixedState> {
+    fn reloadable<Logic: 'static + ReloadableAppLogic<State = ReloadableState<FixedState, Serializabe>>>(
         initial_serializable_state: Serializabe,
         initial_fixed_state: FixedState,
     ) -> Self;
 }
 
-pub trait ReloadableAppLogic<FixedState, Serializable: SerializableState + DeserializableState> {
-    type FixedStateType;
-    type SerializableStateType;
+pub trait ReloadableAppLogic {
+    type State;
 
     fn call_default(
-        state: &mut InternalReloadableState<FixedState, Serializable>,
-    ) -> Box<AnyWidgetView<InternalReloadableState<FixedState, Serializable>>>;
+        state: &mut Self::State,
+    ) -> Box<AnyWidgetView<Self::State>>;
 
 }
 
-pub struct InternalReloadableState<FixedState, Serializable: SerializableState + DeserializableState> {
+pub struct ReloadableState<FixedState, Serializable: Serialize + DeserializeOwned> {
     fixed: FixedState,
     serializable: Serializable
 }
 
-impl<FixedState, Serializable: SerializableState + DeserializableState> InternalReloadableState<FixedState, Serializable> {
-    pub fn interpret(&mut self) -> anyhow::Result<(&mut FixedState, &mut Serializable)> {
-        Ok((&mut self.fixed, &mut self.serializable))
+impl<FixedState, Serializable: Serialize + DeserializeOwned> ReloadableState<FixedState, Serializable> {
+    pub fn fixed(&mut self) -> &mut FixedState {
+        &mut self.fixed
+    }
+
+    pub fn serializable(&mut self) -> &mut Serializable {
+        &mut self.serializable
+    }
+
+    pub fn mutate(&mut self) -> (&mut FixedState, &mut Serializable) {
+        (&mut self.fixed, &mut self.serializable)
     }
 }
 
-impl<Serializabe: SerializableState + DeserializableState + 'static, FixedState: 'static>
+impl<Serializabe: Serialize + DeserializeOwned + 'static, FixedState: 'static>
     XilemReloadableApp<Serializabe, FixedState>
-    for Xilem<InternalReloadableState<FixedState, Serializabe>, 
+    for Xilem<ReloadableState<FixedState, Serializabe>, 
     fn(
-        &mut InternalReloadableState<FixedState, Serializabe>,
-    ) -> Box<AnyWidgetView<InternalReloadableState<FixedState, Serializabe>>>,
-    Box<AnyWidgetView<InternalReloadableState<FixedState, Serializabe>>>> {
-        fn reloadable<Logic: 'static + ReloadableAppLogic<FixedState, Serializabe>>(
+        &mut ReloadableState<FixedState, Serializabe>,
+    ) -> Box<AnyWidgetView<ReloadableState<FixedState, Serializabe>>>,
+    Box<AnyWidgetView<ReloadableState<FixedState, Serializabe>>>> {
+        fn reloadable<Logic: 'static + ReloadableAppLogic<State = ReloadableState<FixedState, Serializabe>>>(
         initial_serializable_state: Serializabe,
         initial_fixed_state: FixedState,
     ) -> Self {
-        let state = InternalReloadableState {
+        let state = ReloadableState {
             serializable: initial_serializable_state,
             fixed: initial_fixed_state
         };

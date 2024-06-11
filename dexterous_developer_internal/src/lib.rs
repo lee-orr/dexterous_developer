@@ -154,6 +154,26 @@ pub mod internal {
 
             Ok(())
         }
+        pub(crate) fn call_return_dylib<T, R>(name: &str, args: &mut T) -> Result<R, HotReloadAccessError> {
+            let current = CURRENT_LIBRARY
+                .try_read()
+                .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
+
+            let result = match current.as_ref() {
+                Some(current) => {
+                    current.call_return(name, args).map_err(|e| {
+                        HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}"))
+                    })?
+                }
+                None => {
+                    return Err(HotReloadAccessError::LibraryError(
+                        "No Library Loaded".to_string(),
+                    ))
+                }
+            };
+
+            Ok(result)
+        }
 
         pub(crate) fn update_callback(callback: impl Fn() + Send + Sync + 'static) {
             let mut writer = match UPDATE_CALLBACK.write() {
@@ -236,6 +256,11 @@ pub mod internal {
         pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
             #[cfg(feature = "dylib")]
             dylib::call_dylib(name, args)
+        }
+
+        pub fn call_return<T, R>(&self, name: &str, args: &mut T) -> Result<R, HotReloadAccessError> {
+            #[cfg(feature = "dylib")]
+            dylib::call_return_dylib(name, args)
         }
 
         pub fn update_callback(&mut self, callback: impl Fn() + Send + Sync + 'static) {

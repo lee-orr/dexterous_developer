@@ -7,49 +7,51 @@ mod hot {
     macro_rules! reloadable_app {
         () => {};
         ($serializable:ident, $shared:ident, $f:ident ($param:ident) $body:block) => {
-            xilem_dexterous_developer::macros::paste!(reloadable_app!(@inner $f, $param, $serializable, $shared, [<$f _mod>], [<$f _raw>], [<$f _dexterous_developered_inner>], $body););
+            xilem_dexterous_developer::macros::paste!(reloadable_app!(@inner $f, $param, $serializable, $shared, [<$f _dexterous_developered_inner>],[<$f _dexterous_developered_serialize>],[<$f _dexterous_developered_deserialize>], $body););
         };
-        (@inner $f:ident, $param:ident, $serializable:ident, $shared:ident, $mod_f: tt, $raw_f: tt, $inner_f:tt, $body:block) => {
-            mod $mod_f {
-                use super::*;
+        (@inner $f:ident, $param:ident, $serializable:ident, $shared:ident, $inner_f:tt, $serialize_f:tt, $deserialize_f:tt, $body:block) => {
 
-                type _SharedStateType = $shared;
-                type _SerializableStateType = $serializable;
-
-                fn $raw_f($param: &mut xilem_dexterous_developer::InternalReloadableState<$shared>) -> impl xilem::WidgetView<xilem_dexterous_developer::InternalReloadableState<$shared>> {
-                    $body
-                }
-
-
-                #[no_mangle]
-                pub fn $inner_f(state: &mut xilem_dexterous_developer::InternalReloadableState<$shared>) -> Box<xilem::AnyWidgetView<xilem_dexterous_developer::InternalReloadableState<$shared>>> {
-                    Box::new($raw_f(state))
-                }
+            #[no_mangle]
+            pub fn $inner_f(state: &mut xilem_dexterous_developer::ReloadableState<$shared, $serializable>) -> Box<xilem::AnyWidgetView<xilem_dexterous_developer::ReloadableState<$shared, $serializable>>> {
+                $f::call(state)
             }
 
             #[allow(non_camel_case_types)]
             #[derive(Copy, Clone, Debug)]
-            pub struct $f;
+            struct $f;
 
-            impl xilem_dexterous_developer::ReloadableAppLogic<$shared> for $f {
+            impl xilem_dexterous_developer::ReloadableAppLogic for $f {
+                type State = xilem_dexterous_developer::ReloadableState<$shared, $serializable>;
+
                 fn function_name() -> &'static str {
                     stringify!($inner_f)
                 }
+                
+
+                fn serialization_function_name() -> &'static str {
+                    stringify!($serialize_f)
+                }
+
+                fn deserialization_function_name() -> &'static str {
+                    stringify!($deserialize_f)
+                }
+
+                fn call($param: &mut Self::State) -> Box<xilem::AnyWidgetView<Self::State>> {
+                    Box::new($body)
+                }
+                fn serialize(state: &mut Self::State) -> xilem_dexterous_developer::Result<xilem_dexterous_developer::ffi::Vec<u8>> {
+                    let serializable = state.serializable();
+                    let val = xilem_dexterous_developer::ffi::to_vec(serializable)?;
+                    let val = xilem_dexterous_developer::ffi::Vec::from(val);
+                    Ok(val)
+                }
+
+                fn deserialize_into_state(values: xilem_dexterous_developer::ffi::Vec<u8>, state: &mut Self::State) -> xilem_dexterous_developer::Result<()> {
+                    let value = xilem_dexterous_developer::ffi::from_slice(&values)?;
+                    state.replace_serializable(value);
+                    Ok(())
+                }
             }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! state {
-        () => {
-            &mut xilem_dexterous_developer::InternalReloadableState<_SharedStateType>
-        };
-    }
-
-    #[macro_export]
-    macro_rules! interpret {
-        ($state:ident) => {
-            $state.interpret::<_SerializableStateType>()
         };
     }
 
@@ -91,31 +93,15 @@ mod cold {
         ($serializable:ident, $shared:ident, $f:ident ($param:ident) $body:block) => {
             #[allow(non_camel_case_types)]
             #[derive(Copy, Clone, Debug)]
-            pub struct $f;
+            struct $f;
 
-            impl xilem_dexterous_developer::ReloadableAppLogic<$shared, $serializable> for $f {
-                type FixedStateType = $shared;
-                type SerializableStateType = $serializable;
+            impl xilem_dexterous_developer::ReloadableAppLogic for $f {
+                type State = xilem_dexterous_developer::ReloadableState<$shared, $serializable>;
 
-                fn call_default($param: &mut xilem_dexterous_developer::InternalReloadableState<$shared, $serializable>) -> Box<xilem::AnyWidgetView<xilem_dexterous_developer::InternalReloadableState<$shared, $serializable>>> {
+                fn call_default($param: &mut Self::State) -> Box<xilem::AnyWidgetView<Self::State>> {
                     Box::new($body)
                 }
             }
-        };
-    }
-
-
-    #[macro_export]
-    macro_rules! state {
-        () => {
-            &mut xilem_dexterous_developer::InternalReloadableState<Self::FixedStateType, Self::SerializableStateType>
-        };
-    }
-
-    #[macro_export]
-    macro_rules! interpret {
-        ($state:ident) => {
-            $state.interpret()
         };
     }
 }

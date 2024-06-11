@@ -34,24 +34,21 @@ impl TaskList {
 struct SharedCounter(u32);
 
 reloadable_app!(TaskList, SharedCounter, app_logic (state) {
-    let ( counter, task_list ) = interpret!(state).unwrap();
+    let task_list = state.serializable();
 
     let input_box = textbox(
         task_list.next_task.clone(),
-        |state: state!(), new_value| {
-            let ( counter, task_list ) = interpret!(state).unwrap();
-            task_list.next_task = new_value;
+        |state: &mut Self::State, new_value| {
+            state.serializable().next_task = new_value;
         },
     )
-    .on_enter(|state: state!(), _| {
-        let ( counter, task_list ) = interpret!(state).unwrap();
-        task_list.add_task();
+    .on_enter(|state: &mut Self::State, _| {
+        state.serializable().add_task();
     });
     let first_line = flex((
         input_box,
-        button("Add task".to_string(), |state: state!()| {
-            let ( counter, task_list ) = interpret!(state).unwrap();
-            task_list.add_task();
+        button("Add task".to_string(), |state: &mut Self::State| {
+            state.serializable().add_task();
         }),
     ))
     .direction(Axis::Vertical);
@@ -64,14 +61,12 @@ reloadable_app!(TaskList, SharedCounter, app_logic (state) {
             let checkbox = checkbox(
                 task.description.clone(),
                 task.done,
-                move |data: state!(), checked| {
-                    let ( _, data ) = interpret!(data).unwrap();
-                    data.tasks[i].done = checked;
+                move |data: &mut Self::State, checked| {
+                    data.serializable().tasks[i].done = checked;
                 },
             );
-            let delete_button = button("Delete", move |data: state!()| {
-                let ( _, data ) = interpret!(data).unwrap();
-                data.tasks.remove(i);
+            let delete_button = button("Delete", move |data: &mut Self::State| {
+                data.serializable().tasks.remove(i);
             });
             flex((checkbox, delete_button)).direction(Axis::Horizontal)
         })
