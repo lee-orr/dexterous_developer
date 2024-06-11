@@ -34,4 +34,3 @@ serde = "1"
 [[example]]
 name = "todo"
 crate-type = ["dylib"]
-required-features = ["hot_internal"]
