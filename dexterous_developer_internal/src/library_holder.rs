@@ -26,10 +26,10 @@ impl LibraryHolderInner {
         let path = path.to_owned();
         let uuid = uuid::Uuid::new_v4();
         let path = if use_original {
-            info!("Using Original");
+            println!("Using Original");
             path
         } else {
-            info!("Copying To Temporary File");
+            println!("Copying To Temporary File");
             let extension = path.extension();
             let new_path = path.clone();
             let mut new_path = new_path.with_file_name(uuid.to_string());
@@ -38,23 +38,44 @@ impl LibraryHolderInner {
                 new_path.set_extension(extension);
                 archival_path.set_extension(format!("{}.{uuid}.backup", extension));
             }
-            std::fs::copy(&path, archival_path)?;
-            std::fs::rename(&path, &new_path)?;
-            debug!("Copied file to new path");
+
+            await_file(10, &path);
+            println!("Finished Waiting for {path}");
+            let mut current = String::new();
+            println!("Press Enter");
+            let _ = std::io::stdin().read_line(&mut current).unwrap();
+            println!("Continuing");
+
+            std::fs::copy(&path, &archival_path)?;
+            println!("Copied {path} to {archival_path}");
+            println!("Press Enter");
+            let _ = std::io::stdin().read_line(&mut current).unwrap();
+            println!("Continuing");
+
+            std::fs::copy(&path, &new_path)?;
+            debug!("Copied file to {path} to {new_path}");
+            println!("Renamed {path} to {new_path}");
+            println!("Press Enter");
+            let _ = std::io::stdin().read_line(&mut current).unwrap();
+            println!("Continuing");
 
             await_file(10, &new_path);
+            println!("validated {new_path}");
+            println!("Press Enter");
+            let _ = std::io::stdin().read_line(&mut current).unwrap();
+            println!("Continuing");
             Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?
         };
 
-        info!("Loading Library");
+        println!("Loading Library");
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         match unsafe { libloading::Library::new(&path) } {
             Ok(lib) => {
-                info!("Loaded library");
+                println!("Loaded library");
                 Ok((Self(Some(lib), path), uuid))
             }
             Err(err) => {
-                error!("Error loading library - {path:?}: {err:?}");
+                eprintln!("Error loading library - {path:?}: {err:?}");
 
                 error!("Search Paths: ");
                 for path in cargo_path_utils::dylib_path() {
@@ -104,7 +125,7 @@ impl LibraryHolderInner {
 
 fn await_file(iterations: usize, path: &Utf8PathBuf) {
     if path.exists() {
-        debug!("Validated {path:?} Exists");
+        println!("Validated {path:?} Exists");
         std::thread::sleep(Duration::from_secs_f32(2.0));
         return;
     }

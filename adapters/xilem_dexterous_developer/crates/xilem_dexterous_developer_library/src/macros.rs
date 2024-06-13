@@ -16,6 +16,21 @@ mod hot {
                 $f::call(state)
             }
 
+            #[no_mangle]
+            pub fn $serialize_f(state: &mut xilem_dexterous_developer::ReloadableState<$shared, $serializable>) -> xilem_dexterous_developer::ffi::Vec<u8> {
+                let serializable = state.serializable();
+                let val = xilem_dexterous_developer::ffi::to_vec(serializable).unwrap();
+                let val = xilem_dexterous_developer::ffi::Vec::from(val);
+                val
+            }
+
+
+            #[no_mangle]
+            pub fn $deserialize_f((values, state): &mut (xilem_dexterous_developer::ffi::Vec<u8>, &mut xilem_dexterous_developer::ReloadableState<$shared, $serializable>)) {
+                let value = xilem_dexterous_developer::ffi::from_slice(&values).unwrap();
+                state.replace_serializable(value);
+            }
+
             #[allow(non_camel_case_types)]
             #[derive(Copy, Clone, Debug)]
             struct $f;
@@ -38,18 +53,6 @@ mod hot {
 
                 fn call($param: &mut Self::State) -> Box<xilem::AnyWidgetView<Self::State>> {
                     Box::new($body)
-                }
-                fn serialize(state: &mut Self::State) -> xilem_dexterous_developer::Result<xilem_dexterous_developer::ffi::Vec<u8>> {
-                    let serializable = state.serializable();
-                    let val = xilem_dexterous_developer::ffi::to_vec(serializable)?;
-                    let val = xilem_dexterous_developer::ffi::Vec::from(val);
-                    Ok(val)
-                }
-
-                fn deserialize_into_state(values: xilem_dexterous_developer::ffi::Vec<u8>, state: &mut Self::State) -> xilem_dexterous_developer::Result<()> {
-                    let value = xilem_dexterous_developer::ffi::from_slice(&values)?;
-                    state.replace_serializable(value);
-                    Ok(())
                 }
             }
         };

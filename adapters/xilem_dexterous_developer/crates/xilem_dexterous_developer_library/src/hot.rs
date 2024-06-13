@@ -5,8 +5,9 @@ use serde::{de::DeserializeOwned, Serialize};
 use xilem::{AnyWidgetView, Xilem};
 
 pub struct ReloadableState<FixedState, Serializable: Serialize + DeserializeOwned> {
-    pub fixed: FixedState,
-    pub serializable: Box<Serializable>,
+    fixed: FixedState,
+    serializable: Box<Serializable>,
+    initialized: bool
 }
 
 
@@ -38,8 +39,6 @@ pub trait ReloadableAppLogic {
     fn deserialization_function_name() -> &'static str;
 
     fn call(state: &mut Self::State) -> Box<AnyWidgetView<Self::State>>;
-    fn serialize(state: &mut Self::State) -> anyhow::Result<safer_ffi::Vec<u8>>;
-    fn deserialize_into_state(values: safer_ffi::Vec<u8>, state: &mut Self::State) -> anyhow::Result<()>; // TODO - HOW TO HANDLE THIS
 }
 
 fn run_reloadable_logic<Logic: ReloadableAppLogic<State = ReloadableState<FixedState, Serializable>>, FixedState, Serializable: Serialize + DeserializeOwned>(
@@ -47,11 +46,17 @@ fn run_reloadable_logic<Logic: ReloadableAppLogic<State = ReloadableState<FixedS
 ) -> Box<AnyWidgetView<ReloadableState<FixedState, Serializable>>> {
     let info = HOT_RELOAD_INFO.get().expect("Can't access reload info") ;
     if info.update_ready() {
-        let serialized = info.call_return::<&mut ReloadableState<FixedState, Serializable>, safer_ffi::Vec<u8>>(Logic::serialization_function_name(), &mut state).unwrap();
-        info.update();
-        todo!()
+        if state.initialized {
+            let serialized = info.call_return::<&mut ReloadableState<FixedState, Serializable>, safer_ffi::Vec<u8>>(Logic::serialization_function_name(), &mut state).unwrap();
+            info.update();
+            info.call::<(safer_ffi::Vec<u8>, &mut ReloadableState<FixedState, Serializable>)>(Logic::deserialization_function_name(), &mut (serialized, &mut state)).unwrap();
+        } else {
+            info.update();
+            state.initialized = true;
+        }
     }
-    todo!()
+
+    info.call_return::<&mut ReloadableState<FixedState, Serializable>, Box<AnyWidgetView<ReloadableState<FixedState, Serializable>>>>(Logic::function_name(), &mut state).unwrap()
 }
 
 pub trait XilemReloadableApp<Serializabe: Serialize + DeserializeOwned, FixedState> {
@@ -78,7 +83,8 @@ impl<Serializabe: Serialize + DeserializeOwned + 'static, FixedState: 'static>
     ) -> Self {
         let state = ReloadableState {
             serializable: Box::new(initial_serializable_state),
-            fixed: initial_fixed_state
+            fixed: initial_fixed_state,
+            initialized: false
         };
 
         let logic = run_reloadable_logic::<Logic, _, _>;

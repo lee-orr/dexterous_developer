@@ -75,11 +75,12 @@ pub mod internal {
 
         #[ffi_export]
         fn load_internal_library(path: safer_ffi::String) {
+            println!("Called Internal Library");
             let path = Utf8PathBuf::from(path.to_string());
             let holder = match LibraryHolder::new(&path, false) {
                 Ok(holder) => holder,
                 Err(e) => {
-                    error!("Failed to load library {path} - {e}");
+                    eprintln!("Failed to load library {path} - {e}");
                     return;
                 }
             };
@@ -87,12 +88,13 @@ pub mod internal {
             let mut writer = match CURRENT_LIBRARY.write() {
                 Ok(w) => w,
                 Err(e) => {
-                    error!("Failed To Set CurrentLibrary {e}");
+                    eprintln!("Failed To Set CurrentLibrary {e}");
                     return;
                 }
             };
 
             *writer = Some(holder);
+            println!("Set Current Library");
         }
 
         #[ffi_export]
@@ -254,6 +256,11 @@ pub mod internal {
         }
 
         pub fn call<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
+            #[cfg(feature = "dylib")]
+            dylib::call_dylib(name, args)
+        }
+
+        pub fn call_dual_param<T>(&self, name: &str, args: &mut T) -> Result<(), HotReloadAccessError> {
             #[cfg(feature = "dylib")]
             dylib::call_dylib(name, args)
         }
