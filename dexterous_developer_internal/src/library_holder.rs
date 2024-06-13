@@ -42,28 +42,16 @@ impl LibraryHolderInner {
             await_file(10, &path);
             println!("Finished Waiting for {path}");
             let mut current = String::new();
-            println!("Press Enter");
-            let _ = std::io::stdin().read_line(&mut current).unwrap();
-            println!("Continuing");
 
             std::fs::copy(&path, &archival_path)?;
             println!("Copied {path} to {archival_path}");
-            println!("Press Enter");
-            let _ = std::io::stdin().read_line(&mut current).unwrap();
-            println!("Continuing");
 
             std::fs::copy(&path, &new_path)?;
             debug!("Copied file to {path} to {new_path}");
             println!("Renamed {path} to {new_path}");
-            println!("Press Enter");
-            let _ = std::io::stdin().read_line(&mut current).unwrap();
-            println!("Continuing");
 
             await_file(10, &new_path);
             println!("validated {new_path}");
-            println!("Press Enter");
-            let _ = std::io::stdin().read_line(&mut current).unwrap();
-            println!("Continuing");
             Utf8PathBuf::try_from(dunce::canonicalize(new_path)?)?
         };
 
