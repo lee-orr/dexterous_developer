@@ -55,13 +55,17 @@ fn run_reloadable_logic<Logic: ReloadableAppLogic<State = ReloadableState<FixedS
             println!("Done Serialization Loop");
         } else {
             println!("Initializing");
+            let serialized = safer_ffi::Vec::from(rmp_serde::to_vec(state.serializable.as_ref()).unwrap());
             info.update();
+            info.call::<(safer_ffi::Vec<u8>, &mut ReloadableState<FixedState, Serializable>)>(Logic::deserialization_function_name(), &mut (serialized, &mut state)).unwrap();
             println!("Initialized now");
             state.initialized = true;
         }
     }
     println!("Reached Here");
-    info.call_return::<&mut ReloadableState<FixedState, Serializable>, Box<AnyWidgetView<ReloadableState<FixedState, Serializable>>>>(Logic::function_name(), &mut state).unwrap()
+    let result = info.call_return::<&mut ReloadableState<FixedState, Serializable>, Box<AnyWidgetView<ReloadableState<FixedState, Serializable>>>>(Logic::function_name(), &mut state).unwrap();
+    println!("Ran logic loop");
+    result
 }
 
 pub trait XilemReloadableApp<Serializabe: Serialize + DeserializeOwned, FixedState> {

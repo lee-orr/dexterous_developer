@@ -34,17 +34,26 @@ impl TaskList {
 struct SharedCounter(u32);
 
 reloadable_app!(TaskList, SharedCounter, app_logic (state) {
+    println!("Running Logic Loop");
     let task_list = state.serializable();
+    println!("grabbed task list");
+    let next_task = task_list.next_task.clone();
+    println!("cloned next task");
 
     let input_box = textbox(
         task_list.next_task.clone(),
         |state: &mut Self::State, new_value| {
+            println!("Got here!");
             state.serializable().next_task = new_value;
         },
     )
     .on_enter(|state: &mut Self::State, _| {
+        println!("Got here...");
         state.serializable().add_task();
     });
+
+    println!("Got here");
+
     let first_line = flex((
         input_box,
         button("Add task".to_string(), |state: &mut Self::State| {
@@ -72,6 +81,7 @@ reloadable_app!(TaskList, SharedCounter, app_logic (state) {
         })
         .collect::<Vec<_>>();
 
+    println!("Returning");
     flex((first_line, tasks))
 });
 
