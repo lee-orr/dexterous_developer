@@ -30,25 +30,21 @@ impl TaskList {
     }
 }
 
-struct SharedCounter(());
-
-reloadable_app!(TaskList, SharedCounter, app_logic (state) {
-    println!("Running Logic Loop");
-    let task_list = state.serializable();
-    println!("grabbed task list");
-    let _next_task = task_list.next_task.clone();
-    println!("cloned next task");
+reloadable_app!(TaskList, app_logic (task_list) {
+    println!("Running Loop");
+    let next_task = task_list.next_task.clone();
+    println!("Cloned Successfully");
 
     let input_box = textbox(
         task_list.next_task.clone(),
         |state: &mut Self::State, new_value| {
-            println!("Got here!");
-            state.serializable().next_task = new_value;
+            println!("In Callback For Value");
+            state.next_task = new_value;
         },
     )
     .on_enter(|state: &mut Self::State, _| {
-        println!("Got here...");
-        state.serializable().add_task();
+        println!("In Enter Callback");
+        state.add_task();
     });
 
     println!("Got here");
@@ -56,7 +52,7 @@ reloadable_app!(TaskList, SharedCounter, app_logic (state) {
     let first_line = flex((
         input_box,
         button("Add task".to_string(), |state: &mut Self::State| {
-            state.serializable().add_task();
+            state.add_task();
         }),
     ))
     .direction(Axis::Vertical);
@@ -70,11 +66,11 @@ reloadable_app!(TaskList, SharedCounter, app_logic (state) {
                 task.description.clone(),
                 task.done,
                 move |data: &mut Self::State, checked| {
-                    data.serializable().tasks[i].done = checked;
+                    data.tasks[i].done = checked;
                 },
             );
             let delete_button = button("Delete", move |data: &mut Self::State| {
-                data.serializable().tasks.remove(i);
+                data.tasks.remove(i);
             });
             flex((checkbox, delete_button)).direction(Axis::Horizontal)
         })
@@ -103,8 +99,7 @@ reloadable_main!(main() {
         ],
     };
 
-    let counter = SharedCounter(());
-    let app = Xilem::reloadable::<app_logic>(serializable, counter);
+    let app = Xilem::reloadable::<app_logic>(serializable);
     app.run_windowed(EventLoop::with_user_event(), "First Example".into())
     .unwrap();
 });

@@ -1,12 +1,13 @@
+use std::ops::{Deref, DerefMut};
+
 use serde::{de::DeserializeOwned, Serialize};
 use xilem::{AnyWidgetView, Xilem};
 
-pub trait XilemReloadableApp<Serializabe: Serialize + DeserializeOwned, FixedState> {
+pub trait XilemReloadableApp<Serializabe: Serialize + DeserializeOwned> {
     fn reloadable<
-        Logic: 'static + ReloadableAppLogic<State = ReloadableState<FixedState, Serializabe>>,
+        Logic: 'static + ReloadableAppLogic<State = ReloadableState<Serializabe>>,
     >(
-        initial_serializable_state: Serializabe,
-        initial_fixed_state: FixedState,
+        initial_serializable_state: Serializabe
     ) -> Self;
 }
 
@@ -16,46 +17,52 @@ pub trait ReloadableAppLogic {
     fn call_default(state: &mut Self::State) -> Box<AnyWidgetView<Self::State>>;
 }
 
-pub struct ReloadableState<FixedState, Serializable: Serialize + DeserializeOwned> {
-    fixed: FixedState,
+pub struct ReloadableState<Serializable: Serialize + DeserializeOwned> {
     serializable: Serializable,
 }
 
-impl<FixedState, Serializable: Serialize + DeserializeOwned>
-    ReloadableState<FixedState, Serializable>
+impl<Serializable: Serialize + DeserializeOwned> AsMut<Serializable> for
+    ReloadableState<Serializable>
 {
-    pub fn fixed(&mut self) -> &mut FixedState {
-        &mut self.fixed
-    }
-
-    pub fn serializable(&mut self) -> &mut Serializable {
+    fn as_mut(&mut self) -> &mut Serializable {
         &mut self.serializable
-    }
-
-    pub fn mutate(&mut self) -> (&mut FixedState, &mut Serializable) {
-        (&mut self.fixed, &mut self.serializable)
     }
 }
 
-impl<Serializabe: Serialize + DeserializeOwned + 'static, FixedState: 'static>
-    XilemReloadableApp<Serializabe, FixedState>
+impl<Serializable: Serialize + DeserializeOwned + Sized> DerefMut for
+    ReloadableState<Serializable>
+{
+    fn deref_mut(&mut self) -> &mut Serializable {
+        &mut self.serializable
+    }
+}
+impl<Serializable: Serialize + DeserializeOwned> Deref for
+    ReloadableState<Serializable>
+{
+    type Target = Serializable;
+
+    fn deref(&self) -> &Self::Target {
+        &self.serializable
+    }
+}
+
+impl<Serializabe: Serialize + DeserializeOwned + 'static>
+    XilemReloadableApp<Serializabe>
     for Xilem<
-        ReloadableState<FixedState, Serializabe>,
+        ReloadableState<Serializabe>,
         fn(
-            &mut ReloadableState<FixedState, Serializabe>,
-        ) -> Box<AnyWidgetView<ReloadableState<FixedState, Serializabe>>>,
-        Box<AnyWidgetView<ReloadableState<FixedState, Serializabe>>>,
+            &mut ReloadableState<Serializabe>,
+        ) -> Box<AnyWidgetView<ReloadableState<Serializabe>>>,
+        Box<AnyWidgetView<ReloadableState<Serializabe>>>,
     >
 {
     fn reloadable<
-        Logic: 'static + ReloadableAppLogic<State = ReloadableState<FixedState, Serializabe>>,
+        Logic: 'static + ReloadableAppLogic<State = ReloadableState<Serializabe>>,
     >(
         initial_serializable_state: Serializabe,
-        initial_fixed_state: FixedState,
     ) -> Self {
         let state = ReloadableState {
             serializable: initial_serializable_state,
-            fixed: initial_fixed_state,
         };
 
         let logic = Logic::call_default;

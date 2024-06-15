@@ -93,13 +93,13 @@ mod cold {
     #[macro_export]
     macro_rules! reloadable_app {
         () => {};
-        ($serializable:ident, $shared:ident, $f:ident ($param:ident) $body:block) => {
+        ($serializable:ident, $f:ident ($param:ident) $body:block) => {
             #[allow(non_camel_case_types)]
             #[derive(Copy, Clone, Debug)]
             struct $f;
 
             impl xilem_dexterous_developer::ReloadableAppLogic for $f {
-                type State = xilem_dexterous_developer::ReloadableState<$shared, $serializable>;
+                type State = xilem_dexterous_developer::ReloadableState<$serializable>;
 
                 fn call_default(
                     $param: &mut Self::State,
