@@ -14,3 +14,5 @@ Cargo.lock
 **/.DS_Store
 
 /reload_libs
+
+/.devcontainer/.devpod-internal

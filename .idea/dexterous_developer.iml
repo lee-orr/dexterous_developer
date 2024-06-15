@@ -21,6 +21,14 @@
       <sourceFolder url="file://$MODULE_DIR$/testing/tmp/placeholder/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bevy_dexterous_developer/crates/bevy_dexterous_developer_library/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_library/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/bevy_dexterous_developer/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/bevy_dexterous_developer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/xilem_dexterous_developer/crates/xilem_dexterous_developer_dynamic/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/xilem_dexterous_developer/crates/xilem_dexterous_developer_library/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/xilem_dexterous_developer/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/adapters/xilem_dexterous_developer/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
