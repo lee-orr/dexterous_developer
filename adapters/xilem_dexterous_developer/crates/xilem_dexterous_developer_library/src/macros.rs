@@ -41,7 +41,7 @@ mod hot {
                 fn function_name() -> &'static str {
                     stringify!($inner_f)
                 }
-                
+
 
                 fn serialization_function_name() -> &'static str {
                     stringify!($serialize_f)
@@ -101,7 +101,9 @@ mod cold {
             impl xilem_dexterous_developer::ReloadableAppLogic for $f {
                 type State = xilem_dexterous_developer::ReloadableState<$shared, $serializable>;
 
-                fn call_default($param: &mut Self::State) -> Box<xilem::AnyWidgetView<Self::State>> {
+                fn call_default(
+                    $param: &mut Self::State,
+                ) -> Box<xilem::AnyWidgetView<Self::State>> {
                     Box::new($body)
                 }
             }

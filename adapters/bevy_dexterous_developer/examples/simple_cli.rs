@@ -1,6 +1,10 @@
-use bevy::{app::{Startup, Update}, log::info, prelude::App, MinimalPlugins};
+use bevy::{
+    app::{Startup, Update},
+    log::info,
+    prelude::App,
+    MinimalPlugins,
+};
 use bevy_dexterous_developer::*;
-
 
 fn terminal_runner(mut app: App) {
     app.update();
@@ -21,7 +25,6 @@ reloadable_main!( bevy_main(initial_plugins) {
         .setup_reloadable_elements::<reloadable>()
         .run();
 });
-
 
 fn update() {
     println!("Hey!");

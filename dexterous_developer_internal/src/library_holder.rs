@@ -41,7 +41,6 @@ impl LibraryHolderInner {
 
             await_file(10, &path);
             println!("Finished Waiting for {path}");
-            let mut current = String::new();
 
             std::fs::copy(&path, &archival_path)?;
             println!("Copied {path} to {archival_path}");
@@ -101,7 +100,8 @@ impl LibraryHolderInner {
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         let result = unsafe {
-            let func: libloading::Symbol<unsafe extern "C" fn(T) -> R> = lib.get(name.as_bytes())?;
+            let func: libloading::Symbol<unsafe extern "C" fn(T) -> R> =
+                lib.get(name.as_bytes())?;
             info!("Got symbol");
             let result = func(args);
             info!("Call complete");

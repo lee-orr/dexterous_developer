@@ -1,10 +1,9 @@
-
 // Copyright 2024 the Xilem Authors
 // SPDX-License-Identifier: Apache-2.0
 
 use serde::{Deserialize, Serialize};
 use xilem::view::{button, checkbox, flex, textbox};
-use xilem::{Axis, EventLoop, WidgetView, Xilem};
+use xilem::{Axis, EventLoop, Xilem};
 use xilem_dexterous_developer::*;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,13 +30,13 @@ impl TaskList {
     }
 }
 
-struct SharedCounter(u32);
+struct SharedCounter(());
 
 reloadable_app!(TaskList, SharedCounter, app_logic (state) {
     println!("Running Logic Loop");
     let task_list = state.serializable();
     println!("grabbed task list");
-    let next_task = task_list.next_task.clone();
+    let _next_task = task_list.next_task.clone();
     println!("cloned next task");
 
     let input_box = textbox(
@@ -104,7 +103,7 @@ reloadable_main!(main() {
         ],
     };
 
-    let counter = SharedCounter(1);
+    let counter = SharedCounter(());
     let app = Xilem::reloadable::<app_logic>(serializable, counter);
     app.run_windowed(EventLoop::with_user_event(), "First Example".into())
     .unwrap();
