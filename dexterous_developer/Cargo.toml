@@ -15,20 +15,17 @@ exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["xilem"]
+default = []
 hot = ["dexterous_developer_internal/hot",
     "bevy_dexterous_developer/hot",
-    "xilem_dexterous_developer/hot"]
+]
 hot_internal = [
     "dexterous_developer_internal/hot_internal",
     "bevy_dexterous_developer/hot_internal",
-    "xilem_dexterous_developer/hot_internal"
 ]
 bevy = ["dep:bevy_dexterous_developer"]
-xilem = ["dep:xilem_dexterous_developer"]
 
 
 [dependencies]
 dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../dexterous_developer_internal", default-features = false }
 bevy_dexterous_developer = { version = "0.3.0-pre.1", path = "../adapters/bevy_dexterous_developer", optional = true }
-xilem_dexterous_developer = { version = "0.3.0-pre.1", path = "../adapters/xilem_dexterous_developer", optional = true }
