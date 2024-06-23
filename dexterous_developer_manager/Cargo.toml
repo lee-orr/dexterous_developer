@@ -12,6 +12,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [features]
+test = []
 
 [dependencies]
 tracing = { version = "0.1" }
