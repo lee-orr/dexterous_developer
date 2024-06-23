@@ -21,28 +21,26 @@ pub struct ReloadableState<Serializable: Serialize + DeserializeOwned> {
     serializable: Serializable,
 }
 
-impl<Serializable: Serialize + DeserializeOwned> AsMut<Serializable> for
-    ReloadableState<Serializable>
-{
-    fn as_mut(&mut self) -> &mut Serializable {
-        &mut self.serializable
-    }
-}
+pub struct GuardedState<'a, Serializabe: Serialize + DeserializeOwned>(&'a mut Serializabe);
 
-impl<Serializable: Serialize + DeserializeOwned + Sized> DerefMut for
-    ReloadableState<Serializable>
-{
-    fn deref_mut(&mut self) -> &mut Serializable {
-        &mut self.serializable
-    }
-}
-impl<Serializable: Serialize + DeserializeOwned> Deref for
-    ReloadableState<Serializable>
-{
-    type Target = Serializable;
-
+impl<'a, Serializabe: Serialize + DeserializeOwned> Deref for GuardedState<'a, Serializabe> {
+    type Target = Serializabe;
+    
     fn deref(&self) -> &Self::Target {
-        &self.serializable
+        &self.0
+    }
+}
+
+impl<'a, Serializabe: Serialize + DeserializeOwned> DerefMut for GuardedState<'a, Serializabe> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<Serializable: Serialize + DeserializeOwned> ReloadableState<Serializable>
+{
+    pub fn get(&mut self) ->  GuardedState<Serializable> {
+        GuardedState(&mut self.serializable)
     }
 }
 

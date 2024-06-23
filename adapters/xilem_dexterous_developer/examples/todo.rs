@@ -6,14 +6,14 @@ use xilem::view::{button, checkbox, flex, textbox};
 use xilem::{Axis, EventLoop, Xilem};
 use xilem_dexterous_developer::*;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Task {
     description: String,
     done: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct TaskList {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TaskList {
     next_task: String,
     tasks: Vec<Task>,
 }
@@ -32,6 +32,8 @@ impl TaskList {
 
 reloadable_app!(TaskList, app_logic (task_list) {
     println!("Running Loop");
+    let task_list = task_list.get();
+    println!("Got the task list");
     let next_task = task_list.next_task.clone();
     println!("Cloned Successfully");
 
@@ -39,12 +41,12 @@ reloadable_app!(TaskList, app_logic (task_list) {
         task_list.next_task.clone(),
         |state: &mut Self::State, new_value| {
             println!("In Callback For Value");
-            state.next_task = new_value;
+            state.get().next_task = new_value;
         },
     )
     .on_enter(|state: &mut Self::State, _| {
         println!("In Enter Callback");
-        state.add_task();
+        state.get().add_task();
     });
 
     println!("Got here");
@@ -52,7 +54,7 @@ reloadable_app!(TaskList, app_logic (task_list) {
     let first_line = flex((
         input_box,
         button("Add task".to_string(), |state: &mut Self::State| {
-            state.add_task();
+            state.get().add_task();
         }),
     ))
     .direction(Axis::Vertical);
@@ -66,11 +68,11 @@ reloadable_app!(TaskList, app_logic (task_list) {
                 task.description.clone(),
                 task.done,
                 move |data: &mut Self::State, checked| {
-                    data.tasks[i].done = checked;
+                    data.get().tasks[i].done = checked;
                 },
             );
             let delete_button = button("Delete", move |data: &mut Self::State| {
-                data.tasks.remove(i);
+                data.get().tasks.remove(i);
             });
             flex((checkbox, delete_button)).direction(Axis::Horizontal)
         })

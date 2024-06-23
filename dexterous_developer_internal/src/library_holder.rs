@@ -96,15 +96,15 @@ impl LibraryHolderInner {
             return Err(LibraryError::LibraryUnavailable(self.1.clone()));
         };
 
-        info!("Preparing to call {name}");
+        println!("Preparing to call {name}");
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         let result = unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(T) -> R> =
                 lib.get(name.as_bytes())?;
-            info!("Got symbol");
+            println!("Got symbol");
             let result = func(args);
-            info!("Call complete");
+            println!("Call complete");
             result
         };
         Ok(result)
