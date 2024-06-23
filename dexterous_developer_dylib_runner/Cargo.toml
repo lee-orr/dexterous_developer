@@ -30,7 +30,7 @@ rmp-serde = { version = "1" }
 dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types" }
 dexterous_developer_internal = { version = "0.3.0-pre.1", path = "../dexterous_developer_internal", features = ["hot", "dylib"]}
 reqwest = { version = "0.12", features = [] }
-tokio-tungstenite = { version = "0.21", features =[ "native-tls"] }
+tokio-tungstenite = { version = "0.23", features =[ "native-tls"] }
 url = "2"
 futures-util = { version = "0.3", default-features = false,  features = [
     "sink",

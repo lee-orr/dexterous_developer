@@ -83,7 +83,7 @@ pub(crate) async fn remote_connection(
 ) -> Result<(), DylibRunnerError> {
     info!("Connecting To {address}");
 
-    let (ws_stream, _) = connect_async(address).await?;
+    let (ws_stream, _) = connect_async(address.to_string()).await?;
 
     let (_, mut read) = ws_stream.split();
 

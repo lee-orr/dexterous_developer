@@ -11,7 +11,7 @@ members = [
     "dexterous_developer_dylib_runner",
     "adapters/*",
     "adapters/*/crates/*"
-]
+, "dexterous_developer_test_utils"]
 
 [workspace.package]
 version = "0.3.0-pre.1"

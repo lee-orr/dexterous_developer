@@ -1,14 +1,13 @@
 use std::{
-    collections::{HashMap, HashSet},
-    env, fs,
-    process::{Command, Stdio},
-    sync::{atomic::AtomicU32, Arc},
+    collections::{HashMap, HashSet}, env, fs, process::Stdio, sync::{atomic::AtomicU32, Arc}
 };
+use futures_util::{future::join_all, stream, Stream, StreamExt};
 
 use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
+use tokio::process::Command;
 use tracing::{error, info};
 
 use crate::types::{
@@ -26,7 +25,7 @@ pub struct SimpleBuilder {
     handle: tokio::task::JoinHandle<()>,
 }
 
-fn build(
+async fn build(
     target: Target,
     TargetBuildSettings {
         working_dir,
@@ -69,16 +68,17 @@ fn build(
     }
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-    let mut child = cargo.stdout(Stdio::piped()).spawn()?;
+    let output = cargo.stdout(Stdio::piped()).output().await?;
 
-    let reader =
-        std::io::BufReader::new(child.stdout.take().ok_or(anyhow::Error::msg("no stdout"))?);
+    if !output.status.success() {
+        bail!("Build Failed: {:?}", output.stderr);
+    }
 
     let mut succeeded = false;
 
     let mut artifacts = Vec::with_capacity(20);
 
-    for msg in cargo_metadata::Message::parse_stream(reader) {
+    for msg in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
         let message = msg?;
 
         match &message {
@@ -95,9 +95,7 @@ fn build(
         }
     }
 
-    let result = child.wait()?;
-
-    if !result.success() || !succeeded {
+    if !succeeded {
         error!("Build Failed");
         bail!("Failed to build");
     }
@@ -181,13 +179,10 @@ fn build(
     {
         let rustup_home = home::rustup_home()?;
         let toolchains = rustup_home.join("toolchains");
-        let dir = std::fs::read_dir(toolchains)?;
+        let mut dir = tokio::fs::read_dir(toolchains).await?;
 
-        for child in dir {
-            let Ok(child) = child else {
-                continue;
-            };
-            if child.file_type()?.is_dir() {
+        while let Ok(Some(child)) = dir.next_entry().await {
+            if child.file_type().await?.is_dir() {
                 let path = Utf8PathBuf::from_path_buf(child.path()).unwrap_or_default();
                 path_var.push(path.join("lib"));
             }
@@ -195,37 +190,40 @@ fn build(
     }
 
     info!("Path Var for DyLib Search: {path_var:?}");
+    let dir_collections = path_var.iter().map(|dir| {
+        let dir = dir.clone();
+        tokio::spawn(async {
+            let Ok(mut dir) =  tokio::fs::read_dir(dir).await else {
+                return vec![];
+            };
+            let mut files = vec![];
 
-    let mut searchable_files = HashMap::new();
+            while let Ok(Some(child)) = dir.next_entry().await {
+                let Ok(file_type) = child.file_type().await else {
+                    continue;
+                };
+                
+                if file_type.is_file() {
+                    let Ok(path) = Utf8PathBuf::from_path_buf(child.path()) else {
+                        continue;
+                    };
 
-    for (name, path) in path_var
-        .iter()
-        .map(|dir| {
-            std::fs::read_dir(dir).map(|value| {
-                let files = value.filter_map(|value| {
-                    if let Ok(value) = value {
-                        if let Ok(t) = value.file_type() {
-                            if t.is_file() {
-                                let path = Utf8PathBuf::from_path_buf(value.path());
-                                if let Ok(path) = path {
-                                    if let Some(name) = path.file_name() {
-                                        return Some((name.to_string(), path));
-                                    }
-                                }
-                            }
-                        }
+                    if let Some(name) = path.file_name() {
+                        files.push((name.to_owned(), path))
                     }
-                    None
-                });
-                files.collect::<Vec<(String, Utf8PathBuf)>>()
-            })
+                }
+            }
+
+            files
         })
-        .collect::<std::io::Result<Vec<Vec<(String, Utf8PathBuf)>>>>()?
-        .into_iter()
-        .flatten()
-    {
-        searchable_files.entry(name).or_insert(path);
-    }
+    });
+
+    let searchable_files = join_all(dir_collections).await.iter().filter_map(|result| {
+        match result {
+            Ok(v) => Some(v),
+            Err(_) => None,
+        }
+    }).flatten().cloned().collect::<HashMap<_, _>>();
 
     let mut dependencies = HashMap::new();
 
@@ -350,13 +348,13 @@ impl SimpleBuilder {
                             should_build = true;
                             let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                             let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                            let _ = build(target, settings.clone(), output_tx.clone(), id);
+                            let _ = tokio::spawn(build(target, settings.clone(), output_tx.clone(), id));
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
                                 let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                                 let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                                let _ = build(target, settings.clone(), output_tx.clone(), id);
+                                let _ = tokio::spawn(build(target, settings.clone(), output_tx.clone(), id));
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
@@ -479,7 +477,7 @@ mod test {
             .send(BuilderIncomingMessages::RequestBuild)
             .expect("Failed to request build");
 
-        let msg = timeout(Duration::from_secs(60), builder_messages.recv())
+        let msg = timeout(Duration::from_secs(10), builder_messages.recv())
             .await
             .expect("Didn't recieve watcher message on time")
             .expect("Didn't recieve watcher message");
@@ -491,12 +489,16 @@ mod test {
         let mut root_lib_confirmed = false;
         let mut library_update_received = false;
 
-        timeout(Duration::from_secs(60 * 30), async {
+        let mut messages = Vec::new();
+        
+
+        if let Err(e) = timeout(Duration::from_secs(10), async {
             loop {
                 let msg = build_messages
                     .recv()
                     .await
                     .expect("Couldn't get build message");
+                messages.push(msg.clone());
                 match msg {
                     BuildOutputMessages::StartedBuild(id) => {
                         if started {
@@ -531,8 +533,9 @@ mod test {
                 }
             }
         })
-        .await
-        .expect("Didn't complete build on time");
+        .await {
+            panic!("Failed - {e:?}\n{messages:?}");
+        }
 
         assert!(started);
         assert!(ended);

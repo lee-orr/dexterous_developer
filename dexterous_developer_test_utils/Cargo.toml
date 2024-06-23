@@ -1,0 +1,20 @@
+[package]
+name = "dexterous_developer_test_utils"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+dexterous_developer_manager = { version = "0.3.0-pre.1", path = "../dexterous_developer_manager", features = ["test"] }
+dexterous_developer_dylib_runner = { version = "0.3.0-pre.1", path = "../dexterous_developer_dylib_runner" }
+dexterous_developer_builder = { version = "0.3.0-pre.1", path = "../dexterous_developer_builder" }
+dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types" }
+camino = "1"
+tokio = { version = "1", features = ["full"]}
