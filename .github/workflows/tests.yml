@@ -31,5 +31,5 @@ jobs:
             target/
           key: ${{ runner.os }}-unit-tests-${{ hashFiles('**/Cargo.toml') }}
       - name: CI job
-        run: "cargo test"
+        run: ./test.sh
   
