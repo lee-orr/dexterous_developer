@@ -34,7 +34,7 @@ impl TestBuilderComms {
         self.output_sender.send(BuildOutputMessages::StartedBuild(build));
         self.output_sender.send(BuildOutputMessages::EndedBuild(build));
         self.output_sender.send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-            relative_path: Utf8PathBuf::from(&example), name: example.to_string(), local_path: path, hash: Default::default(), dependencies: vec![]
+            relative_path: Utf8PathBuf::from("./").join(&example), name: example.to_string(), local_path: path, hash: Default::default(), dependencies: vec![]
         }));
         self.output_sender.send(BuildOutputMessages::RootLibraryName(example.clone()));
     }

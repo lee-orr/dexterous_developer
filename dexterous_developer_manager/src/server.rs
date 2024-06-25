@@ -63,9 +63,10 @@ pub async fn run_test_server(port: u16, manager: Manager, port_return: tokio::sy
 
     port_return.send(port);
 
-    info!("Listening on http://127.0.0.1:{port}");
+    eprintln!("Listening on http://127.0.0.1:{port}");
 
     axum::serve(listener, app).await?;
+    eprintln!("Ending");
 
     Ok(())
 }
@@ -124,6 +125,7 @@ async fn connected_to_target(
     initial_build_state: CurrentBuildState,
     mut builder_rx: broadcast::Receiver<BuildOutputMessages>,
 ) {
+    info!("Client {id} Connected");
     let (mut ws_sender, _) = socket.split();
 
     {

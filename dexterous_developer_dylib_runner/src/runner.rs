@@ -68,7 +68,7 @@ pub fn run_app<
                 warn!("We have a root set already...");
             }
             let initial = rx.recv_blocking()?;
-            warn!("Got Message While Looking For Root");
+            warn!("Got Message While Looking For Root - {initial:?}");
             match initial {
                 DylibRunnerMessage::ConnectionClosed => {
                     let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;

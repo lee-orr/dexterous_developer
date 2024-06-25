@@ -32,6 +32,8 @@ bevy = { version = "0.13", default-features = true, featres=["dynamic_linking", 
 dexterous_developer_test_utils = { version = "0.3.0-pre.1", path = "../../dexterous_developer_test_utils"}
 tokio = { version = "1", features = ["full"]}
 test-temp-dir = { version = "0.2 "}
+tracing-test = { version = "0.2", features = ["no-env-filter"] }
+tracing = "0.1"
 
 [[example]]
 name = "simple_cli"

@@ -12,7 +12,7 @@ use dexterous_developer_types::{HotReloadMessage, Target};
 use futures_util::StreamExt;
 use tokio::{io::AsyncWriteExt, time::sleep};
 use tokio_tungstenite::connect_async;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use url::Url;
 
 use crate::{dylib_runner_message::DylibRunnerMessage, error::DylibRunnerError};
@@ -194,11 +194,13 @@ pub(crate) async fn remote_connection(
                         }
                     }
                     _ => {
+                        warn!("Got Non-Binary WS Message");
                         return Ok(());
                     }
                 }
             }
             else => {
+                warn!("Download or Reception Failed");
                 return Ok(());
             }
         }

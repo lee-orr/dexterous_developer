@@ -8,6 +8,7 @@ use bevy_dexterous_developer::*;
 
 fn terminal_runner(mut app: App) {
     app.update();
+    eprintln!("Ready for Input");
     for line in std::io::stdin().lines() {
         let typed: String = line.unwrap_or_default();
         if typed == "exit" {
