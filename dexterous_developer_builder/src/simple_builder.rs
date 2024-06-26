@@ -1,7 +1,10 @@
+use futures_util::future::join_all;
 use std::{
-    collections::{HashMap, HashSet}, env, fs, process::Stdio, sync::{atomic::AtomicU32, Arc}
+    collections::{HashMap, HashSet},
+    env, fs,
+    process::Stdio,
+    sync::{atomic::AtomicU32, Arc},
 };
-use futures_util::{future::join_all, stream, Stream, StreamExt};
 
 use anyhow::bail;
 
@@ -193,7 +196,7 @@ async fn build(
     let dir_collections = path_var.iter().map(|dir| {
         let dir = dir.clone();
         tokio::spawn(async {
-            let Ok(mut dir) =  tokio::fs::read_dir(dir).await else {
+            let Ok(mut dir) = tokio::fs::read_dir(dir).await else {
                 return vec![];
             };
             let mut files = vec![];
@@ -202,7 +205,7 @@ async fn build(
                 let Ok(file_type) = child.file_type().await else {
                     continue;
                 };
-                
+
                 if file_type.is_file() {
                     let Ok(path) = Utf8PathBuf::from_path_buf(child.path()) else {
                         continue;
@@ -218,12 +221,16 @@ async fn build(
         })
     });
 
-    let searchable_files = join_all(dir_collections).await.iter().filter_map(|result| {
-        match result {
+    let searchable_files = join_all(dir_collections)
+        .await
+        .iter()
+        .filter_map(|result| match result {
             Ok(v) => Some(v),
             Err(_) => None,
-        }
-    }).flatten().cloned().collect::<HashMap<_, _>>();
+        })
+        .flatten()
+        .cloned()
+        .collect::<HashMap<_, _>>();
 
     let mut dependencies = HashMap::new();
 
@@ -348,13 +355,25 @@ impl SimpleBuilder {
                             should_build = true;
                             let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                             let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                            let _ = tokio::spawn(build(target, settings.clone(), output_tx.clone(), id));
+                            #[allow(clippy::let_underscore_future)]
+                            let _ = tokio::spawn(build(
+                                target,
+                                settings.clone(),
+                                output_tx.clone(),
+                                id,
+                            ));
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
                                 let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                                 let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                                let _ = tokio::spawn(build(target, settings.clone(), output_tx.clone(), id));
+                                #[allow(clippy::let_underscore_future)]
+                                let _ = tokio::spawn(build(
+                                    target,
+                                    settings.clone(),
+                                    output_tx.clone(),
+                                    id,
+                                ));
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
@@ -490,7 +509,6 @@ mod test {
         let mut library_update_received = false;
 
         let mut messages = Vec::new();
-        
 
         if let Err(e) = timeout(Duration::from_secs(10), async {
             loop {
@@ -533,7 +551,8 @@ mod test {
                 }
             }
         })
-        .await {
+        .await
+        {
             panic!("Failed - {e:?}\n{messages:?}");
         }
 

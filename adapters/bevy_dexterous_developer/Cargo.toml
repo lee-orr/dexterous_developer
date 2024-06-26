@@ -28,7 +28,7 @@ bevy_dexterous_developer_library = { version = "0.3.0-pre.1", path = "crates/bev
 bevy_dexterous_developer_dynamic = { version = "0.3.0-pre.1", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
 
 [dev-dependencies]
-bevy = { version = "0.13", default-features = true, featres=["dynamic_linking", "embedded_watcher"] }
+bevy = { version = "0.13", default-features = true, features=["dynamic_linking", "embedded_watcher"] }
 dexterous_developer_test_utils = { version = "0.3.0-pre.1", path = "../../dexterous_developer_test_utils"}
 tokio = { version = "1", features = ["full"]}
 test-temp-dir = { version = "0.2 "}

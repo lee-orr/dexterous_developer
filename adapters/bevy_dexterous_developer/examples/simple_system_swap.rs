@@ -1,6 +1,5 @@
 use bevy::{
     app::{Startup, Update},
-    log::info,
     prelude::App,
     MinimalPlugins,
 };

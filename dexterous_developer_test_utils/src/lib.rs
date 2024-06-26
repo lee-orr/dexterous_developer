@@ -1,29 +1,48 @@
-use std::{env::current_exe, io::BufRead, path::PathBuf, process::{ExitCode, ExitStatus, Stdio},  time::Duration};
 use builder::{TestBuilder, TestBuilderComms};
 use camino::Utf8PathBuf;
 use dexterous_developer_manager::server::run_test_server;
-use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, process::Command, sync::mpsc::{self, UnboundedReceiver}, task::JoinHandle};use std::sync::Arc;
-
+use std::sync::Arc;
+use std::{
+    env::current_exe,
+    path::PathBuf,
+    process::{ExitStatus, Stdio},
+    time::Duration,
+};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    process::Command,
+    sync::mpsc::{self, UnboundedReceiver},
+    task::JoinHandle,
+};
 
 pub mod builder;
 
 pub enum InMessage {
     Std(String),
-    Exit
+    Exit,
 }
 
 pub enum OutMessage {
     Std(String),
     Err(String),
-    Exit(ExitStatus)
+    Exit(ExitStatus),
 }
 
-pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (TestBuilderComms, mpsc::UnboundedSender<InMessage>, mpsc::UnboundedReceiver<OutMessage>, (JoinHandle<()>, JoinHandle<()>)) {
-
+pub async fn setup_test(
+    dir_path: PathBuf,
+    test_example: impl ToString,
+) -> (
+    TestBuilderComms,
+    mpsc::UnboundedSender<InMessage>,
+    mpsc::UnboundedReceiver<OutMessage>,
+    (JoinHandle<()>, JoinHandle<()>),
+) {
     let (builder, mut comms) = TestBuilder::new(None, None);
-    let manager = dexterous_developer_manager::Manager::default().add_builders(&[Arc::new(builder)]).await;
+    let manager = dexterous_developer_manager::Manager::default()
+        .add_builders(&[Arc::new(builder)])
+        .await;
     let (port_tx, port_rx) = tokio::sync::oneshot::channel();
-    
+
     let server = tokio::spawn(async move {
         run_test_server(0, manager, port_tx).await.unwrap();
         eprintln!("Done?");
@@ -38,12 +57,28 @@ pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (Test
     let runner = tokio::spawn(async move {
         let base = Utf8PathBuf::from_path_buf(current_exe().unwrap()).unwrap();
         #[cfg(target_os = "windows")]
-        let runner: Utf8PathBuf = base.parent().unwrap().parent().unwrap().join("dexterous_developer_runner.exe");
+        let runner: Utf8PathBuf = base
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("dexterous_developer_runner.exe");
         #[cfg(not(target_os = "windows"))]
-        let runner: Utf8PathBuf = base.parent().unwrap().parent().unwrap().join("dexterous_developer_runner");
+        let runner: Utf8PathBuf = base
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("dexterous_developer_runner");
 
         let mut command = Command::new(runner);
-        command.current_dir(dir_path).arg("-s").arg(format!("http://127.0.0.1:{}", port)).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::piped());
+        command
+            .current_dir(dir_path)
+            .arg("-s")
+            .arg(format!("http://127.0.0.1:{}", port))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::piped());
 
         let mut child = command.spawn().unwrap();
         let Some(out) = child.stdout.take() else {
@@ -64,20 +99,20 @@ pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (Test
         loop {
             tokio::select! {
                 Ok(Some(line)) = out.next_line() => {
-                    out_tx.send(OutMessage::Std(line.clone()));
+                    out_tx.send(OutMessage::Std(line.clone())).unwrap();
                 }
                 Ok(Some(line)) = err.next_line() => {
-                    out_tx.send(OutMessage::Err(line.clone()));
+                    out_tx.send(OutMessage::Err(line.clone())).unwrap();
                 }
                 Ok(status) = child.wait() => {
-                    out_tx.send(OutMessage::Exit(status));
+                    out_tx.send(OutMessage::Exit(status)).unwrap();
                     break;
                 }
                 Some(command) = command_rx.recv() => {
                     match command {
                         InMessage::Std(value) => {
                             println!("STD IN ({port}): {value}");
-                            input.write_all(value.as_bytes()).await;
+                            input.write_all(value.as_bytes()).await.unwrap();
                         }
                         InMessage::Exit => {
                             break;
@@ -90,14 +125,16 @@ pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (Test
             }
         }
 
-        child.kill().await;
-        
+        child.kill().await.unwrap();
     });
 
     (comms, command_tx, out_rx, (server, runner))
 }
 
-pub async fn recv_std(output: &mut UnboundedReceiver<OutMessage>, value: impl ToString) -> Result<(), String> {
+pub async fn recv_std(
+    output: &mut UnboundedReceiver<OutMessage>,
+    value: impl ToString,
+) -> Result<(), String> {
     tokio::time::timeout(Duration::from_secs(20), async {
         let value = value.to_string().trim().to_string();
         while let Some(out) = output.recv().await {
@@ -108,16 +145,22 @@ pub async fn recv_std(output: &mut UnboundedReceiver<OutMessage>, value: impl To
                         eprintln!("FOUND STDOUT");
                         return Ok(());
                     }
-                },
-                OutMessage::Err(_) => {},
-                OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value.to_string())),
+                }
+                OutMessage::Err(_) => {}
+                OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value)),
             }
-        };
+        }
         Err("Got to exit without sucess".to_string())
-    }).await.map_err(|e| e.to_string()).and_then(|val| val)
+    })
+    .await
+    .map_err(|e| e.to_string())
+    .and_then(|val| val)
 }
 
-pub async fn recv_err(output: &mut UnboundedReceiver<OutMessage>, value: impl ToString) -> Result<(), String> {
+pub async fn recv_err(
+    output: &mut UnboundedReceiver<OutMessage>,
+    value: impl ToString,
+) -> Result<(), String> {
     tokio::time::timeout(Duration::from_secs(20), async {
         let value = value.to_string().trim().to_string();
         while let Some(out) = output.recv().await {
@@ -128,30 +171,36 @@ pub async fn recv_err(output: &mut UnboundedReceiver<OutMessage>, value: impl To
                         eprintln!("FOUND STDERR");
                         return Ok(());
                     }
-                },
-                OutMessage::Std(_) => {},
-                OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value.to_string())),
+                }
+                OutMessage::Std(_) => {}
+                OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value)),
             }
-        };
+        }
         Err("Got to exit without sucess".to_string())
-    }).await.map_err(|e| e.to_string()).and_then(|val| val)
+    })
+    .await
+    .map_err(|e| e.to_string())
+    .and_then(|val| val)
 }
 
-pub async fn recv_exit(output: &mut UnboundedReceiver<OutMessage>, value: Option<i32>) -> Result<(), String> {
+pub async fn recv_exit(
+    output: &mut UnboundedReceiver<OutMessage>,
+    value: Option<i32>,
+) -> Result<(), String> {
     tokio::time::timeout(Duration::from_secs(20), async {
         while let Some(out) = output.recv().await {
-            match out {
-                OutMessage::Exit(code) => {
-                    let code = code.code();
-                    if code == value {
-                        return Ok(());
-                    } else {
-                        return Err(format!("Expected exit {value:?} - got {code:?}"));
-                    }
-                },
-                _ => {}
+            if let OutMessage::Exit(code) = out {
+                let code = code.code();
+                if code == value {
+                    return Ok(());
+                } else {
+                    return Err(format!("Expected exit {value:?} - got {code:?}"));
+                }
             }
-        };
+        }
         Err("Got to exit without sucess".to_string())
-    }).await.map_err(|e| e.to_string()).and_then(|val| val)
+    })
+    .await
+    .map_err(|e| e.to_string())
+    .and_then(|val| val)
 }

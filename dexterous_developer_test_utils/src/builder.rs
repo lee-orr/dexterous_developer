@@ -1,18 +1,26 @@
 use std::env::current_exe;
 
 use camino::Utf8PathBuf;
-use dexterous_developer_builder::types::{BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord};
+use dexterous_developer_builder::types::{
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
+    HashedFileRecord,
+};
 use dexterous_developer_types::Target;
-use tokio::sync::{broadcast, mpsc::{self, UnboundedReceiver, UnboundedSender}};
+use tokio::sync::{
+    broadcast,
+    mpsc::{self, UnboundedReceiver},
+};
 
 pub struct TestBuilder {
     target: Target,
-    incoming: tokio::sync::mpsc::UnboundedSender<dexterous_developer_builder::types::BuilderIncomingMessages>,
+    incoming: tokio::sync::mpsc::UnboundedSender<
+        dexterous_developer_builder::types::BuilderIncomingMessages,
+    >,
     outgoing: (
         tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuilderOutgoingMessages>,
-        tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuildOutputMessages>,),
+        tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuildOutputMessages>,
+    ),
     root_lib_name: Option<String>,
-
 }
 
 pub struct TestBuilderComms {
@@ -21,7 +29,7 @@ pub struct TestBuilderComms {
     pub examples: Utf8PathBuf,
     pub incoming_receiver: UnboundedReceiver<BuilderIncomingMessages>,
     pub outgoing_sender: broadcast::Sender<BuilderOutgoingMessages>,
-    pub output_sender: broadcast::Sender<BuildOutputMessages>
+    pub output_sender: broadcast::Sender<BuildOutputMessages>,
 }
 
 impl TestBuilderComms {
@@ -31,12 +39,24 @@ impl TestBuilderComms {
         let path = self.examples.join(&example);
         self.build_id += 1;
         let build = self.build_id;
-        self.output_sender.send(BuildOutputMessages::StartedBuild(build));
-        self.output_sender.send(BuildOutputMessages::EndedBuild(build));
-        self.output_sender.send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-            relative_path: Utf8PathBuf::from("./").join(&example), name: example.to_string(), local_path: path, hash: Default::default(), dependencies: vec![]
-        }));
-        self.output_sender.send(BuildOutputMessages::RootLibraryName(example.clone()));
+        self.output_sender
+            .send(BuildOutputMessages::StartedBuild(build))
+            .unwrap();
+        self.output_sender
+            .send(BuildOutputMessages::EndedBuild(build))
+            .unwrap();
+        self.output_sender
+            .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
+                relative_path: Utf8PathBuf::from("./").join(&example),
+                name: example.to_string(),
+                local_path: path,
+                hash: Default::default(),
+                dependencies: vec![],
+            }))
+            .unwrap();
+        self.output_sender
+            .send(BuildOutputMessages::RootLibraryName(example.clone()))
+            .unwrap();
     }
 }
 
@@ -46,20 +66,16 @@ impl TestBuilder {
         let (incoming, in_rx) = mpsc::unbounded_channel();
         let (outgoing_tx, _) = broadcast::channel(10);
         let (output_tx, _) = broadcast::channel(10);
-        
+
         let base = Utf8PathBuf::from_path_buf(current_exe().unwrap()).unwrap();
         let examples: Utf8PathBuf = base.parent().unwrap().parent().unwrap().join("examples");
-
 
         (
             Self {
                 target,
                 incoming,
-                outgoing: (
-                    outgoing_tx.clone(),
-                    output_tx.clone()
-                ),
-                root_lib_name
+                outgoing: (outgoing_tx.clone(), output_tx.clone()),
+                root_lib_name,
             },
             TestBuilderComms {
                 target,
@@ -67,8 +83,8 @@ impl TestBuilder {
                 examples,
                 incoming_receiver: in_rx,
                 outgoing_sender: outgoing_tx,
-                output_sender: output_tx
-            }
+                output_sender: output_tx,
+            },
         )
     }
 }
@@ -78,14 +94,20 @@ impl Builder for TestBuilder {
         self.target
     }
 
-    fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<dexterous_developer_builder::types::BuilderIncomingMessages> {
+    fn incoming_channel(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedSender<
+        dexterous_developer_builder::types::BuilderIncomingMessages,
+    > {
         self.incoming.clone()
     }
 
     fn outgoing_channel(
         &self,
     ) -> (
-        tokio::sync::broadcast::Receiver<dexterous_developer_builder::types::BuilderOutgoingMessages>,
+        tokio::sync::broadcast::Receiver<
+            dexterous_developer_builder::types::BuilderOutgoingMessages,
+        >,
         tokio::sync::broadcast::Receiver<dexterous_developer_builder::types::BuildOutputMessages>,
     ) {
         (self.outgoing.0.subscribe(), self.outgoing.1.subscribe())

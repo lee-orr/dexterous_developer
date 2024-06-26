@@ -1,4 +1,9 @@
-use std::{convert::Infallible, net::{IpAddr, Ipv4Addr, SocketAddr}, sync::Arc, time::Duration};
+use std::{
+    convert::Infallible,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+    time::Duration,
+};
 
 use axum::{
     body::Body,
@@ -35,7 +40,7 @@ pub async fn run_server(port: u16, manager: Manager) -> Result<(), Error> {
         manager: Arc::new(manager),
     });
 
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0)), port);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let port = listener.local_addr()?.port();
 
@@ -47,7 +52,11 @@ pub async fn run_server(port: u16, manager: Manager) -> Result<(), Error> {
 }
 
 #[cfg(feature = "test")]
-pub async fn run_test_server(port: u16, manager: Manager, port_return: tokio::sync::oneshot::Sender<u16>) -> Result<(), Error> {
+pub async fn run_test_server(
+    port: u16,
+    manager: Manager,
+    port_return: tokio::sync::oneshot::Sender<u16>,
+) -> Result<(), Error> {
     let app = Router::new()
         .route("/targets", get(list_targets))
         .route("/target/:target", get(connect_to_target))
@@ -57,11 +66,11 @@ pub async fn run_test_server(port: u16, manager: Manager, port_return: tokio::sy
         manager: Arc::new(manager),
     });
 
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0)), port);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let port = listener.local_addr()?.port();
 
-    port_return.send(port);
+    port_return.send(port).unwrap();
 
     eprintln!("Listening on http://127.0.0.1:{port}");
 
