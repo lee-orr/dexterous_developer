@@ -41,6 +41,11 @@ crate-type = ["dylib"]
 required-features = ["hot_internal"]
 
 [[example]]
+name = "simple_system_swap"
+crate-type = ["dylib"]
+required-features = ["hot_internal"]
+
+[[example]]
 name = "simple_visual"
 crate-type = ["dylib"]
 required-features = ["hot_internal"]

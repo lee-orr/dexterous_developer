@@ -25,8 +25,8 @@ pub struct TestBuilderComms {
 }
 
 impl TestBuilderComms {
-    pub fn set_new_library(&mut self, example_name: String) {
-
+    pub fn set_new_library(&mut self, example_name: impl ToString) {
+        let example_name = example_name.to_string();
         let example = self.target.dynamic_lib_name(&example_name);
         let path = self.examples.join(&example);
         self.build_id += 1;

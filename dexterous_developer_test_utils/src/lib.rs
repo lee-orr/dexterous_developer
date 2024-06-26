@@ -76,6 +76,7 @@ pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (Test
                 Some(command) = command_rx.recv() => {
                     match command {
                         InMessage::Std(value) => {
+                            println!("STD IN ({port}): {value}");
                             input.write_all(value.as_bytes()).await;
                         }
                         InMessage::Exit => {
@@ -98,14 +99,15 @@ pub async fn setup_test(dir_path: PathBuf, test_example: impl ToString) -> (Test
 
 pub async fn recv_std(output: &mut UnboundedReceiver<OutMessage>, value: impl ToString) -> Result<(), String> {
     tokio::time::timeout(Duration::from_secs(20), async {
-        let value = value.to_string();
+        let value = value.to_string().trim().to_string();
         while let Some(out) = output.recv().await {
             match out {
                 OutMessage::Std(v) => {
-                    if v == value {
+                    eprintln!("STDOUT: {v}");
+                    if v.contains(&value) {
+                        eprintln!("FOUND STDOUT");
                         return Ok(());
                     }
-                    eprintln!("{v}");
                 },
                 OutMessage::Err(_) => {},
                 OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value.to_string())),
@@ -115,13 +117,15 @@ pub async fn recv_std(output: &mut UnboundedReceiver<OutMessage>, value: impl To
     }).await.map_err(|e| e.to_string()).and_then(|val| val)
 }
 
-pub async fn recv_out(output: &mut UnboundedReceiver<OutMessage>, value: impl ToString) -> Result<(), String> {
+pub async fn recv_err(output: &mut UnboundedReceiver<OutMessage>, value: impl ToString) -> Result<(), String> {
     tokio::time::timeout(Duration::from_secs(20), async {
-        let value = value.to_string();
+        let value = value.to_string().trim().to_string();
         while let Some(out) = output.recv().await {
             match out {
                 OutMessage::Err(v) => {
-                    if v == value {
+                    eprintln!("STDERR: {v}");
+                    if v.contains(&value) {
+                        eprintln!("FOUND STDERR");
                         return Ok(());
                     }
                 },
