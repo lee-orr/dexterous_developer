@@ -22,7 +22,7 @@ tracing = { version = "0.1" }
 dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types" }
 cargo_metadata = { version = "0.18" }
 tokio = { version = "1", features = ["full"]}
-dashmap = { version = "5", features = ["serde"] }
+dashmap = { version = "6", features = ["serde"] }
 camino = "1"
 crossbeam = "0.8"
 prefer-dynamic = "0"
