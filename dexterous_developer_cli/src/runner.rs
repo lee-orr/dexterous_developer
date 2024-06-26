@@ -13,10 +13,10 @@ struct Args {
     #[arg(short, long)]
     working_directory: Option<Utf8PathBuf>,
     /// The library directory - this is where the compiled dynamic libraries
-    /// will be stored, and where they are loaded from. Defaults to "./reload_libs"
+    /// will be stored, and where they are loaded from. Defaults to `./reload_libs`
     #[arg(short, long)]
     library_path: Option<Utf8PathBuf>,
-    /// The Url for the process handling compilation, defaults to "http://localhost:1234"
+    /// The Url for the process handling compilation, defaults to <http://localhost:1234>
     #[arg(short, long)]
     server: Option<url::Url>,
     /// Used to indicate that the environment variables for finding libraries should already have been set.
