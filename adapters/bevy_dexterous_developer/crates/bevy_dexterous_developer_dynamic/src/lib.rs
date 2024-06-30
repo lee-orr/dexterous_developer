@@ -3,5 +3,5 @@
 
 use bevy;
 use bevy_dexterous_developer_library;
-use dexterous_developer_internal;
+use dexterous_developer_instance;
 use dexterous_developer_types;

@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "dexterous_developer",
     "dexterous_developer_cli",
-    "dexterous_developer_internal",
+    "dexterous_developer_instance",
     "dexterous_developer_dynamic",
     "dexterous_developer_builder",
     "dexterous_developer_types",

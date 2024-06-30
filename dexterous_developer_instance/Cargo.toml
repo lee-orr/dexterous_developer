@@ -1,5 +1,5 @@
 [package]
-name = "dexterous_developer_internal"
+name = "dexterous_developer_instance"
 edition = "2021"
 readme = "../README.md"
 exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use camino::Utf8Path;
 
-use dexterous_developer_internal::{hot::HotReloadInfoBuilder, UpdatedAsset};
+use dexterous_developer_instance::{hot::HotReloadInfoBuilder, UpdatedAsset};
 use dexterous_developer_types::cargo_path_utils::dylib_path;
 use dylib_runner_message::DylibRunnerMessage;
 use error::DylibRunnerError;
@@ -11,7 +11,7 @@ use remote_connection::connect_to_server;
 use safer_ffi::prelude::c_slice;
 use tracing::{error, info, warn};
 
-use dexterous_developer_internal::library_holder::LibraryHolder;
+use dexterous_developer_instance::library_holder::LibraryHolder;
 
 use crate::{
     dylib_runner_message::{self, DylibRunnerOutput},
@@ -123,10 +123,10 @@ pub fn run_app<
     }
     .build();
 
-    initial.varied_call("dexterous_developer_internal_set_hot_reload_info", info)?;
+    initial.varied_call("dexterous_developer_instance_set_hot_reload_info", info)?;
     let _ = out_tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: id });
     info!("Calling Internal Main");
-    initial.call("dexterous_developer_internal_main", &mut ())?;
+    initial.call("dexterous_developer_instance_main", &mut ())?;
 
     info!("Done.");
 

@@ -26,7 +26,7 @@ pub enum DylibRunnerError {
     #[error("Join Handle Failed")]
     JoinHandleFailed(std::boxed::Box<(dyn std::any::Any + std::marker::Send + 'static)>),
     #[error("Library Holder Error {0}")]
-    LibraryError(#[from] dexterous_developer_internal::library_holder::LibraryError),
+    LibraryError(#[from] dexterous_developer_instance::library_holder::LibraryError),
     #[error("Couldn't Open Initial Library")]
     NoInitialLibrary,
     #[error("Original Library Already Set")]

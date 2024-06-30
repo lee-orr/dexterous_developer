@@ -45,7 +45,7 @@ pub mod internal {
     pub static HOT_RELOAD_INFO: OnceCell<HotReloadInfo> = OnceCell::new();
 
     #[ffi_export]
-    fn dexterous_developer_internal_set_hot_reload_info(info: HotReloadInfo) {
+    fn dexterous_developer_instance_set_hot_reload_info(info: HotReloadInfo) {
         let value = Local::now();
         let value = value.nanosecond();
         let validation = (info.internal_validate_setup)(value);

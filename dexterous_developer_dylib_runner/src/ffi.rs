@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicU32, Arc};
 
 use camino::Utf8PathBuf;
 use crossbeam::atomic::AtomicCell;
-use dexterous_developer_internal::library_holder::LibraryHolder;
+use dexterous_developer_instance::library_holder::LibraryHolder;
 use once_cell::sync::OnceCell;
 use safer_ffi::ffi_export;
 use tracing::{error, info};

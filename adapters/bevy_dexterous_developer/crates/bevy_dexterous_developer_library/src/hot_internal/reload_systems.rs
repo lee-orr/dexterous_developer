@@ -2,7 +2,7 @@ use bevy::{
     log::{debug, info},
     prelude::*,
 };
-use dexterous_developer_internal::internal::HOT_RELOAD_INFO;
+use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 
 use crate::{
     hot_internal::{

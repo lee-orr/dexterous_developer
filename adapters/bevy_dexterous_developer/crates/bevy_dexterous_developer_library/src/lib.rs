@@ -16,4 +16,4 @@ pub use hot_internal::{HotReloadPlugin, ReloadableAppContents};
 pub use cold::*;
 
 #[cfg(feature = "hot_internal")]
-pub use dexterous_developer_internal;
+pub use dexterous_developer_instance;

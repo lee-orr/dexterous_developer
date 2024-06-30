@@ -9,7 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_dylib_runner/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_dynamic/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_example/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_internal/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_instance/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dexterous_developer_types/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/testing/dexterous_developer_tests/src" isTestSource="false" />
