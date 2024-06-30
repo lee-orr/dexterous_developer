@@ -44,7 +44,7 @@ You set up the component as serializable by calling `app.register_serializable_c
 
 ## Clear on Reload
 
-Alternatively, you may want to fully remove any entities that have a given component upon reload. To do so, you just need to call `app.clear_marked_on_reload::<C: Component>()` from within a reloadable scope. Whenever a reload occurs, all entities with the component will be removed. Note - this will also despawn any descendents. 
+Alternatively, you may want to fully remove any entities that have a given component upon reload. To do so, you just need to call `app.clear_marked_on_reload::<C: Component>()` from within a reloadable scope. Whenever a reload occurs, all entities with the component will be removed. Note - this will also despawn any descendents.
 
 ## Reset Setup
 
