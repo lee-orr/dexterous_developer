@@ -80,7 +80,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self {
+    fn init_serializable_resource<R: ReplacableType + Default + Resource>(&mut self) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
             self.resources.insert(name.to_string());
@@ -100,7 +100,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_serializable_resource<R: ReplacableResource>(
+    fn insert_serializable_resource<R: ReplacableType + Resource>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self {
@@ -123,7 +123,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self {
+    fn register_replacable_component<C: ReplacableType + Component>(&mut self) -> &mut Self {
         let name = C::get_type_name();
         if !self.components.contains(name) {
             self.components.insert(name.to_string());
@@ -215,7 +215,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         )
     }
 
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+    fn add_event<T: Event>(&mut self) -> &mut Self {
         let name = self.name;
         self.add_systems(
             OnReloadComplete,

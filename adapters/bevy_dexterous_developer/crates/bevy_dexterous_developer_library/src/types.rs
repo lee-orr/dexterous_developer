@@ -4,11 +4,11 @@ use serde::{de::DeserializeOwned, Serialize};
 
 pub type Result<T> = anyhow::Result<T>;
 
-pub trait SerializableResource: Resource + Serialize + DeserializeOwned + Default {
+pub trait SerializableType: Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
 
-pub trait ReplacableResource: Resource + Sized {
+pub trait ReplacableType: Sized {
     fn get_type_name() -> &'static str;
 
     fn to_vec(&self) -> Result<Vec<u8>>;
@@ -16,7 +16,7 @@ pub trait ReplacableResource: Resource + Sized {
     fn from_slice(val: &[u8]) -> Result<Self>;
 }
 
-impl<T: SerializableResource> ReplacableResource for T {
+impl<T: SerializableType> ReplacableType for T {
     fn get_type_name() -> &'static str {
         T::get_type_name()
     }
@@ -30,46 +30,6 @@ impl<T: SerializableResource> ReplacableResource for T {
     }
 }
 
-pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
-    fn get_type_name() -> &'static str;
-}
-pub trait ReplacableEvent: Event + Serialize + DeserializeOwned {
-    fn get_type_name() -> &'static str;
-}
-
-pub trait ReplacableState: States + Serialize + DeserializeOwned + Default {
-    fn get_type_name() -> &'static str;
-    fn get_next_type_name() -> &'static str;
-}
-
-impl<S: ReplacableState> ReplacableResource for State<S> {
-    fn get_type_name() -> &'static str {
-        S::get_type_name()
-    }
-
-    fn to_vec(&self) -> Result<Vec<u8>> {
-        Ok(rmp_serde::to_vec(self.get())?)
-    }
-
-    fn from_slice(val: &[u8]) -> Result<Self> {
-        let val = rmp_serde::from_slice(val)?;
-        Ok(Self::new(val))
-    }
-}
-
-impl<S: ReplacableEvent> ReplacableResource for Events<S> {
-    fn get_type_name() -> &'static str {
-        S::get_type_name()
-    }
-
-    fn to_vec(&self) -> Result<Vec<u8>> {
-        Ok(vec![])
-    }
-
-    fn from_slice(_: &[u8]) -> Result<Self> {
-        Ok(Self::default())
-    }
-}
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
@@ -81,14 +41,14 @@ pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
 
-    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self;
-    fn insert_serializable_resource<R: ReplacableResource>(
+    fn init_serializable_resource<R: Resource + ReplacableType + Default>(&mut self) -> &mut Self;
+    fn insert_serializable_resource<R: Resource + ReplacableType>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self;
-    fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
+    fn register_replacable_component<C: Component + ReplacableType>(&mut self) -> &mut Self;
     fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
     fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
     fn reset_setup_in_state<C: Component, S: States, M>(
@@ -96,7 +56,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
         state: S,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self;
+    fn add_event<T: Event>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

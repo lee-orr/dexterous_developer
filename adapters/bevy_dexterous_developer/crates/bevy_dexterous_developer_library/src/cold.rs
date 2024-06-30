@@ -28,12 +28,12 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self {
+    fn init_serializable_resource<R: ReplacableType + bevy::prelude::Resource + Default>(&mut self) -> &mut Self {
         self.0.init_resource::<R>();
         self
     }
 
-    fn insert_serializable_resource<R: ReplacableResource>(
+    fn insert_serializable_resource<R: ReplacableType + bevy::prelude::Resource>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self {
@@ -54,7 +54,7 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn register_replacable_component<C: super::ReplacableComponent>(&mut self) -> &mut Self {
+    fn register_replacable_component<C: super::ReplacableType + bevy::prelude::Component>(&mut self) -> &mut Self {
         self
     }
 
@@ -81,7 +81,7 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
+    fn add_event<T: bevy::prelude::Event>(&mut self) -> &mut Self {
         self.0.add_event::<T>();
         self
     }

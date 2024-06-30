@@ -6,7 +6,6 @@ use bevy::{
     MinimalPlugins,
 };
 use bevy_dexterous_developer::*;
-use serde::{Deserialize, Serialize};
 
 fn terminal_runner(mut app: App) -> AppExit {
     app.update();
@@ -28,7 +27,7 @@ struct MySerializableResource {
     second_field: String
 }
 
-impl ReplacableResource for MySerializableResource {
+impl ReplacableType for MySerializableResource {
     fn get_type_name() -> &'static str {
         "MySerializableResource"
     }

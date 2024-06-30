@@ -27,7 +27,7 @@ struct MySerializableResource {
     first_field: String
 }
 
-impl SerializableResource for MySerializableResource {
+impl SerializableType for MySerializableResource {
     fn get_type_name() -> &'static str {
         "MySerializableResource"
     }

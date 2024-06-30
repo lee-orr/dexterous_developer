@@ -1,17 +1,17 @@
 use bevy::{
     ecs::schedule::IntoSystemConfigs,
-    prelude::{debug, Commands, Entity, Query, Res, ResMut, Resource},
+    prelude::{debug, error, Commands, Component, Entity, Query, Res, ResMut, Resource},
     utils::HashMap,
 };
 
-use crate::{ReplacableResource, ReplacableComponent};
+use crate::{ReplacableType};
 
 #[derive(Resource, Default)]
 pub struct ReplacableResourceStore {
     map: HashMap<String, Vec<u8>>,
 }
 
-pub fn serialize_replacable_resource<R: ReplacableResource>(
+pub fn serialize_replacable_resource<R: ReplacableType + Resource>(
     mut store: ResMut<ReplacableResourceStore>,
     resource: Option<Res<R>>,
     mut commands: Commands,
@@ -26,7 +26,7 @@ pub fn serialize_replacable_resource<R: ReplacableResource>(
     commands.remove_resource::<R>();
 }
 
-pub fn deserialize_replacable_resource_with_default<R: ReplacableResource + Default>(
+pub fn deserialize_replacable_resource_with_default<R: ReplacableType + Default + Resource>(
     store: Res<ReplacableResourceStore>,
     mut commands: Commands,
 ) {
@@ -41,7 +41,7 @@ pub fn deserialize_replacable_resource_with_default<R: ReplacableResource + Defa
     commands.insert_resource(v);
 }
 
-pub fn deserialize_replacable_resource_with_initializer<R: ReplacableResource>(
+pub fn deserialize_replacable_resource_with_initializer<R: ReplacableType + Resource>(
     initializer: impl 'static + Send + Sync + Fn() -> R,
 ) -> impl IntoSystemConfigs<()> {
     (move |store: Res<ReplacableResourceStore>, mut commands: Commands| {
@@ -63,14 +63,14 @@ pub struct ReplacableComponentStore {
     map: HashMap<String, Vec<(Entity, Vec<u8>)>>,
 }
 
-pub fn serialize_replacable_component<C: ReplacableComponent>(
+pub fn serialize_replacable_component<C: ReplacableType + Component>(
     mut store: ResMut<ReplacableComponentStore>,
     query: Query<(Entity, &C)>,
     mut commands: Commands,
 ) {
     let name = C::get_type_name();
     for (entity, component) in query.iter() {
-        if let Ok(v) = rmp_serde::to_vec(component) {
+        if let Ok(v) = component.to_vec() {
             let storage = store.map.entry(name.to_string()).or_default();
             storage.push((entity, v));
         }
@@ -79,7 +79,7 @@ pub fn serialize_replacable_component<C: ReplacableComponent>(
     }
 }
 
-pub fn deserialize_replacable_component<C: ReplacableComponent>(
+pub fn deserialize_replacable_component<C: ReplacableType + Component>(
     mut store: ResMut<ReplacableComponentStore>,
     mut commands: Commands,
 ) {
@@ -88,7 +88,10 @@ pub fn deserialize_replacable_component<C: ReplacableComponent>(
 
     if let Some(storage) = store.map.remove(name) {
         for (entity, value) in storage.into_iter() {
-            let v: C = rmp_serde::from_slice(&value).ok().unwrap_or_default();
+            let Ok(v) = C::from_slice(&value) else {
+                error!("Couldn't Deserialize {name}");
+                continue;
+            };
             commands.entity(entity).insert(v);
         }
     }
