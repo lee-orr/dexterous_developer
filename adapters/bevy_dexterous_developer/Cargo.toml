@@ -31,6 +31,7 @@ tokio = { version = "1", features = ["full"]}
 test-temp-dir = { version = "0.2 "}
 tracing-test = { version = "0.2", features = ["no-env-filter"] }
 tracing = "0.1"
+serde = "1"
 
 [[example]]
 name = "simple_cli"
@@ -44,5 +45,40 @@ required-features = ["hot"]
 
 [[example]]
 name = "simple_visual"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_to_value"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_resource_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_resource_end"
 crate-type = ["dylib"]
 required-features = ["hot"]

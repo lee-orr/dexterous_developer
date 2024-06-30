@@ -4,14 +4,14 @@ use bevy::{
     utils::HashMap,
 };
 
-use crate::{CustomReplacableResource, ReplacableComponent};
+use crate::{ReplacableResource, ReplacableComponent};
 
 #[derive(Resource, Default)]
 pub struct ReplacableResourceStore {
     map: HashMap<String, Vec<u8>>,
 }
 
-pub fn serialize_replacable_resource<R: CustomReplacableResource>(
+pub fn serialize_replacable_resource<R: ReplacableResource>(
     mut store: ResMut<ReplacableResourceStore>,
     resource: Option<Res<R>>,
     mut commands: Commands,
@@ -26,7 +26,7 @@ pub fn serialize_replacable_resource<R: CustomReplacableResource>(
     commands.remove_resource::<R>();
 }
 
-pub fn deserialize_replacable_resource_with_default<R: CustomReplacableResource + Default>(
+pub fn deserialize_replacable_resource_with_default<R: ReplacableResource + Default>(
     store: Res<ReplacableResourceStore>,
     mut commands: Commands,
 ) {
@@ -41,7 +41,7 @@ pub fn deserialize_replacable_resource_with_default<R: CustomReplacableResource 
     commands.insert_resource(v);
 }
 
-pub fn deserialize_replacable_resource_with_initializer<R: CustomReplacableResource>(
+pub fn deserialize_replacable_resource_with_initializer<R: ReplacableResource>(
     initializer: impl 'static + Send + Sync + Fn() -> R,
 ) -> impl IntoSystemConfigs<()> {
     (move |store: Res<ReplacableResourceStore>, mut commands: Commands| {

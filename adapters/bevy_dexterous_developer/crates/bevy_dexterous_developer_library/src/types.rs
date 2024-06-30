@@ -2,28 +2,30 @@ use super::ReloadableAppContents;
 use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
+pub type Result<T> = anyhow::Result<T>;
+
+pub trait SerializableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }
 
-pub trait CustomReplacableResource: Resource + Sized {
+pub trait ReplacableResource: Resource + Sized {
     fn get_type_name() -> &'static str;
 
-    fn to_vec(&self) -> anyhow::Result<Vec<u8>>;
+    fn to_vec(&self) -> Result<Vec<u8>>;
 
-    fn from_slice(val: &[u8]) -> anyhow::Result<Self>;
+    fn from_slice(val: &[u8]) -> Result<Self>;
 }
 
-impl<T: ReplacableResource> CustomReplacableResource for T {
+impl<T: SerializableResource> ReplacableResource for T {
     fn get_type_name() -> &'static str {
         T::get_type_name()
     }
 
-    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+    fn to_vec(&self) -> Result<Vec<u8>> {
         Ok(rmp_serde::to_vec(self)?)
     }
 
-    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
+    fn from_slice(val: &[u8]) -> Result<Self> {
         Ok(rmp_serde::from_slice(val)?)
     }
 }
@@ -40,31 +42,31 @@ pub trait ReplacableState: States + Serialize + DeserializeOwned + Default {
     fn get_next_type_name() -> &'static str;
 }
 
-impl<S: ReplacableState> CustomReplacableResource for State<S> {
+impl<S: ReplacableState> ReplacableResource for State<S> {
     fn get_type_name() -> &'static str {
         S::get_type_name()
     }
 
-    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+    fn to_vec(&self) -> Result<Vec<u8>> {
         Ok(rmp_serde::to_vec(self.get())?)
     }
 
-    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
+    fn from_slice(val: &[u8]) -> Result<Self> {
         let val = rmp_serde::from_slice(val)?;
         Ok(Self::new(val))
     }
 }
 
-impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
+impl<S: ReplacableEvent> ReplacableResource for Events<S> {
     fn get_type_name() -> &'static str {
         S::get_type_name()
     }
 
-    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
+    fn to_vec(&self) -> Result<Vec<u8>> {
         Ok(vec![])
     }
 
-    fn from_slice(_: &[u8]) -> anyhow::Result<Self> {
+    fn from_slice(_: &[u8]) -> Result<Self> {
         Ok(Self::default())
     }
 }
@@ -79,13 +81,13 @@ pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
 
-    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self;
-    fn insert_replacable_resource<R: CustomReplacableResource>(
+    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self;
+    fn insert_serializable_resource<R: ReplacableResource>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
-    fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
+    fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self;
     fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
     fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
     fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;

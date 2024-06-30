@@ -80,7 +80,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self {
+    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
             self.resources.insert(name.to_string());
@@ -100,7 +100,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn insert_replacable_resource<R: CustomReplacableResource>(
+    fn insert_serializable_resource<R: ReplacableResource>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self {
@@ -155,13 +155,16 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self {
+    fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self {
         debug!("resetting resource");
         let name = self.name;
+        let mut container = Some(value);
         self.add_systems(
             OnReloadComplete,
             (move |mut commands: Commands| {
-                commands.insert_resource(value.clone());
+                if let Some(value) = container.take() {
+                    commands.insert_resource(value);
+                }
             })
             .run_if(element_selection_condition(name)),
         );

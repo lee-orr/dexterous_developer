@@ -28,12 +28,12 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn init_replacable_resource<R: CustomReplacableResource + Default>(&mut self) -> &mut Self {
+    fn init_serializable_resource<R: ReplacableResource + Default>(&mut self) -> &mut Self {
         self.0.init_resource::<R>();
         self
     }
 
-    fn insert_replacable_resource<R: CustomReplacableResource>(
+    fn insert_serializable_resource<R: ReplacableResource>(
         &mut self,
         initializer: impl 'static + Send + Sync + Fn() -> R,
     ) -> &mut Self {
@@ -46,7 +46,7 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn reset_resource_to_value<R: bevy::prelude::Resource + Clone>(
+    fn reset_resource_to_value<R: bevy::prelude::Resource>(
         &mut self,
         value: R,
     ) -> &mut Self {
