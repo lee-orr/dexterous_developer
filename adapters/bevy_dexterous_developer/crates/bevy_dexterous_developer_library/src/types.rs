@@ -55,21 +55,6 @@ impl<S: ReplacableState> CustomReplacableResource for State<S> {
     }
 }
 
-impl<S: ReplacableState> CustomReplacableResource for NextState<S> {
-    fn get_type_name() -> &'static str {
-        S::get_next_type_name()
-    }
-
-    fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
-        Ok(rmp_serde::to_vec(&self.0)?)
-    }
-
-    fn from_slice(val: &[u8]) -> anyhow::Result<Self> {
-        let val = rmp_serde::from_slice(val)?;
-        Ok(Self(val))
-    }
-}
-
 impl<S: ReplacableEvent> CustomReplacableResource for Events<S> {
     fn get_type_name() -> &'static str {
         S::get_type_name()
@@ -87,7 +72,7 @@ pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
 
-pub trait ReloadableApp: private::ReloadableAppSealed {
+pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
     fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
         schedule: L,
@@ -110,7 +95,6 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
     fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self;
-    fn init_state<S: ReplacableState>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

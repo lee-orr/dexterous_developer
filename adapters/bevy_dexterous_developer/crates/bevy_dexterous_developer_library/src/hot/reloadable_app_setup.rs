@@ -13,7 +13,7 @@ impl ReloadableElementsSetup for bevy::app::App {
         self.add_systems(SetupReload, system);
 
         let mut list = self
-            .world
+            .world_mut()
             .get_resource_or_insert_with::<ReloadableElementList>(|| {
                 ReloadableElementList::default()
             });

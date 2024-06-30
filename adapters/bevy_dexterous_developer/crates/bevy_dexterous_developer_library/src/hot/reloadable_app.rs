@@ -1,6 +1,5 @@
 use bevy::{
-    ecs::schedule::common_conditions::run_once,
-    ecs::schedule::{run_enter_schedule, ScheduleLabel},
+    ecs::{change_detection::MutUntyped, event::EventRegistry, schedule::ScheduleLabel},
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -19,6 +18,7 @@ pub struct ReloadableAppElements {
     schedules: HashMap<WrappedSchedule, (Schedule, ReloadableSchedule<WrappedSchedule>)>,
     resources: HashSet<String>,
     components: HashSet<String>,
+    event_register: Vec<unsafe fn(MutUntyped)>,
 }
 
 impl ReloadableAppElements {
@@ -212,27 +212,16 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         )
     }
 
-    fn init_state<S: ReplacableState>(&mut self) -> &mut Self {
-        self.insert_replacable_resource::<State<S>>(|| State::new(S::default()))
-            .init_replacable_resource::<NextState<S>>()
-            .add_systems(
-                StateTransition,
-                ((
-                    run_enter_schedule::<S>.run_if(run_once()),
-                    apply_state_transition::<S>,
-                )
-                    .chain(),),
-            );
-
-        self
-    }
-
     fn add_event<T: ReplacableEvent>(&mut self) -> &mut Self {
-        self.init_replacable_resource::<Events<T>>().add_systems(
-            First,
-            bevy::ecs::event::event_update_system::<T>
-                .run_if(bevy::ecs::event::event_update_condition::<T>),
-        )
+        let name = self.name;
+        self.add_systems(
+            OnReloadComplete,
+            (move |world: &mut World| {
+                EventRegistry::register_event::<T>(world);
+            })
+            .run_if(element_selection_condition(name)),
+        );
+        self
     }
 }
 
@@ -246,5 +235,27 @@ fn element_selection_condition(name: &'static str) -> impl Fn(Option<Res<ReloadS
             }
         }
         true
+    }
+}
+
+impl<'a> AppExtStates for ReloadableAppContents<'a> {
+    fn init_state<S: bevy::state::state::FreelyMutableState + FromWorld>(&mut self) -> &mut Self {
+        todo!()
+    }
+
+    fn insert_state<S: bevy::state::state::FreelyMutableState>(&mut self, state: S) -> &mut Self {
+        todo!()
+    }
+
+    fn add_computed_state<S: ComputedStates>(&mut self) -> &mut Self {
+        todo!()
+    }
+
+    fn add_sub_state<S: SubStates>(&mut self) -> &mut Self {
+        todo!()
+    }
+
+    fn enable_state_scoped_entities<S: States>(&mut self) -> &mut Self {
+        todo!()
     }
 }

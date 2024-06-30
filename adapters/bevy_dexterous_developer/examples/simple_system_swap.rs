@@ -1,23 +1,25 @@
+use std::num::NonZero;
+
 use bevy::{
-    app::{Startup, Update},
+    app::{AppExit, Startup, Update},
     prelude::App,
     MinimalPlugins,
 };
 use bevy_dexterous_developer::*;
 
-fn terminal_runner(mut app: App) {
+fn terminal_runner(mut app: App) -> AppExit {
     app.update();
     eprintln!("Ready for Input");
     for line in std::io::stdin().lines() {
         let typed: String = line.unwrap_or_default();
         if typed == "exit" {
             println!("Exiting");
-            return;
+            return AppExit::Success;
         }
         app.update();
     }
+    AppExit::Error(NonZero::<u8>::new(1).unwrap())
 }
-
 reloadable_main!( bevy_main(initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<MinimalPlugins>())

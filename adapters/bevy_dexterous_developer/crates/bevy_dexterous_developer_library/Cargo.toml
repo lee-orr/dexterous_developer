@@ -26,8 +26,9 @@ hot = [
 anyhow = { version = "1" }
 dexterous_developer_types = { version = "0.3.0-pre.1", path = "../../../../dexterous_developer_types" }
 dexterous_developer_instance = { version = "0.3.0-pre.1", path = "../../../../dexterous_developer_instance" }
-bevy = { version = "0.13", default-features = false, features = [
+bevy = { version = "0.14.0-rc.4", default-features = false, features = [
     "serialize",
+    "bevy_state"
 ]}
 serde = { version = "1", features = ["derive"] }
 rmp-serde = { version = "1" }

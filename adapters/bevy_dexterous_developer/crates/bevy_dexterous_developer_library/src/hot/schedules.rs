@@ -61,10 +61,6 @@ impl ScheduleLabel for WrappedSchedule {
         self.1.dyn_clone()
     }
 
-    fn as_dyn_eq(&self) -> &dyn bevy::utils::label::DynEq {
-        self.1.as_dyn_eq()
-    }
-
     fn dyn_hash(&self, state: &mut dyn ::std::hash::Hasher) {
         self.1.dyn_hash(state)
     }
@@ -74,5 +70,9 @@ impl ScheduleLabel for WrappedSchedule {
         Self: Sized,
     {
         self.0
+    }
+
+    fn as_dyn_eq(&self) -> &dyn bevy::ecs::label::DynEq {
+        self.1.as_dyn_eq()
     }
 }
