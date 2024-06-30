@@ -15,7 +15,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
 - The capacity to create adapters for additional frameworks, allowing you to use Dexterous Developer tooling with other tools.
 - Includes a first-party Bevy adapter
-- Works on Windows, Linux, and MacOS 
+- Works on Windows, Linux, and MacOS
 - On Linux, can be used to develop within a dev container while running on the main OS, enabling use of dev containers for games & other GUI apps.
 
 ### Bevy Specific
