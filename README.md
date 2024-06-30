@@ -1,8 +1,8 @@
 # Dexterous Developer
 
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%2Fci.yml?label=CI)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%tests.yml?label=Tests)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%2Fstatic-analysis.yml?label=Static%20Analysis)
  ![crates.io](https://img.shields.io/crates/v/dexterous_developer?label=dexterous_developer) ![cli](https://img.shields.io/crates/v/dexterous_developer_cli?label=dexterous_developer_cli)
-![Static Badge](https://img.shields.io/badge/docs-github_pages-green?link=https%3A%2F%2Flee-orr.github.io%2Fdexterous_developer%2F)
 
 A modular hot-reload system for Rust.
 
@@ -56,9 +56,12 @@ For dexterous_developer to function, your package currently needs to be a dynami
 crate-type = ["rlib", "dylib"]
 ```
 
-You'll also need to add the appropriate dexterous developer adapter to your library's dependencies. For example, if you are using bevy:
+You'll also need to add the appropriate dexterous developer adapter to your library's dependencies, and set up the "hot_internal" feature. For example, if you are using bevy:
 
 ```toml
+[features]
+hot_internal = ["dexterous_developer/hot_internal"]
+
 [dependencies]
 bevy = "0.14"
 dexterous_developer = { version = "0.3", features = ["bevy"] }
@@ -102,7 +105,7 @@ impl Plugin for MyPlugin {
 reloadable_scope!(reloadable(app) {
     app
         .add_systems(Update, this_system_will_reload);
-}
+})
 ```
 
 The [Simple Visual](./adapters/bevy_dexterous_developer/examples/simple_visual.rs) example shows the basic use of the library, and the [book](https://lee-orr.github.io/dexterous_developer/) has more info as well.
