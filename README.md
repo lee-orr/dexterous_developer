@@ -1,6 +1,6 @@
 # Dexterous Developer
 
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%tests.yml?label=Tests)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%2Ftests.yml?label=Tests)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%2Fstatic-analysis.yml?label=Static%20Analysis)
  ![crates.io](https://img.shields.io/crates/v/dexterous_developer?label=dexterous_developer) ![cli](https://img.shields.io/crates/v/dexterous_developer_cli?label=dexterous_developer_cli)
 
@@ -128,6 +128,6 @@ Initial inspiration came from [DGriffin91's Ridiculous bevy hot reloading](https
 | Bevy | Dexterous Developer |
 | --- |--------------------|
 | 0.14 | >= 0.3 |
-| 0.13 | >= 0.2 |
+| 0.13 | = 0.2 |
 | 0.12 | 0.0.12, 0.1        |
 | 0.11 | <= 0.0.11          |
