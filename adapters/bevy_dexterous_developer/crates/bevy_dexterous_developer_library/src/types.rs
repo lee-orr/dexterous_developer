@@ -48,7 +48,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
     ) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self;
-    fn register_replacable_component<C: Component + ReplacableType>(&mut self) -> &mut Self;
+    fn register_serializable_component<C: Component + ReplacableType>(&mut self) -> &mut Self;
     fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
     fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
     fn reset_setup_in_state<C: Component, S: States, M>(

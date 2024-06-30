@@ -54,7 +54,7 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn register_replacable_component<C: super::ReplacableType + bevy::prelude::Component>(&mut self) -> &mut Self {
+    fn register_serializable_component<C: super::ReplacableType + bevy::prelude::Component>(&mut self) -> &mut Self {
         self
     }
 

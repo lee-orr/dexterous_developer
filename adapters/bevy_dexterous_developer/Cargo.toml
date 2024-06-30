@@ -82,3 +82,23 @@ required-features = ["hot"]
 name = "replacable_resource_end"
 crate-type = ["dylib"]
 required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_component_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_component_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_component_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_component_end"
+crate-type = ["dylib"]
+required-features = ["hot"]

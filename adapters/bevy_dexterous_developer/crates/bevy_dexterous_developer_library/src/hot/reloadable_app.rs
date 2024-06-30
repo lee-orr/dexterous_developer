@@ -123,7 +123,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn register_replacable_component<C: ReplacableType + Component>(&mut self) -> &mut Self {
+    fn register_serializable_component<C: ReplacableType + Component>(&mut self) -> &mut Self {
         let name = C::get_type_name();
         if !self.components.contains(name) {
             self.components.insert(name.to_string());

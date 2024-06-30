@@ -1,26 +1,22 @@
-# Resources
+# Components
 
-Resources can be reloaded in a variety of ways.
+Components can be handled in a few ways as well.
 
-## Resetting Resources
+## Serializable Components
 
-If you have a resource that you want to re-set when a reload occurs, you can do so using either `app.reset_resource::<R: Resource + Default>()` or `app.reset_resource_to_value::<R: Resource>(value: R)` within a reloadable scope. This will cause the resource to be removed and re-initialized when new coad is loaded.
+If you have a component that you want to serialize and de-serialize, allowing you to maintain it's state while evolving it's schema.
 
-## Serializable Resources
-
-If you have a resource that you want to serialize and de-serialize, allowing you to maintain it's state while evolving it's schema.
-
-You initialize the resource by using either `app.init_serializable_resource::<R: ReplacableType + Resource + Default>()` or `app.insert_serializable_resource::<R: ReplacableType + Resource>(initializer: impl 'static + Send + Sync + Fn() -> R)`
+You set up the component as serializable by calling `app.register_serializable_component<C: Component + ReplacableType>()` within a reloadable scope.
 
 - using `serde` and implementing `SerializableType`. This approach relies on `rmp_serde` to serialize and deserialize the resource.
 
   ```rust
-    #[derive(Resource, Serialize, Deserialize)]
-    struct MyResource(String);
+    #[derive(Component, Serialize, Deserialize)]
+    struct MyComponent(String);
 
-    impl SerializableType for MyResource {
+    impl SerializableType for MyComponent {
         fn get_type_name() -> &'static str {
-            "MyResource
+            "MyComponent
         }
     }
   ```
@@ -28,12 +24,12 @@ You initialize the resource by using either `app.init_serializable_resource::<R:
 - implementing `ReplacableType` yourself:
 
   ```rust
-  #[derive(Resource)]
-  struct MyResource(String);
+  #[derive(Component)]
+  struct MyComponent(String);
 
-  impl ReplacableResource for MyResource {
+  impl ReplacableType for MyComponent {
     fn get_type_name() -> &'static str {
-        "MyResource"
+        "MyComponent"
     }
 
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {

@@ -10,7 +10,7 @@ If you have a resource that you want to re-set when a reload occurs, you can do 
 
 If you have a resource that you want to serialize and de-serialize, allowing you to maintain it's state while evolving it's schema.
 
-You initialize the resource by using either `app.init_serializable_resource::<R: ReplacableResource + Default>()` or `app.insert_serializable_resource::<R: ReplaceableResource>(initializer: impl 'static + Send + Sync + Fn() -> R)`
+You initialize the resource by using either `app.init_serializable_resource::<R: ReplacableType + Resource + Default>()` or `app.insert_serializable_resource::<R: ReplacableType + Resource>(initializer: impl 'static + Send + Sync + Fn() -> R)`
 
 - using `serde` and implementing `SerializableResource`. This approach relies on `rmp_serde` to serialize and deserialize the resource.
 
@@ -18,20 +18,20 @@ You initialize the resource by using either `app.init_serializable_resource::<R:
     #[derive(Resource, Serialize, Deserialize)]
     struct MyResource(String);
 
-    impl SerializableResource for MyResource {
+    impl SerializableType for MyResource {
         fn get_type_name() -> &'static str {
             "MyResource
         }
     }
   ```
 
-- implementing `ReplacableResource` yourself:
+- implementing `ReplacableType` yourself:
 
   ```rust
   #[derive(Resource)]
   struct MyResource(String);
 
-  impl ReplacableResource for MyResource {
+  impl ReplacableType for MyResource {
     fn get_type_name() -> &'static str {
         "MyResource"
     }
