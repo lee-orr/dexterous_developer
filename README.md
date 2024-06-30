@@ -112,12 +112,12 @@ The [Simple Visual](./adapters/bevy_dexterous_developer/examples/simple_visual.r
 
 ## Running with Hot Reload
 
-To run a hot-reloaded app, you need to do 2 things:
+To run a hot-reloaded app locally, cargo install and run `dexterous_developer_cli` (optionally passing in a specific package or example).
 
-- run the `dexterous_developer_cli` command to set up a build server
-- run the `dexterous_developer_runner` command, ideally in a dedicated directory, to actually run the application
+To run the app on a different machine (with the same platform), cargo install `dexterous_developer_cli` on both machines, and then:
 
-In the future, the experience will be streamlined.
+- run the `dexterous_developer_cli --serve-only` on the development machine
+- run the `dexterous_developer_runner --server http://*.*.*.*:4321` command, ideally in a dedicated directory, on the target machine
 
 ## Inspiration
 
