@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::{env, process, sync::Arc};
 
 use camino::Utf8PathBuf;
 
@@ -43,7 +43,7 @@ async fn main() {
         example,
         features,
         port,
-        serve_only: _,
+        serve_only,
     } = Args::parse();
 
     let current_directory =
@@ -80,6 +80,34 @@ async fn main() {
         .await;
 
     info!("Starting Server");
+    if serve_only {
+        run_server(port, manager).await.expect("Server Error");
+    } else {
+        let tempdir = async_tempfile::TempDir::new().await.expect("Couldn't create temporary directory");
+        {
+            let port = port;
+            tokio::spawn(async move {
+                run_server(port, manager).await.expect("Server Error");
+            });
+        }
+        {
+            let mut cmd = tokio::process::Command::new("dexterous_developer_runner");
+            cmd.arg("--server").arg(format!("http://localhost:{port}"));
+            cmd.current_dir(tempdir.dir_path());
 
-    run_server(port, manager).await.expect("Server Error");
+            let mut child = cmd.spawn().expect("Couldn't execute runner");
+            match child.wait().await {
+                Ok(status) => {
+                    if !status.success() {
+                        eprintln!("Runner failed");
+                        process::exit(status.code().unwrap_or_default());
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Ran into an error with the runner - {e}");
+                    process::exit(1);
+                },
+            }
+        }
+    }
 }

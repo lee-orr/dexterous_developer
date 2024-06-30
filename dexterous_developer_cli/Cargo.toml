@@ -40,7 +40,7 @@ toml = "0.8"
 cargo_toml = "0.20"
 locate-cargo-manifest = "0.2"
 serde = { version = "1", features = ["derive"]}
-
+async-tempfile = "0.6"
 
 dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types", features = ["config"] }
 dexterous_developer_builder = { version = "0.3.0-pre.1", path = "../dexterous_developer_builder"}
