@@ -24,7 +24,7 @@ fn terminal_runner(mut app: App) -> AppExit {
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
 struct MySerializableResource {
-    first_field: String
+    first_field: String,
 }
 
 impl SerializableType for MySerializableResource {
@@ -49,7 +49,7 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Res<MySerializableResource>) {
+fn update(res: Res<MySerializableResource>) {
     println!("{}", res.first_field);
 }
 

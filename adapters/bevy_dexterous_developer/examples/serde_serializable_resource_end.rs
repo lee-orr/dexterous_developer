@@ -23,10 +23,10 @@ fn terminal_runner(mut app: App) -> AppExit {
 }
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
-#[serde(default)] 
+#[serde(default)]
 struct MySerializableResource {
     first_field: String,
-    second_field: String
+    second_field: String,
 }
 
 impl SerializableType for MySerializableResource {
@@ -39,7 +39,7 @@ impl Default for MySerializableResource {
     fn default() -> Self {
         Self {
             first_field: "My First Field".to_string(),
-            second_field: "My Second Field".to_string()
+            second_field: "My Second Field".to_string(),
         }
     }
 }
@@ -52,7 +52,7 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Res<MySerializableResource>) {
+fn update(res: Res<MySerializableResource>) {
     println!("{} - {}", res.first_field, res.second_field);
 }
 

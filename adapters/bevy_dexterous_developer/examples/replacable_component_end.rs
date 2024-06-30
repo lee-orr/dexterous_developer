@@ -31,18 +31,27 @@ impl ReplacableType for MySerializableComponent {
     fn get_type_name() -> &'static str {
         "MySerializableComponent"
     }
-    
+
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = format!("{}::{}", self.first_field, self.second_field);
         Ok(value.as_bytes().to_vec())
     }
-    
+
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
         let value = std::str::from_utf8(val)?;
         let mut split = value.split("::");
-        let first_field = split.next().map(|v| v.to_string()).unwrap_or(format!("No First Field"));
-        let second_field = split.next().map(|v| v.to_string()).unwrap_or(format!("?"));
-        Ok(Self { first_field, second_field })
+        let first_field = split
+            .next()
+            .map(|v| v.to_string())
+            .unwrap_or("No First Field".to_string());
+        let second_field = split
+            .next()
+            .map(|v| v.to_string())
+            .unwrap_or("?".to_string());
+        Ok(Self {
+            first_field,
+            second_field,
+        })
     }
 }
 
@@ -50,7 +59,7 @@ impl Default for MySerializableComponent {
     fn default() -> Self {
         Self {
             first_field: "My First Field".to_string(),
-            second_field: "Second Field".to_string()
+            second_field: "Second Field".to_string(),
         }
     }
 }
@@ -63,19 +72,26 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Query<&MySerializableComponent>) {
-    let mut list = res.iter().map(|component| {
-        format!("{}_{}", component.first_field, component.second_field)
-    }).collect::<Vec<_>>();
+fn update(res: Query<&MySerializableComponent>) {
+    let mut list = res
+        .iter()
+        .map(|component| format!("{}_{}", component.first_field, component.second_field))
+        .collect::<Vec<_>>();
     list.sort();
     let value = list.join(" - ");
     println!("{value}");
 }
 
-fn startup(mut commands : Commands) {
+fn startup(mut commands: Commands) {
     println!("Press Enter to Progress, or type 'exit' to exit");
-    commands.spawn(MySerializableComponent { first_field: "a".to_string(), second_field: "!".to_string()});
-    commands.spawn(MySerializableComponent { first_field: "b".to_string(), second_field: "!".to_string()});
+    commands.spawn(MySerializableComponent {
+        first_field: "a".to_string(),
+        second_field: "!".to_string(),
+    });
+    commands.spawn(MySerializableComponent {
+        first_field: "b".to_string(),
+        second_field: "!".to_string(),
+    });
 }
 
 reloadable_scope!(reloadable(app) {

@@ -23,29 +23,31 @@ fn terminal_runner(mut app: App) -> AppExit {
 
 #[derive(Component, Debug)]
 struct MySerializableComponent {
-    first_field: String
+    first_field: String,
 }
 
 impl ReplacableType for MySerializableComponent {
     fn get_type_name() -> &'static str {
         "MySerializableComponent"
     }
-    
+
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = &self.first_field;
         Ok(value.as_bytes().to_vec())
     }
-    
+
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
         let value = std::str::from_utf8(val)?;
-        Ok(MySerializableComponent { first_field: value.to_string() })
+        Ok(MySerializableComponent {
+            first_field: value.to_string(),
+        })
     }
 }
 
 impl Default for MySerializableComponent {
     fn default() -> Self {
         Self {
-            first_field: "My First Field".to_string()
+            first_field: "My First Field".to_string(),
         }
     }
 }
@@ -58,19 +60,24 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Query<&MySerializableComponent>) {
-    let mut list = res.iter().map(|component| {
-        component.first_field.clone()
-    }).collect::<Vec<_>>();
+fn update(res: Query<&MySerializableComponent>) {
+    let mut list = res
+        .iter()
+        .map(|component| component.first_field.clone())
+        .collect::<Vec<_>>();
     list.sort();
     let value = list.join(" - ");
     println!("{value}");
 }
 
-fn startup(mut commands : Commands) {
+fn startup(mut commands: Commands) {
     println!("Press Enter to Progress, or type 'exit' to exit");
-    commands.spawn(MySerializableComponent { first_field: "a".to_string()});
-    commands.spawn(MySerializableComponent { first_field: "b".to_string()});
+    commands.spawn(MySerializableComponent {
+        first_field: "a".to_string(),
+    });
+    commands.spawn(MySerializableComponent {
+        first_field: "b".to_string(),
+    });
 }
 
 reloadable_scope!(reloadable(app) {

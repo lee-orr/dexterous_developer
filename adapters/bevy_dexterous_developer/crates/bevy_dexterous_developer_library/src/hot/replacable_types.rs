@@ -4,7 +4,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use crate::{ReplacableType};
+use crate::ReplacableType;
 
 #[derive(Resource, Default)]
 pub struct ReplacableResourceStore {

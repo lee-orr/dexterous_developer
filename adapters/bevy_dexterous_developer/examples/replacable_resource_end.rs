@@ -24,25 +24,34 @@ fn terminal_runner(mut app: App) -> AppExit {
 #[derive(Resource, Debug)]
 struct MySerializableResource {
     first_field: String,
-    second_field: String
+    second_field: String,
 }
 
 impl ReplacableType for MySerializableResource {
     fn get_type_name() -> &'static str {
         "MySerializableResource"
     }
-    
+
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = format!("{}::{}", self.first_field, self.second_field);
         Ok(value.as_bytes().to_vec())
     }
-    
+
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
         let value = std::str::from_utf8(val)?;
         let mut split = value.split("::");
-        let first_field = split.next().map(|v| v.to_string()).unwrap_or(format!("No First Field"));
-        let second_field = split.next().map(|v| v.to_string()).unwrap_or(format!("Missing Second Field"));
-        Ok(MySerializableResource { first_field, second_field })
+        let first_field = split
+            .next()
+            .map(|v| v.to_string())
+            .unwrap_or("No First Field".to_string());
+        let second_field = split
+            .next()
+            .map(|v| v.to_string())
+            .unwrap_or("Missing Second Field".to_string());
+        Ok(MySerializableResource {
+            first_field,
+            second_field,
+        })
     }
 }
 
@@ -50,7 +59,7 @@ impl Default for MySerializableResource {
     fn default() -> Self {
         Self {
             first_field: "My First Field".to_string(),
-            second_field: "My New Field".to_string()
+            second_field: "My New Field".to_string(),
         }
     }
 }
@@ -63,7 +72,7 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Res<MySerializableResource>) {
+fn update(res: Res<MySerializableResource>) {
     println!("{} - {}", res.first_field, res.second_field);
 }
 

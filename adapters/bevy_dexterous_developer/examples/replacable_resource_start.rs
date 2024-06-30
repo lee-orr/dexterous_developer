@@ -23,29 +23,31 @@ fn terminal_runner(mut app: App) -> AppExit {
 
 #[derive(Resource, Debug)]
 struct MySerializableResource {
-    first_field: String
+    first_field: String,
 }
 
 impl ReplacableType for MySerializableResource {
     fn get_type_name() -> &'static str {
         "MySerializableResource"
     }
-    
+
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = &self.first_field;
         Ok(value.as_bytes().to_vec())
     }
-    
+
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
         let value = std::str::from_utf8(val)?;
-        Ok(MySerializableResource { first_field: value.to_string() })
+        Ok(MySerializableResource {
+            first_field: value.to_string(),
+        })
     }
 }
 
 impl Default for MySerializableResource {
     fn default() -> Self {
         Self {
-            first_field: "My First Field".to_string()
+            first_field: "My First Field".to_string(),
         }
     }
 }
@@ -58,7 +60,7 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Res<MySerializableResource>) {
+fn update(res: Res<MySerializableResource>) {
     println!("{}", res.first_field);
 }
 

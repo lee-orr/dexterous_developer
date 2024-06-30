@@ -9,7 +9,8 @@ mod component_test {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
 
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "serde_serializable_component_start").await;
+        let (mut comms, send, mut output, _) =
+            setup_test(dir_path, "serde_serializable_component_start").await;
 
         recv_std(&mut output, "a - b")
             .await
@@ -34,7 +35,8 @@ mod component_test {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
 
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "replacable_component_start").await;
+        let (mut comms, send, mut output, _) =
+            setup_test(dir_path, "replacable_component_start").await;
 
         recv_std(&mut output, "a - b")
             .await
@@ -61,9 +63,7 @@ mod component_test {
 
         let (mut comms, send, mut output, _) = setup_test(dir_path, "reset_component").await;
 
-        recv_std(&mut output, "a")
-            .await
-            .expect("Failed first line");
+        recv_std(&mut output, "a").await.expect("Failed first line");
         let _ = send.send(InMessage::Std("\n".to_string()));
         recv_std(&mut output, "a - b")
             .await
@@ -73,9 +73,7 @@ mod component_test {
             .await
             .expect("Didn't Get Download");
         let _ = send.send(InMessage::Std("\n".to_string()));
-        recv_std(&mut output, "a")
-            .await
-            .expect("Failed first line");
+        recv_std(&mut output, "a").await.expect("Failed first line");
         let _ = send.send(InMessage::Std("\n".to_string()));
         recv_std(&mut output, "a - b")
             .await

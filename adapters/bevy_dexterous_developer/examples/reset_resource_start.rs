@@ -26,7 +26,7 @@ struct ResetResource(String);
 
 impl Default for ResetResource {
     fn default() -> Self {
-        Self(format!("Resource Initial"))
+        Self("Resource Initial".to_string())
     }
 }
 
@@ -38,7 +38,7 @@ reloadable_main!( bevy_main(initial_plugins) {
         .run();
 });
 
-fn update(res : Res<ResetResource>) {
+fn update(res: Res<ResetResource>) {
     println!("{}", res.0);
 }
 
