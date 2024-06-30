@@ -318,8 +318,8 @@ pub mod internal {
     }
 }
 
-#[cfg(feature = "hot")]
-pub mod hot {
+#[cfg(feature = "runner")]
+pub mod runner {
 
     use crate::HotReloadInfo;
 

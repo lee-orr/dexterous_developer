@@ -16,9 +16,6 @@ exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
-hot = ["dexterous_developer_instance/hot",
-    "bevy_dexterous_developer/hot",
-]
 hot_internal = [
     "dexterous_developer_instance/hot_internal",
     "bevy_dexterous_developer/hot_internal",

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use camino::Utf8Path;
 
-use dexterous_developer_instance::{hot::HotReloadInfoBuilder, UpdatedAsset};
+use dexterous_developer_instance::{runner::HotReloadInfoBuilder, UpdatedAsset};
 use dexterous_developer_types::cargo_path_utils::dylib_path;
 use dylib_runner_message::DylibRunnerMessage;
 use error::DylibRunnerError;
