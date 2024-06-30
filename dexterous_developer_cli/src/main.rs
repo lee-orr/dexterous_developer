@@ -83,13 +83,12 @@ async fn main() {
     if serve_only {
         run_server(port, manager).await.expect("Server Error");
     } else {
-        let tempdir = async_tempfile::TempDir::new().await.expect("Couldn't create temporary directory");
-        {
-            let port = port;
-            tokio::spawn(async move {
-                run_server(port, manager).await.expect("Server Error");
-            });
-        }
+        let tempdir = async_tempfile::TempDir::new()
+            .await
+            .expect("Couldn't create temporary directory");
+        tokio::spawn(async move {
+            run_server(port, manager).await.expect("Server Error");
+        });
         {
             let mut cmd = tokio::process::Command::new("dexterous_developer_runner");
             cmd.arg("--server").arg(format!("http://localhost:{port}"));
@@ -102,11 +101,11 @@ async fn main() {
                         eprintln!("Runner failed");
                         process::exit(status.code().unwrap_or_default());
                     }
-                },
+                }
                 Err(e) => {
                     eprintln!("Ran into an error with the runner - {e}");
                     process::exit(1);
-                },
+                }
             }
         }
     }
