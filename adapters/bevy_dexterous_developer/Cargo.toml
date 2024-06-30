@@ -15,8 +15,8 @@ version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-hot_internal = [
-    "bevy_dexterous_developer_library/hot_internal",
+hot = [
+    "bevy_dexterous_developer_library/hot",
     "dep:bevy_dexterous_developer_dynamic"
 ]
 
@@ -35,14 +35,14 @@ tracing = "0.1"
 [[example]]
 name = "simple_cli"
 crate-type = ["dylib"]
-required-features = ["hot_internal"]
+required-features = ["hot"]
 
 [[example]]
 name = "simple_system_swap"
 crate-type = ["dylib"]
-required-features = ["hot_internal"]
+required-features = ["hot"]
 
 [[example]]
 name = "simple_visual"
 crate-type = ["dylib"]
-required-features = ["hot_internal"]
+required-features = ["hot"]

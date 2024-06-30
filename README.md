@@ -56,11 +56,11 @@ For dexterous_developer to function, your package currently needs to be a dynami
 crate-type = ["rlib", "dylib"]
 ```
 
-You'll also need to add the appropriate dexterous developer adapter to your library's dependencies, and set up the "hot_internal" feature. For example, if you are using bevy:
+You'll also need to add the appropriate dexterous developer adapter to your library's dependencies, and set up the "hot" feature. For example, if you are using bevy:
 
 ```toml
 [features]
-hot_internal = ["dexterous_developer/hot_internal"]
+hot = ["dexterous_developer/hot"]
 
 [dependencies]
 bevy = "0.14"

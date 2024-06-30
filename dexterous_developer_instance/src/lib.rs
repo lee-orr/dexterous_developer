@@ -29,7 +29,7 @@ pub struct CallResponse {
     pub error: c_slice::Box<u8>,
 }
 
-#[cfg(feature = "hot_internal")]
+#[cfg(feature = "hot")]
 pub mod internal {
     use camino::Utf8PathBuf;
     use chrono::{Local, Timelike};

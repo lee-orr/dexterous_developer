@@ -1,3 +1,3 @@
-cargo build --examples --features hot_internal
+cargo build --examples --features hot
 cargo build --bin dexterous_developer_runner
 cargo test

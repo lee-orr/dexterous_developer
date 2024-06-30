@@ -1,6 +1,6 @@
 pub use paste::paste;
 
-#[cfg(feature = "hot_internal")]
+#[cfg(feature = "hot")]
 mod hot {
     #[macro_export]
     macro_rules! reloadable_main {
@@ -21,7 +21,7 @@ mod hot {
     }
 }
 
-#[cfg(not(feature = "hot_internal"))]
+#[cfg(not(feature = "hot"))]
 mod cold {
     #[macro_export]
     macro_rules! reloadable_main {

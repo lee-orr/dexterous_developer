@@ -12,8 +12,8 @@ use bevy::prelude::{App, First, Plugin, PreStartup, Update};
 
 pub extern crate libloading;
 
-use crate::hot_internal::hot_reload_internal::draw_internal_hot_reload;
-use crate::hot_internal::reload_systems::{
+use crate::hot::hot_reload_internal::draw_internal_hot_reload;
+use crate::hot::reload_systems::{
     reset_update_frame, toggle_reload_mode, toggle_reloadable_elements, InternalHotReload,
 };
 pub use crate::types::*;

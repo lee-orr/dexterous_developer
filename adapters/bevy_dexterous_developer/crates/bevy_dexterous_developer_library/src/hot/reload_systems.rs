@@ -5,7 +5,7 @@ use bevy::{
 use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 
 use crate::{
-    hot_internal::{
+    hot::{
         CleanupReloaded, CleanupSchedules, DeserializeReloadables, OnReloadComplete,
         ReloadableAppCleanupData, ReloadableAppElements, SerializeReloadables, SetupReload,
     },

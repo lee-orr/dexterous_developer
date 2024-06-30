@@ -19,7 +19,7 @@ default = ["dylib"]
 runner = [
     "dep:tracing-subscriber",
 ]
-hot_internal = [
+hot = [
 ]
 dylib = ["dep:libloading"]
 
