@@ -77,3 +77,23 @@ To run the app on a different machine (with the same platform), cargo install `d
 
 - run the `dexterous_developer_cli --serve-only` on the development machine
 - run the `dexterous_developer_runner --server http://*.*.*.*:4321` command, ideally in a dedicated directory, on the target machine
+
+## Running or Building Without Hot Reload
+
+Once you have everything set up for development, you will likely want to be able to build production versions of the application as well. This will require creating a separate binary. To do so, you can add a `bins/launcher.rs` to your project:
+
+```rust
+fn main() {
+    PACKAGE_NAME::bevy_main();
+}
+```
+
+and in your `Cargo.toml`, you'll need to add:
+
+```toml
+[[bin]]
+name = "launcher"
+path = "bins/launcher.rs"
+```
+
+You can then run the non-hot-reloadable version of your app using `cargo run --bin launcher` (or build with `cargo build --bin launcher`). Remember to avoid including the `hot` feature, since it's designed to work only inside a reloadable library!.
