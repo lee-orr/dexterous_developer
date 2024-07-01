@@ -8,3 +8,4 @@
   - [System Replacement and Registration](bevy/system_replacement.md)
   - [Resources](bevy/resources.md)
   - [Components](bevy/components.md)
+  - [Events](bevy/events.md)
