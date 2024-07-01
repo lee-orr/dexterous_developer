@@ -1,5 +1,8 @@
 {
   "rust-analyzer.cargo.features": [
     "hot"
+  ],
+  "conventionalCommits.scopes": [
+    "workspace"
   ]
 }

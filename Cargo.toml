@@ -1,17 +1,17 @@
 [workspace]
 resolver = "2"
 members = [
-    "dexterous_developer",
-    "dexterous_developer_cli",
-    "dexterous_developer_instance",
-    "dexterous_developer_dynamic",
-    "dexterous_developer_builder",
     "dexterous_developer_types",
+    "dexterous_developer_builder",
     "dexterous_developer_manager",
+    "dexterous_developer_instance",
     "dexterous_developer_dylib_runner",
+    "dexterous_developer_cli",
+    "dexterous_developer_test_utils",
+    "adapters/*/crates/*",
     "adapters/*",
-    "adapters/*/crates/*"
-, "dexterous_developer_test_utils"]
+    "dexterous_developer",
+    "dexterous_developer_dynamic",]
 
 [workspace.package]
 version = "0.3.0-pre.1"
