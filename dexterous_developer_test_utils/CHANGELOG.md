@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0-pre.1](https://github.com/lee-orr/dexterous_developer/releases/tag/dexterous_developer_test_utils-v0.3.0-pre.1) - 2024-07-01
 
 ### Other
+- update
+- clippy, fmt, test
+- test improvements
+- basic cli tests
+- build all examples & binaries before test
+- build test works fast
+
+## [0.3.0-pre.1](https://github.com/lee-orr/dexterous_developer/releases/tag/dexterous_developer_test_utils-v0.3.0-pre.1) - 2024-07-01
+
+### Other
 - clippy, fmt, test
 - test improvements
 - basic cli tests
