@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::{change_detection::MutUntyped, event::EventRegistry, schedule::ScheduleLabel},
+    ecs::{event::EventRegistry, schedule::ScheduleLabel},
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -18,7 +18,6 @@ pub struct ReloadableAppElements {
     schedules: HashMap<WrappedSchedule, (Schedule, ReloadableSchedule<WrappedSchedule>)>,
     resources: HashSet<String>,
     components: HashSet<String>,
-    event_register: Vec<unsafe fn(MutUntyped)>,
 }
 
 impl ReloadableAppElements {
