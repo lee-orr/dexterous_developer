@@ -8,7 +8,6 @@
 - [Reloading and Resetting Resources](./resources.md)
 - [Reloading Components and Re-Running Setup Functions](./components.md)
 - [Replacing Events](./events.md)
-- [Reloading States](./states.md)
 
 ## Warning
 
