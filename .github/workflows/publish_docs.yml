@@ -1,7 +1,11 @@
 name: Publish Docs
 
 on:
-  workflow_dispatch:
+  push: 
+    branches: ['main']
+  release:
+    types: [published]
+  
 
 permissions:
   pull-requests: write
@@ -14,7 +18,7 @@ env:
   CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
 concurrency:
-  group: "publish_docs"
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,9 +29,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
@@ -36,19 +37,46 @@ jobs:
       - name: Add Dependencies
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev build-essential libpulse-dev libdbus-1-dev g++ pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+            ref: 'main'
       - run: mdbook build
       - name: build docs
         run: cargo doc --no-deps
       - name: place files in folder
         run: |
           mv ./target/doc ./book/doc
+          mv ./book ../book-main
+
+      - name: get latest release with tag
+        id: latestrelease
+        run: |
+          echo "::set-output name=releasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[] | .tag_name | select(. | test("^.*\\d+\\.\\d+\\.\\d+$"))' | sed 's/\"//g' | head -n1)"
+      - name: confirm release tag
+        run: |
+          echo ${{ steps.latestrelease.outputs.releasetag }}
+      - name: tagcheckout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.latestrelease.outputs.releasetag }}
+
+      - run: mdbook build
+      - name: build docs
+        run: cargo doc --no-deps
+      - name: place files in folder
+        run: |
+          mv ./target/doc ./book/doc
+          mv ./book ../book
+          mv ../book-main ../book/main
+
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
-          path: "./book"
+          path: "../book"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v1
