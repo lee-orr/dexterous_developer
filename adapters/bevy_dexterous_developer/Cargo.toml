@@ -107,3 +107,13 @@ required-features = ["hot"]
 name = "reset_component"
 crate-type = ["dylib"]
 required-features = ["hot"]
+
+[[example]]
+name = "events_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "events_end"
+crate-type = ["dylib"]
+required-features = ["hot"]

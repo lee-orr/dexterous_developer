@@ -7,3 +7,4 @@
   - [Bevy Quick Start](bevy/bevy_quick_start.md)
   - [System Replacement and Registration](bevy/system_replacement.md)
   - [Resources](bevy/resources.md)
+  - [Components](bevy/components.md)
