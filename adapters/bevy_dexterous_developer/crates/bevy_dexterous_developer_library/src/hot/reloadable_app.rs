@@ -239,25 +239,3 @@ fn element_selection_condition(name: &'static str) -> impl Fn(Option<Res<ReloadS
         true
     }
 }
-
-impl<'a> AppExtStates for ReloadableAppContents<'a> {
-    fn init_state<S: bevy::state::state::FreelyMutableState + FromWorld>(&mut self) -> &mut Self {
-        todo!()
-    }
-
-    fn insert_state<S: bevy::state::state::FreelyMutableState>(&mut self, state: S) -> &mut Self {
-        todo!()
-    }
-
-    fn add_computed_state<S: ComputedStates>(&mut self) -> &mut Self {
-        todo!()
-    }
-
-    fn add_sub_state<S: SubStates>(&mut self) -> &mut Self {
-        todo!()
-    }
-
-    fn enable_state_scoped_entities<S: States>(&mut self) -> &mut Self {
-        todo!()
-    }
-}

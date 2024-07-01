@@ -23,7 +23,7 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 
 ### Bevy Specific
 
-- Define the reloadable areas of your game explicitly - which can include systems, components, states, events and resources (w/ some limitations)
+- Define the reloadable areas of your game explicitly - which can include systems, components, events and resources (w/ some limitations)
 - Reset resources to a default or pre-determined value upon reload
 - Serialize/deserialize your reloadable resources & components, allowing you to evolve their schemas so long as they are compatible with the de-serializer (using rmp_serde)
 - Mark entities to get removed on hot reload
@@ -40,8 +40,8 @@ Fuller documentation is available at: <https://lee-orr.github.io/dexterous_devel
 - Supporting the use of inter-process communication in addition to the current dynamic-library approach
 - Simplify CLI / Launchers
   - When running in place, avoid needing to copy/download files if running from the same dir
-  - Should be able to use a single CLI command to immediately run rather than a build/serve and separately a runner
   - GUI-based launchers should be added, especially for mobile
+- Supporting state in bevy
 
 ## Installation
 

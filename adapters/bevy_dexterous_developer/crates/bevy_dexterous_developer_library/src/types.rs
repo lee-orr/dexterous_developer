@@ -34,7 +34,7 @@ pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
 
-pub trait ReloadableApp: private::ReloadableAppSealed + AppExtStates {
+pub trait ReloadableApp: private::ReloadableAppSealed {
     fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
         schedule: L,

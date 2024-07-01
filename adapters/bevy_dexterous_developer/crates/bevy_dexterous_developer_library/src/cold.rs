@@ -87,32 +87,3 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 }
-
-impl<'a> AppExtStates for ReloadableAppContents<'a> {
-    fn init_state<S: bevy::state::state::FreelyMutableState + bevy::prelude::FromWorld>(
-        &mut self,
-    ) -> &mut Self {
-        self.0.init_state::<S>();
-        self
-    }
-
-    fn insert_state<S: bevy::state::state::FreelyMutableState>(&mut self, state: S) -> &mut Self {
-        self.0.insert_state::<S>(state);
-        self
-    }
-
-    fn add_computed_state<S: bevy::prelude::ComputedStates>(&mut self) -> &mut Self {
-        self.0.add_computed_state::<S>();
-        self
-    }
-
-    fn add_sub_state<S: bevy::prelude::SubStates>(&mut self) -> &mut Self {
-        self.0.add_sub_state::<S>();
-        self
-    }
-
-    fn enable_state_scoped_entities<S: bevy::prelude::States>(&mut self) -> &mut Self {
-        self.0.enable_state_scoped_entities::<S>();
-        self
-    }
-}
