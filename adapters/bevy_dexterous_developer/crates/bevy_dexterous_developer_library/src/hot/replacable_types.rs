@@ -58,6 +58,23 @@ pub fn deserialize_replacable_resource_with_initializer<R: ReplacableType + Reso
     .into_configs()
 }
 
+pub fn deserialize_replacable_resource<R: ReplacableType + Resource>(
+    store: Res<ReplacableResourceStore>,
+    mut commands: Commands,
+) {
+    let name = R::get_type_name();
+    debug!("Deserializing {name}");
+    let Some(v) = store
+        .map
+        .get(name)
+        .and_then(|v| R::from_slice(v).ok()) else {
+            return;
+        };
+
+    commands.insert_resource(v);
+}
+
+
 #[derive(Resource, Default)]
 pub struct ReplacableComponentStore {
     map: HashMap<String, Vec<(Entity, Vec<u8>)>>,

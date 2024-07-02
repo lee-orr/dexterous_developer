@@ -12,6 +12,8 @@ If you have a resource that you want to serialize and de-serialize, allowing you
 
 You initialize the resource by using either `app.init_serializable_resource::<R: ReplacableType + Resource + Default>()` or `app.insert_serializable_resource::<R: ReplacableType + Resource>(initializer: impl 'static + Send + Sync + Fn() -> R)`
 
+You can also mark a resource type as serializable without actively adding a copy of it to the application using `app.register_serializable_resource::<R: ReplacableType + Resource>()`. This will only serialize/deserialize the resource if it existins at the time of the reload.
+
 - using `serde` and implementing `SerializableResource`. This approach relies on `rmp_serde` to serialize and deserialize the resource.
 
   ```rust

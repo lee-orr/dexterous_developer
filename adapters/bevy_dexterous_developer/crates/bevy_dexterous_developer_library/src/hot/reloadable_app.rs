@@ -77,6 +77,26 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
+    fn register_serializable_resource<R: Resource + ReplacableType>(&mut self) -> &mut Self {
+        let name = R::get_type_name();
+        if !self.resources.contains(name) {
+            self.resources.insert(name.to_string());
+            info!("adding resource {name}");
+            let reloadable_element_name = self.name;
+            self.add_systems(
+                SerializeReloadables,
+                serialize_replacable_resource::<R>
+                    .run_if(element_selection_condition(reloadable_element_name)),
+            )
+            .add_systems(
+                DeserializeReloadables,
+                deserialize_replacable_resource::<R>
+                    .run_if(element_selection_condition(reloadable_element_name)),
+            );
+        }
+        self
+    }
+
     fn init_serializable_resource<R: ReplacableType + Default + Resource>(&mut self) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
@@ -224,10 +244,10 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
     
-    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self {
+    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
-            self.insert_serializable_resource(|| State::new(S::default()))
+            self.insert_serializable_resource(move || State::new(state.clone()))
                 .reset_resource::<NextState<S>>()
                 .add_event::<StateTransitionEvent<S>>();
 
@@ -244,6 +264,34 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 let mut schedule = Schedule::new(reloadable.clone());
 
                 S::register_state(&mut schedule);
+                
+                schedules.insert(wrapped, (schedule, reloadable));
+            }
+        }
+
+        self
+    }
+    
+    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self {
+        let name = S::get_type_name();
+        if !self.resources.contains(name) {
+            self.register_serializable_resource::<State<S>>()
+                .reset_resource::<NextState<S>>()
+                .add_event::<StateTransitionEvent<S>>();
+
+            let schedules = &mut self.schedules;
+
+            let wrapped: WrappedSchedule = WrappedSchedule::new(StateTransition);
+
+            if let Some((schedule, _)) = schedules.get_mut(&wrapped) {
+                info!("Adding systems to schedule");
+                S::register_sub_state_systems(schedule);
+            } else {
+                info!("Creating schedule with systems");
+                let reloadable = ReloadableSchedule::new(wrapped.clone());
+                let mut schedule = Schedule::new(reloadable.clone());
+
+                S::register_sub_state_systems(&mut schedule);
                 
                 schedules.insert(wrapped, (schedule, reloadable));
             }

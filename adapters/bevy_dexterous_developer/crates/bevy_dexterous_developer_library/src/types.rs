@@ -56,7 +56,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         schedule: L,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
-
+    fn register_serializable_resource<R: Resource + ReplacableType>(&mut self) -> &mut Self;
     fn init_serializable_resource<R: Resource + ReplacableType + Default>(&mut self) -> &mut Self;
     fn insert_serializable_resource<R: Resource + ReplacableType>(
         &mut self,
@@ -73,7 +73,13 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
     fn add_event<T: Event>(&mut self) -> &mut Self;
-    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self;
+
+    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self;
+    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self {
+        self.insert_state(S::default())
+    }
+
+    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

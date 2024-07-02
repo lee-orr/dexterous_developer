@@ -28,6 +28,10 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
+    fn register_serializable_resource<R: bevy::prelude::Resource + ReplacableType>(&mut self) -> &mut Self {
+        self
+    }
+
     fn init_serializable_resource<R: ReplacableType + bevy::prelude::Resource + Default>(
         &mut self,
     ) -> &mut Self {
@@ -87,8 +91,13 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn init_state<S: bevy::state::state::FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self {
-        self.0.init_state::<S>();
+    fn insert_state<S: bevy::state::state::FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
+        self.0.insert_state::<S>(state);
+        self
+    }
+
+    fn add_sub_state<S: bevy::state::state::SubStates + ReplacableType>(&mut self) -> &mut Self {
+        self.0.add_sub_state::<S>();
         self
     }
 }

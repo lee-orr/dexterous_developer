@@ -3,6 +3,7 @@
     "hot"
   ],
   "conventionalCommits.scopes": [
-    "workspace"
+    "workspace",
+    "bevy"
   ]
 }
