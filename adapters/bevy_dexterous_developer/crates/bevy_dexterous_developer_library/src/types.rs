@@ -1,5 +1,11 @@
 use super::ReloadableAppContents;
-use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*, state::{app::StatesPlugin, state::FreelyMutableState}};
+use bevy::{
+    app::PluginGroupBuilder,
+    ecs::schedule::ScheduleLabel,
+    log::LogPlugin,
+    prelude::*,
+    state::{app::StatesPlugin, state::FreelyMutableState},
+};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub type Result<T> = anyhow::Result<T>;
@@ -44,7 +50,6 @@ impl<T: States + ReplacableType> ReplacableType for State<T> {
         Ok(Self::new(value))
     }
 }
-
 
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}

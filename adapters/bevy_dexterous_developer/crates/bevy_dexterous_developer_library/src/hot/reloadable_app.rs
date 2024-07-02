@@ -1,5 +1,8 @@
 use bevy::{
-    ecs::{event::EventRegistry, schedule::ScheduleLabel}, prelude::*, state::state::FreelyMutableState, utils::{HashMap, HashSet}
+    ecs::{event::EventRegistry, schedule::ScheduleLabel},
+    prelude::*,
+    state::state::FreelyMutableState,
+    utils::{HashMap, HashSet},
 };
 
 use super::{super::types::*, reload_systems::dexterous_developer_occured};
@@ -243,7 +246,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         );
         self
     }
-    
+
     fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
@@ -264,14 +267,14 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 let mut schedule = Schedule::new(reloadable.clone());
 
                 S::register_state(&mut schedule);
-                
+
                 schedules.insert(wrapped, (schedule, reloadable));
             }
         }
 
         self
     }
-    
+
     fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
@@ -292,14 +295,14 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 let mut schedule = Schedule::new(reloadable.clone());
 
                 S::register_sub_state_systems(&mut schedule);
-                
+
                 schedules.insert(wrapped, (schedule, reloadable));
             }
         }
 
         self
     }
-    
+
     fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
@@ -319,7 +322,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 let mut schedule = Schedule::new(reloadable.clone());
 
                 S::register_computed_state_systems(&mut schedule);
-                
+
                 schedules.insert(wrapped, (schedule, reloadable));
             }
         }

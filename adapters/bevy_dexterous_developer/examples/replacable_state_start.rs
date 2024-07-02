@@ -24,8 +24,8 @@ fn terminal_runner(mut app: App) -> AppExit {
 #[derive(States, Debug, Default, Hash, PartialEq, Eq, Clone)]
 enum MyState {
     #[default]
-    InitialState,
-    AnotherState
+    Initial,
+    Another,
 }
 
 impl ReplacableType for MyState {
@@ -35,26 +35,25 @@ impl ReplacableType for MyState {
 
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = match self {
-            MyState::InitialState => [0],
-            MyState::AnotherState => [1],
+            MyState::Initial => [0],
+            MyState::Another => [1],
         };
         Ok(value.to_vec())
     }
 
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
-        let value = if let Some(val) = val.get(0) {
+        let value = if let Some(val) = val.first() {
             if *val == 1 {
-                MyState::AnotherState
+                MyState::Another
             } else {
-                MyState::InitialState
+                MyState::Initial
             }
         } else {
-            MyState::InitialState
+            MyState::Initial
         };
         Ok(value)
     }
 }
-
 
 reloadable_main!( bevy_main(initial_plugins) {
     App::new()
@@ -66,7 +65,7 @@ reloadable_main!( bevy_main(initial_plugins) {
 
 fn set_next_state(mut next_state: ResMut<NextState<MyState>>) {
     println!("In Initial State");
-    next_state.set(MyState::AnotherState);
+    next_state.set(MyState::Another);
 }
 
 fn in_another_state() {
@@ -80,7 +79,7 @@ fn startup() {
 reloadable_scope!(reloadable(app) {
     app
         .add_systems(Startup, startup)
-        .add_systems(Update, set_next_state.run_if(in_state(MyState::InitialState)))
-        .add_systems(Update, in_another_state.run_if(in_state(MyState::AnotherState)))
+        .add_systems(Update, set_next_state.run_if(in_state(MyState::Initial)))
+        .add_systems(Update, in_another_state.run_if(in_state(MyState::Another)))
         .init_state::<MyState>();
 });

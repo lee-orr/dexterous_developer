@@ -64,16 +64,12 @@ pub fn deserialize_replacable_resource<R: ReplacableType + Resource>(
 ) {
     let name = R::get_type_name();
     debug!("Deserializing {name}");
-    let Some(v) = store
-        .map
-        .get(name)
-        .and_then(|v| R::from_slice(v).ok()) else {
-            return;
-        };
+    let Some(v) = store.map.get(name).and_then(|v| R::from_slice(v).ok()) else {
+        return;
+    };
 
     commands.insert_resource(v);
 }
-
 
 #[derive(Resource, Default)]
 pub struct ReplacableComponentStore {

@@ -44,7 +44,8 @@ mod state_test {
     async fn can_add_a_sub_state() {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "replacable_sub_state_start").await;
+        let (mut comms, send, mut output, _) =
+            setup_test(dir_path, "replacable_sub_state_start").await;
 
         recv_std(&mut output, "In Initial State")
             .await
@@ -90,7 +91,8 @@ mod state_test {
     async fn can_add_a_computed_state() {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "replacable_computed_state_start").await;
+        let (mut comms, send, mut output, _) =
+            setup_test(dir_path, "replacable_computed_state_start").await;
 
         recv_std(&mut output, "In Initial State")
             .await

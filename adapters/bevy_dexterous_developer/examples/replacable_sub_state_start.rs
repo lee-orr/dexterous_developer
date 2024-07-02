@@ -24,8 +24,8 @@ fn terminal_runner(mut app: App) -> AppExit {
 #[derive(States, Debug, Default, Hash, PartialEq, Eq, Clone)]
 enum MyState {
     #[default]
-    InitialState,
-    AnotherState
+    Initial,
+    Another,
 }
 
 impl ReplacableType for MyState {
@@ -35,32 +35,32 @@ impl ReplacableType for MyState {
 
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = match self {
-            MyState::InitialState => [0],
-            MyState::AnotherState => [1],
+            MyState::Initial => [0],
+            MyState::Another => [1],
         };
         Ok(value.to_vec())
     }
 
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
-        let value = if let Some(val) = val.get(0) {
+        let value = if let Some(val) = val.first() {
             if *val == 1 {
-                MyState::AnotherState
+                MyState::Another
             } else {
-                MyState::InitialState
+                MyState::Initial
             }
         } else {
-            MyState::InitialState
+            MyState::Initial
         };
         Ok(value)
     }
 }
 
 #[derive(SubStates, Debug, Default, Hash, PartialEq, Eq, Clone)]
-#[source(MyState = MyState::AnotherState)]
+#[source(MyState = MyState::Another)]
 enum MySubState {
     #[default]
-    InitialState,
-    AnotherState
+    Initial,
+    Another,
 }
 
 impl ReplacableType for MySubState {
@@ -70,21 +70,21 @@ impl ReplacableType for MySubState {
 
     fn to_vec(&self) -> bevy_dexterous_developer::Result<Vec<u8>> {
         let value = match self {
-            MySubState::InitialState => [0],
-            MySubState::AnotherState => [1],
+            MySubState::Initial => [0],
+            MySubState::Another => [1],
         };
         Ok(value.to_vec())
     }
 
     fn from_slice(val: &[u8]) -> bevy_dexterous_developer::Result<Self> {
-        let value = if let Some(val) = val.get(0) {
+        let value = if let Some(val) = val.first() {
             if *val == 1 {
-                MySubState::AnotherState
+                MySubState::Another
             } else {
-                MySubState::InitialState
+                MySubState::Initial
             }
         } else {
-            MySubState::InitialState
+            MySubState::Initial
         };
         Ok(value)
     }
@@ -100,12 +100,12 @@ reloadable_main!( bevy_main(initial_plugins) {
 
 fn set_next_state(mut next_state: ResMut<NextState<MyState>>) {
     println!("In Initial State");
-    next_state.set(MyState::AnotherState);
+    next_state.set(MyState::Another);
 }
 
 fn set_next_sub_state(mut next_state: ResMut<NextState<MySubState>>) {
     println!("In Initial Sub State");
-    next_state.set(MySubState::AnotherState);
+    next_state.set(MySubState::Another);
 }
 
 fn in_another_sub_state() {
@@ -124,10 +124,10 @@ reloadable_scope!(reloadable(app) {
     app
         .add_systems(Startup, startup)
         .add_systems(Update, (
-            set_next_state.run_if(in_state(MyState::InitialState)),
-            in_another_state.run_if(in_state(MyState::AnotherState)),
-            set_next_sub_state.run_if(in_state(MySubState::InitialState)),
-            in_another_sub_state.run_if(in_state(MySubState::AnotherState)),
+            set_next_state.run_if(in_state(MyState::Initial)),
+            in_another_state.run_if(in_state(MyState::Another)),
+            set_next_sub_state.run_if(in_state(MySubState::Initial)),
+            in_another_sub_state.run_if(in_state(MySubState::Another)),
         ).chain())
         .init_state::<MyState>()
         .add_sub_state::<MySubState>();
