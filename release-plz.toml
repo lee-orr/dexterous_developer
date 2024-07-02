@@ -1,6 +1,6 @@
 [workspace]
 allow_dirty = true # allow updating repositories with uncommitted changes
-dependencies_update = true # update dependencies with `cargo update`
+dependencies_update = false # update dependencies with `cargo update`
 pr_labels = ["release"] # add the `release` label to the release Pull Request
 publish_allow_dirty = true # add `--allow-dirty` to `cargo publish`
 
