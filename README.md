@@ -9,7 +9,9 @@
 
 A modular hot-reload system for Rust.
 
-Fuller documentation is available at: <https://lee-orr.github.io/dexterous_developer/>
+Docs for the latest release are available at: <https://lee-orr.github.io/dexterous_developer/>
+Docs for the main branch are available at: <https://lee-orr.github.io/dexterous_developer/main/>
+Docs for the latest pre-release are available at: <https://lee-orr.github.io/dexterous_developer/pre/>
 
 ## Features
 

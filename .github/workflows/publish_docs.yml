@@ -70,6 +70,25 @@ jobs:
           mv ./book ../book
           mv ../book-main ../book/main
 
+      - name: get latest pre-release with tag
+        id: latestprerelease
+        run: |
+          echo "::set-output name=prereleasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[0] | .tag_name' | sed 's/\"//g')"
+      - name: confirm release tag
+        run: |
+          echo ${{ steps.latestrelease.outputs.prereleasetag }}
+      - name: tagcheckout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.latestrelease.outputs.prereleasetag }}
+
+      - run: mdbook build
+      - name: build docs
+        run: cargo doc --no-deps
+      - name: place files in folder
+        run: |
+          mv ./book ../book/pre
+
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
