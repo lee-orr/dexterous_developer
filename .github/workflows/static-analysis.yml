@@ -32,7 +32,7 @@ jobs:
           key: ${{ runner.os }}-clippy-${{ hashFiles('**/Cargo.toml') }}
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           components: clippy
           override: true
       - name: CI job
@@ -53,7 +53,7 @@ jobs:
           key: ${{ runner.os }}-fmt-${{ hashFiles('**/Cargo.toml') }}
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           components: rustfmt
           override: true
       - name: CI job
