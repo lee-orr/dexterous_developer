@@ -3,7 +3,7 @@ use std::env;
 use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 
-use notify::{INotifyWatcher, Watcher as NotifyWatcher};
+use notify::{inotify::INotifyWatcher, Watcher as NotifyWatcher};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info, warn};
 
