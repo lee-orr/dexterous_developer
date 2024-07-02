@@ -3,7 +3,7 @@ use std::env;
 use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 
-use notify::{inotify::INotifyWatcher, Watcher as NotifyWatcher};
+use notify::{RecommendedWatcher, Watcher as NotifyWatcher};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info, warn};
 
@@ -11,7 +11,7 @@ use crate::types::{self, BuilderIncomingMessages, HashedFileRecord, Watcher, Wat
 
 #[derive(Default)]
 pub struct SimpleWatcher {
-    watchers: DashMap<Utf8PathBuf, INotifyWatcher>,
+    watchers: DashMap<Utf8PathBuf, RecommendedWatcher>,
     code_subscribers:
         DashMap<Utf8PathBuf, DashMap<usize, UnboundedSender<BuilderIncomingMessages>>>,
     asset_subscribers:
