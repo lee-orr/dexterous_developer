@@ -43,9 +43,9 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
 
     fn insert_serializable_resource<R: ReplacableType + bevy::prelude::Resource>(
         &mut self,
-        initializer: impl 'static + Send + Sync + Fn() -> R,
+        value: R,
     ) -> &mut Self {
-        self.0.insert_resource(initializer());
+        self.0.insert_resource(value);
         self
     }
 
@@ -110,6 +110,13 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         &mut self,
     ) -> &mut Self {
         self.0.add_computed_state::<S>();
+        self
+    }
+
+    fn enable_state_scoped_entities<S: bevy::state::state::States + ReplacableType>(
+        &mut self,
+    ) -> &mut Self {
+        self.0.enable_state_scoped_entities::<S>();
         self
     }
 }

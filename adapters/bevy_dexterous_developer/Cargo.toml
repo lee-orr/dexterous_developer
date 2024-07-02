@@ -147,3 +147,13 @@ required-features = ["hot"]
 name = "replacable_computed_state_end"
 crate-type = ["dylib"]
 required-features = ["hot"]
+
+[[example]]
+name = "state_scoped_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "state_scoped_end"
+crate-type = ["dylib"]
+required-features = ["hot"]

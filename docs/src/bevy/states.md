@@ -1,5 +1,7 @@
 # States
 
+## Setting Up States
+
 The states you define within a reloadable scope need to be either `SerializableType` or `ReplacableType` - but otherwise their behaviour should match native bevy states. Note that no transition gets triggered upon the initial change - so if you changed the logic for a sub states existance or a computed state's compute function you may need to trigger the transitions manually..
 
 For `Freely Mutable States`, call `app.init_state<S: FreelyMutableState + ReplacableType + Default>()` or `app.insert_state<S: FreelyMutableState + ReplacableType>(initial: S)` within a reloadable scope.
@@ -66,3 +68,9 @@ impl ReplacableType for MyState {
     }
 }
 ```
+
+## State Scoped Entities
+
+For most contexts, you will want to use `reset_setup_in_state<C: Component, S: States, M>(state: S, systems)` instead - this combines running systems in `OnEnter` or upon reload, and despawning entities marked with `C` (and their descendents) `OnExit` or `OnReload`.
+
+However, if you want a `Scoped` entity that doesn't despwan, but instead remains so long as you are in the given state across reloads, you can also use `enable_state_scoped_entities<S: States + ReplacableType>()` just as you would outside the reloadable scope, and then add `StateScoped(value: S)` to any entities you care about here.

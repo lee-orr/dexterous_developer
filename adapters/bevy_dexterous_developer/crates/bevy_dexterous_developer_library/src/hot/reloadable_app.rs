@@ -1,7 +1,7 @@
 use bevy::{
     ecs::{event::EventRegistry, schedule::ScheduleLabel},
     prelude::*,
-    state::state::FreelyMutableState,
+    state::{state::FreelyMutableState, state_scoped::clear_state_scoped_entities},
     utils::{HashMap, HashSet},
 };
 
@@ -122,7 +122,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
 
     fn insert_serializable_resource<R: ReplacableType + Resource>(
         &mut self,
-        initializer: impl 'static + Send + Sync + Fn() -> R,
+        value: R,
     ) -> &mut Self {
         let name = R::get_type_name();
         if !self.resources.contains(name) {
@@ -136,7 +136,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             )
             .add_systems(
                 DeserializeReloadables,
-                deserialize_replacable_resource_with_initializer(initializer)
+                deserialize_replacable_resource_with_value::<R>(value)
                     .run_if(element_selection_condition(reloadable_element_name)),
             );
         }
@@ -250,7 +250,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
-            self.insert_serializable_resource(move || State::new(state.clone()))
+            self.insert_serializable_resource(State::new(state.clone()))
                 .reset_resource::<NextState<S>>()
                 .add_event::<StateTransitionEvent<S>>();
 
@@ -328,6 +328,16 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         }
 
         self
+    }
+
+    fn enable_state_scoped_entities<S: States + ReplacableType>(&mut self) -> &mut Self {
+        self.register_serializable_component::<StateScoped<S>>()
+            .add_systems(
+                StateTransition,
+                clear_state_scoped_entities::<S>
+                    .after(ExitSchedules::<S>::default())
+                    .before(TransitionSchedules::<S>::default()),
+            )
     }
 }
 

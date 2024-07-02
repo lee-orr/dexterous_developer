@@ -51,6 +51,21 @@ impl<T: States + ReplacableType> ReplacableType for State<T> {
     }
 }
 
+impl<T: States + ReplacableType> ReplacableType for StateScoped<T> {
+    fn get_type_name() -> &'static str {
+        T::get_type_name()
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>> {
+        self.0.to_vec()
+    }
+
+    fn from_slice(val: &[u8]) -> Result<Self> {
+        let value = T::from_slice(val)?;
+        Ok(Self(value))
+    }
+}
+
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
@@ -63,10 +78,8 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
     ) -> &mut Self;
     fn register_serializable_resource<R: Resource + ReplacableType>(&mut self) -> &mut Self;
     fn init_serializable_resource<R: Resource + ReplacableType + Default>(&mut self) -> &mut Self;
-    fn insert_serializable_resource<R: Resource + ReplacableType>(
-        &mut self,
-        initializer: impl 'static + Send + Sync + Fn() -> R,
-    ) -> &mut Self;
+    fn insert_serializable_resource<R: Resource + ReplacableType>(&mut self, value: R)
+        -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self;
     fn register_serializable_component<C: Component + ReplacableType>(&mut self) -> &mut Self;
@@ -86,6 +99,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
 
     fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self;
     fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self;
+    fn enable_state_scoped_entities<S: States + ReplacableType>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

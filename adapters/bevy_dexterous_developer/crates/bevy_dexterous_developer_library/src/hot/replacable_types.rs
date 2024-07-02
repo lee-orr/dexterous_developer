@@ -41,9 +41,10 @@ pub fn deserialize_replacable_resource_with_default<R: ReplacableType + Default 
     commands.insert_resource(v);
 }
 
-pub fn deserialize_replacable_resource_with_initializer<R: ReplacableType + Resource>(
-    initializer: impl 'static + Send + Sync + Fn() -> R,
+pub fn deserialize_replacable_resource_with_value<R: ReplacableType + Resource>(
+    initializer: R,
 ) -> impl IntoSystemConfigs<()> {
+    let mut container = Some(initializer);
     (move |store: Res<ReplacableResourceStore>, mut commands: Commands| {
         let name = R::get_type_name();
         debug!("Deserializing {name}");
@@ -51,7 +52,8 @@ pub fn deserialize_replacable_resource_with_initializer<R: ReplacableType + Reso
             .map
             .get(name)
             .and_then(|v| R::from_slice(v).ok())
-            .unwrap_or(initializer());
+            .or(container.take())
+            .unwrap();
 
         commands.insert_resource(v);
     })

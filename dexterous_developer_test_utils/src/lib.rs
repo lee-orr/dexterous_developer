@@ -157,6 +157,40 @@ pub async fn recv_std(
     .and_then(|val| val)
 }
 
+pub async fn recv_std_avoiding(
+    output: &mut UnboundedReceiver<OutMessage>,
+    value: impl ToString,
+    avoiding: &[impl ToString],
+) -> Result<(), String> {
+    let avoiding = avoiding.iter().map(|v| v.to_string()).collect::<Vec<_>>();
+    tokio::time::timeout(Duration::from_secs(20), async {
+        let value = value.to_string().trim().to_string();
+        while let Some(out) = output.recv().await {
+            match out {
+                OutMessage::Std(v) => {
+                    eprintln!("STDOUT: {v}");
+                    if v.contains(&value) {
+                        eprintln!("FOUND STDOUT");
+                        return Ok(());
+                    }
+                    for avoid in &avoiding {
+                        if v.contains(avoid.as_str()) {
+                            eprintln!("Didn't avoid {avoid}");
+                            return Err(format!("Didn't avoid {avoid} - {v}"));
+                        }
+                    }
+                }
+                OutMessage::Err(_) => {}
+                OutMessage::Exit(_) => return Err(format!("Exited While Waiting for {}", value)),
+            }
+        }
+        Err("Got to exit without sucess".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())
+    .and_then(|val| val)
+}
+
 pub async fn recv_err(
     output: &mut UnboundedReceiver<OutMessage>,
     value: impl ToString,

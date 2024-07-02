@@ -6,6 +6,7 @@ use bevy::{
     MinimalPlugins,
 };
 use bevy_dexterous_developer::*;
+use serde::{Deserialize, Serialize};
 
 fn terminal_runner(mut app: App) -> AppExit {
     app.update();
@@ -64,32 +65,62 @@ reloadable_main!( bevy_main(initial_plugins) {
 });
 
 fn set_next_state(mut next_state: ResMut<NextState<MyState>>) {
-    println!("In Initial State");
     next_state.set(MyState::Another);
-}
-
-fn in_another_state() {
-    println!("In Another State");
 }
 
 fn startup() {
     println!("Press Enter to Progress, or type 'exit' to exit");
 }
 
-fn entered_initial() {
-    println!("Entered Initial");
+#[derive(Component, Debug, Serialize, Deserialize)]
+struct MySerializableComponent {
+    first_field: String,
 }
 
-fn entered_another() {
-    println!("Entered Another");
+impl SerializableType for MySerializableComponent {
+    fn get_type_name() -> &'static str {
+        "MySerializableComponent"
+    }
+}
+
+impl Default for MySerializableComponent {
+    fn default() -> Self {
+        Self {
+            first_field: "My First Field".to_string(),
+        }
+    }
+}
+
+fn update(state: Res<State<MyState>>, query: Query<&MySerializableComponent>) {
+    let mut query = query
+        .iter()
+        .map(|v| v.first_field.clone())
+        .collect::<Vec<_>>();
+    query.sort();
+
+    let state = match state.get() {
+        MyState::Initial => 0,
+        MyState::Another => 1,
+    };
+
+    let list = query.join("");
+
+    println!("{state} - {list}.");
 }
 
 reloadable_scope!(reloadable(app) {
     app
         .add_systems(Startup, startup)
         .add_systems(Update, set_next_state.run_if(in_state(MyState::Initial)))
-        .add_systems(Update, in_another_state.run_if(in_state(MyState::Another)))
-        .add_systems(OnEnter(MyState::Initial), entered_initial)
-        .add_systems(OnEnter(MyState::Another), entered_another)
-        .init_state::<MyState>();
+        .add_systems(Update, update)
+        .reset_setup::<MySerializableComponent, _>(|mut commands: Commands| {
+            commands.spawn(MySerializableComponent {
+                first_field: "a".to_string()
+            });
+            commands.spawn((MySerializableComponent {
+                first_field: "b".to_string()
+            }, StateScoped(MyState::Initial)));
+        })
+        .init_state::<MyState>()
+        .enable_state_scoped_entities::<MyState>();
 });
