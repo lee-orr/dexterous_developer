@@ -7,6 +7,10 @@ Install the CLI by running: ```cargo install dexterous_developer_cli```. This in
 - `dexterous_developer_cli` - used to build the project
 - `dexterous_developer_runner` - used to run the project
 
+### Note for pre-relesse versions
+
+Make sure that the version of dexterous_developer_cli matches the version you are installing. While the goal is to eventually have more separation between the two, for now they should be kept in sync.
+
 ## General Setup
 
 For dexterous_developer to function, your package currently needs to be a dynamic library. To do so, you will need to mark it as a library and add the "dylib" crate type to it in your `Cargo.toml` - ideally in addition to `rlib`. You'll need to add a separate binary for the non-hot reloaded version.
@@ -25,7 +29,7 @@ hot = ["dexterous_developer/hot"]
 
 [dependencies]
 bevy = "0.14"
-dexterous_developer = { version = "0.3", features = ["bevy"] }
+dexterous_developer = { version = "0.3.0-pre.1", features = ["bevy"] }
 serde = "1" # If you want the serialization capacities
 ```
 
