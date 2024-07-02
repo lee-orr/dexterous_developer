@@ -1,7 +1,5 @@
 use bevy::{
-    ecs::{event::EventRegistry, schedule::ScheduleLabel},
-    prelude::*,
-    utils::{HashMap, HashSet},
+    ecs::{event::EventRegistry, schedule::ScheduleLabel}, prelude::*, state::state::FreelyMutableState, utils::{HashMap, HashSet}
 };
 
 use super::{super::types::*, reload_systems::dexterous_developer_occured};
@@ -223,6 +221,34 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
             })
             .run_if(element_selection_condition(name)),
         );
+        self
+    }
+    
+    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self {
+        let name = S::get_type_name();
+        if !self.resources.contains(name) {
+            self.insert_serializable_resource(|| State::new(S::default()))
+                .reset_resource::<NextState<S>>()
+                .add_event::<StateTransitionEvent<S>>();
+
+            let schedules = &mut self.schedules;
+
+            let wrapped: WrappedSchedule = WrappedSchedule::new(StateTransition);
+
+            if let Some((schedule, _)) = schedules.get_mut(&wrapped) {
+                info!("Adding systems to schedule");
+                S::register_state(schedule);
+            } else {
+                info!("Creating schedule with systems");
+                let reloadable = ReloadableSchedule::new(wrapped.clone());
+                let mut schedule = Schedule::new(reloadable.clone());
+
+                S::register_state(&mut schedule);
+                
+                schedules.insert(wrapped, (schedule, reloadable));
+            }
+        }
+
         self
     }
 }

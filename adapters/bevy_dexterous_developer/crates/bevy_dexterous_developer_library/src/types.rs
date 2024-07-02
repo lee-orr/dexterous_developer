@@ -1,5 +1,5 @@
 use super::ReloadableAppContents;
-use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*};
+use bevy::{app::PluginGroupBuilder, ecs::schedule::ScheduleLabel, log::LogPlugin, prelude::*, state::{app::StatesPlugin, state::FreelyMutableState}};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub type Result<T> = anyhow::Result<T>;
@@ -30,6 +30,22 @@ impl<T: SerializableType> ReplacableType for T {
     }
 }
 
+impl<T: States + ReplacableType> ReplacableType for State<T> {
+    fn get_type_name() -> &'static str {
+        T::get_type_name()
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>> {
+        self.get().to_vec()
+    }
+
+    fn from_slice(val: &[u8]) -> Result<Self> {
+        let value = T::from_slice(val)?;
+        Ok(Self::new(value))
+    }
+}
+
+
 pub(crate) mod private {
     pub trait ReloadableAppSealed {}
 }
@@ -57,6 +73,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self;
     fn add_event<T: Event>(&mut self) -> &mut Self;
+    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {
@@ -78,7 +95,7 @@ pub fn get_default_plugins() -> PluginGroupBuilder {
 }
 
 pub fn get_minimal_plugins() -> PluginGroupBuilder {
-    MinimalPlugins.build()
+    MinimalPlugins.build().add(StatesPlugin)
 }
 
 pub trait InitializablePlugins: PluginGroup {

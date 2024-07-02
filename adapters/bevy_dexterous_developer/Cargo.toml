@@ -117,3 +117,13 @@ required-features = ["hot"]
 name = "events_end"
 crate-type = ["dylib"]
 required-features = ["hot"]
+
+[[example]]
+name = "replacable_state_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_state_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
