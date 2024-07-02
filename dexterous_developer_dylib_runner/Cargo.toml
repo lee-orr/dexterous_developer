@@ -27,8 +27,8 @@ blake3 = { version = "1" }
 dunce = "1"
 serde = { version = "1"}
 rmp-serde = { version = "1" }
-dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types" }
-dexterous_developer_instance = { version = "0.3.0-pre.1", path = "../dexterous_developer_instance", features = ["runner", "dylib"]}
+dexterous_developer_types = { version = "0.3.0-pre.2", path = "../dexterous_developer_types" }
+dexterous_developer_instance = { version = "0.3.0-pre.2", path = "../dexterous_developer_instance", features = ["runner", "dylib"]}
 reqwest = { version = "0.12", features = [] }
 tokio-tungstenite = { version = "0.23", features =[ "native-tls"] }
 url = "2"

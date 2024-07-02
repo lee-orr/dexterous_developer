@@ -20,8 +20,8 @@ tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"]}
 serde = { version = "1", features = ["derive"]}
 thiserror = "1"
-dexterous_developer_types = { version = "0.3.0-pre.1", path = "../dexterous_developer_types"}
-dexterous_developer_builder = { version = "0.3.0-pre.1", path = "../dexterous_developer_builder"}
+dexterous_developer_types = { version = "0.3.0-pre.2", path = "../dexterous_developer_types"}
+dexterous_developer_builder = { version = "0.3.0-pre.2", path = "../dexterous_developer_builder"}
 
 axum = { version = "0.7", features = ["ws"] }
 futures-util = { version = "0.3", default-features = false,  features = [

@@ -1,3 +1,134 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## `bevy_dexterous_developer_library` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/bevy_dexterous_developer_library-v0.2.0...bevy_dexterous_developer_library-v0.3.0-pre.2) - 2024-07-02
+
+### Added
+- *(bevy)* :sparkles: state scoped
+- *(bevy)* :sparkles: add computed state
+- *(bevy)* :sparkles: Initial Sub-State Support
+
+### Fixed
+- *(bevy)* simplify resource insertion
+
+### Other
+- *(workspace)* clippy + fmt
+- *(workspace)* format
+- initial state support
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+
+## `bevy_dexterous_developer_dynamic` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/bevy_dexterous_developer_dynamic-v0.2.0...bevy_dexterous_developer_dynamic-v0.3.0-pre.2) - 2024-07-02
+
+### Other
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+
+## `dexterous_developer_test_utils` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/dexterous_developer_test_utils-v0.2.0...dexterous_developer_test_utils-v0.3.0-pre.2) - 2024-07-02
+
+### Added
+- *(bevy)* :sparkles: state scoped
+
+### Fixed
+- *(bevy)* simplify resource insertion
+
+### Other
+- *(workspace)* clippy + fmt
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+- changelog
+- update
+- clippy, fmt, test
+- test improvements
+- basic cli tests
+- build all examples & binaries before test
+- build test works fast
+
+## `dexterous_developer_dylib_runner` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/dexterous_developer_dylib_runner-v0.2.0...dexterous_developer_dylib_runner-v0.3.0-pre.2) - 2024-07-02
+
+### Fixed
+- fix assets
+
+### Other
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+- changelog
+- update
+- rename "hot" feature to "runner"
+- rename `dexterous_developer_internal` to `dexterous_developer_instance`
+- update dashma[
+- basic cli tests
+- build test works fast
+- remove dylib test runner
+- adjust and add simple_cli_loaded_test example
+- remove untethered
+- small fixes
+- split runner and connection
+- reorganize files for dylib runner
+- format, clippy, cleanup printlnines
+- update version
+- clippy + fmt
+- clippy + fmt
+- Reloading! ([#59](https://github.com/lee-orr/dexterous_developer/pull/59))
+- moved bevy specific crates into a subdirectory of bevy_dexterous_developer
+- continue work
+- get library to call update again
+- improvements to loading
+- clippy + fmt
+- get simple cli test to run
+- setup callbacks and all
+- start setting up for running dynamic libraries
+- recursive dependencies
+- move to utf8path
+- clippy + fmt
+- start setting up runner
+- clippy + fmt
+- add dylib runner crate, comment out stuff in cli, builder & internal
+
+## `dexterous_developer_instance` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/dexterous_developer_instance-v0.2.0...dexterous_developer_instance-v0.3.0-pre.2) - 2024-07-02
+
+### Other
+- fix bevy version in docs
+- *(workspace)* Fix version used in docs
+- *(workspace)* adjusting docs further
+- *(workspace)* :memo: Adjust docs release process to generate multiple versions
+- *(workspace)* add pre-release book
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+
+## `dexterous_developer_manager` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/dexterous_developer_manager-v0.2.0...dexterous_developer_manager-v0.3.0-pre.2) - 2024-07-02
+
+### Fixed
+- fix assets
+
+### Other
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+- changelog
+- update
+- update dashma[
+- clippy, fmt, test
+- basic cli tests
+- build test works fast
+- start work towards setting up automated tests
+- format, clippy, cleanup printlnines
+- update version
+- moved bevy specific crates into a subdirectory of bevy_dexterous_developer
+- get simple cli test to run
+- clippy + fmt
+- recursive dependencies
+- adjustments to server/builder
+- build simple watcher
+- fmt + clippy
+- add watcher
+- start implementing simple builder
+- move builder & current state to have an optional root lib
+- move to utf8path
+- add file target
+- add connect to target
+- improve manager & builder APIs
+- add server feature to manager
+- move builder types to builder repo
+- start work on manager
 # Release Notes
 
 ## Version 0.2.0
