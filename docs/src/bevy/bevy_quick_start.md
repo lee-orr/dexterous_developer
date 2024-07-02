@@ -28,7 +28,7 @@ You'll also need to add the appropriate dexterous developer adapter to your libr
 hot = ["dexterous_developer/hot"]
 
 [dependencies]
-bevy = "0.14"
+bevy = "0.14-rc.4"
 dexterous_developer = { version = "0.3.0-pre.1", features = ["bevy"] }
 serde = "1" # If you want the serialization capacities
 ```
