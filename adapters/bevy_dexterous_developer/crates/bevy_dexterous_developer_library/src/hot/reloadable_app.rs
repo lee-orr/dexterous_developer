@@ -269,15 +269,12 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                 self.insert_serializable_resource(State::new(state.clone()))
                     .reset_resource::<NextState<S>>()
                     .add_event::<StateTransitionEvent<S>>()
-                    .run_only_on_first_load(
-                        name,
-                        move |world: &mut World| {
-                            world.send_event(StateTransitionEvent {
-                                exited: None,
-                                entered: Some(state.clone()),
-                            });
-                        },
-                    );
+                    .run_only_on_first_load(name, move |world: &mut World| {
+                        world.send_event(StateTransitionEvent {
+                            exited: None,
+                            entered: Some(state.clone()),
+                        });
+                    });
             }
 
             let schedules = &mut self.schedules;

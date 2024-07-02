@@ -94,7 +94,6 @@ reloadable_scope!(reloadable(app) {
         .init_state::<MyState>();
 });
 
-
 fn main() {
     bevy_main();
 }

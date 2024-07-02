@@ -1,5 +1,7 @@
 mod component_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
+    use dexterous_developer_test_utils::{
+        recv_exit, recv_std, replace_library, setup_test, InMessage,
+    };
     use test_temp_dir::*;
     use tracing_test::traced_test;
 

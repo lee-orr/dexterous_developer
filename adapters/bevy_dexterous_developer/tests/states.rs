@@ -1,6 +1,6 @@
 mod state_test {
     use dexterous_developer_test_utils::{
-        recv_exit, recv_std, recv_std_avoiding, replace_library, setup_test, InMessage
+        recv_exit, recv_std, recv_std_avoiding, replace_library, setup_test, InMessage,
     };
     use test_temp_dir::*;
     use tracing_test::traced_test;
@@ -136,7 +136,13 @@ mod state_test {
         recv_std(&mut output, "In Another State")
             .await
             .expect("Failed first line");
-        replace_library("replacable_computed_state_end", &mut comms, &mut output, &send).await;
+        replace_library(
+            "replacable_computed_state_end",
+            &mut comms,
+            &mut output,
+            &send,
+        )
+        .await;
         recv_std(&mut output, "In Another State - 2")
             .await
             .expect("Failed first line");

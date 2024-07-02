@@ -1,5 +1,7 @@
 mod component_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
+    use dexterous_developer_test_utils::{
+        recv_exit, recv_std, replace_library, setup_test, InMessage,
+    };
     use test_temp_dir::*;
     use tracing_test::traced_test;
 
@@ -15,7 +17,13 @@ mod component_test {
         recv_std(&mut output, "a - b")
             .await
             .expect("Failed first line");
-        replace_library("serde_serializable_component_end", &mut comms, &mut output, &send).await;
+        replace_library(
+            "serde_serializable_component_end",
+            &mut comms,
+            &mut output,
+            &send,
+        )
+        .await;
         recv_std(&mut output, "a_? - b_?")
             .await
             .expect("Failed Second Line");

@@ -1,5 +1,7 @@
 mod resource_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
+    use dexterous_developer_test_utils::{
+        recv_exit, recv_std, replace_library, setup_test, InMessage,
+    };
     use test_temp_dir::*;
     use tracing_test::traced_test;
 
@@ -56,7 +58,13 @@ mod resource_test {
         recv_std(&mut output, "My Serializable Field")
             .await
             .expect("Failed first line");
-        replace_library("serde_serializable_resource_end", &mut comms, &mut output, &send).await;
+        replace_library(
+            "serde_serializable_resource_end",
+            &mut comms,
+            &mut output,
+            &send,
+        )
+        .await;
         recv_std(&mut output, "My Serializable Field - My Second Field")
             .await
             .expect("Failed Second Line");
