@@ -14,7 +14,7 @@ documentation.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "*"
+thiserror = "1"
 libloading = { version = "0.8" }
 uuid = { version = "1", features = ["v4"] }
 notify = { version = "6" }
