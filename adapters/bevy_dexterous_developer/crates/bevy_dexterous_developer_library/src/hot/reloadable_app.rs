@@ -19,6 +19,7 @@ pub struct ReloadableAppElements {
     schedules: HashMap<WrappedSchedule, (Schedule, ReloadableSchedule<WrappedSchedule>)>,
     resources: HashSet<String>,
     components: HashSet<String>,
+    run_once: HashSet<String>,
 }
 
 impl ReloadableAppElements {
@@ -40,6 +41,7 @@ pub struct ReloadableAppContents<'a> {
     schedules: &'a mut HashMap<WrappedSchedule, (Schedule, ReloadableSchedule<WrappedSchedule>)>,
     resources: &'a mut HashSet<String>,
     components: &'a mut HashSet<String>,
+    run_once: &'a mut HashSet<String>,
 }
 
 impl<'a> ReloadableAppContents<'a> {
@@ -49,7 +51,19 @@ impl<'a> ReloadableAppContents<'a> {
             schedules: &mut elements.schedules,
             resources: &mut elements.resources,
             components: &mut elements.components,
+            run_once: &mut elements.run_once,
         }
+    }
+
+    fn run_only_on_first_load<M>(
+        &mut self,
+        name: &'static str,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self {
+        if self.run_once.insert(name.to_string()) {
+            self.add_systems(OnReloadComplete, systems);
+        }
+        self
     }
 }
 
@@ -250,9 +264,21 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
-            self.insert_serializable_resource(State::new(state.clone()))
-                .reset_resource::<NextState<S>>()
-                .add_event::<StateTransitionEvent<S>>();
+            {
+                let state = state.clone();
+                self.insert_serializable_resource(State::new(state.clone()))
+                    .reset_resource::<NextState<S>>()
+                    .add_event::<StateTransitionEvent<S>>()
+                    .run_only_on_first_load(
+                        name,
+                        move |world: &mut World| {
+                            world.send_event(StateTransitionEvent {
+                                exited: None,
+                                entered: Some(state.clone()),
+                            });
+                        },
+                    );
+            }
 
             let schedules = &mut self.schedules;
 

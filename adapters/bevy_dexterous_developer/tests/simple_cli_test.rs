@@ -1,5 +1,5 @@
 mod cli_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, setup_test, InMessage};
+    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
     use test_temp_dir::*;
     use tracing_test::traced_test;
 
@@ -33,11 +33,7 @@ mod cli_test {
         recv_std(&mut output, "Hey!")
             .await
             .expect("Failed first line");
-        comms.set_new_library("simple_system_swap");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("simple_system_swap", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "Swapped Update System!")
             .await
             .expect("Failed Swapped Line");

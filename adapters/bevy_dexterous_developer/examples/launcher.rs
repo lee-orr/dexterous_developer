@@ -1,7 +1,9 @@
 use std::num::NonZero;
 
 use bevy::{
-    app::{AppExit, Startup, Update}, prelude::*, MinimalPlugins
+    app::{AppExit, Startup, Update},
+    prelude::*,
+    MinimalPlugins,
 };
 use bevy_dexterous_developer::*;
 
@@ -91,3 +93,8 @@ reloadable_scope!(reloadable(app) {
         .add_systems(OnEnter(MyState::Another), entered_another)
         .init_state::<MyState>();
 });
+
+
+fn main() {
+    bevy_main();
+}

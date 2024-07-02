@@ -1,5 +1,5 @@
 mod resource_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, setup_test, InMessage};
+    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
     use test_temp_dir::*;
     use tracing_test::traced_test;
 
@@ -13,11 +13,7 @@ mod resource_test {
         recv_std(&mut output, "Resource Initial")
             .await
             .expect("Failed first line");
-        comms.set_new_library("reset_resource_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("reset_resource_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "New Default")
             .await
             .expect("Failed Second Line");
@@ -38,11 +34,7 @@ mod resource_test {
         recv_std(&mut output, "Resource Initial")
             .await
             .expect("Failed first line");
-        comms.set_new_library("reset_resource_to_value");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("reset_resource_to_value", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "New Value")
             .await
             .expect("Failed Second Line");
@@ -64,11 +56,7 @@ mod resource_test {
         recv_std(&mut output, "My Serializable Field")
             .await
             .expect("Failed first line");
-        comms.set_new_library("serde_serializable_resource_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("serde_serializable_resource_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "My Serializable Field - My Second Field")
             .await
             .expect("Failed Second Line");
@@ -90,11 +78,7 @@ mod resource_test {
         recv_std(&mut output, "My First Field")
             .await
             .expect("Failed first line");
-        comms.set_new_library("replacable_resource_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_resource_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "My First Field - Missing Second Field")
             .await
             .expect("Failed Second Line");

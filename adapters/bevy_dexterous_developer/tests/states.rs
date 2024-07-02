@@ -1,6 +1,6 @@
 mod state_test {
     use dexterous_developer_test_utils::{
-        recv_exit, recv_std, recv_std_avoiding, setup_test, InMessage,
+        recv_exit, recv_std, recv_std_avoiding, replace_library, setup_test, InMessage
     };
     use test_temp_dir::*;
     use tracing_test::traced_test;
@@ -23,11 +23,7 @@ mod state_test {
         recv_std(&mut output, "In Another State")
             .await
             .expect("Failed first line");
-        comms.set_new_library("replacable_state_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_state_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "In Another State")
             .await
             .expect("Failed first line");
@@ -51,16 +47,16 @@ mod state_test {
         recv_std(&mut output, "Entered Initial")
             .await
             .expect("Failed first line");
+        recv_std(&mut output, "In Initial State")
+            .await
+            .expect("Failed first line");
+        let _ = send.send(InMessage::Std("\n".to_string()));
         let _ = send.send(InMessage::Std("\n".to_string()));
         recv_std(&mut output, "Entered Another")
             .await
             .expect("Failed first line");
         let _ = send.send(InMessage::Std("\n".to_string()));
-        comms.set_new_library("replacable_state_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_state_end", &mut comms, &mut output, &send).await;
         recv_std_avoiding(
             &mut output,
             "In Another State",
@@ -103,11 +99,7 @@ mod state_test {
         recv_std(&mut output, "In Another Sub State")
             .await
             .expect("Failed first line");
-        comms.set_new_library("replacable_sub_state_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_sub_state_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "In Another Sub State")
             .await
             .expect("Failed first line");
@@ -144,11 +136,7 @@ mod state_test {
         recv_std(&mut output, "In Another State")
             .await
             .expect("Failed first line");
-        comms.set_new_library("replacable_computed_state_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_computed_state_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "In Another State - 2")
             .await
             .expect("Failed first line");
@@ -166,39 +154,37 @@ mod state_test {
             .expect("Wrong Exit Code");
     }
 
-    // #[traced_test]
-    // #[tokio::test]
-    // async fn can_enable_state_scoped() {
-    //     let dir = test_temp_dir!();
-    //     let dir_path = dir.as_path_untracked().to_path_buf();
-    //     let (mut comms, send, mut output, _) = setup_test(dir_path, "state_scoped_start").await;
+    #[traced_test]
+    #[tokio::test]
+    async fn can_enable_state_scoped() {
+        let dir = test_temp_dir!();
+        let dir_path = dir.as_path_untracked().to_path_buf();
+        let (mut comms, send, mut output, _) = setup_test(dir_path, "state_scoped_start").await;
 
-    //     recv_std(&mut output, "0 - ab.")
-    //         .await
-    //         .expect("Failed first line");
-    //     let _ = send.send(InMessage::Std("\n".to_string()));
-    //     recv_std(&mut output, "1 - a.")
-    //         .await
-    //         .expect("Failed first line");
-    //     let _ = send.send(InMessage::Std("\n".to_string()));
-    //     recv_std(&mut output, "1 - a.")
-    //         .await
-    //         .expect("Failed first line");
-    //     comms.set_new_library("state_scoped_end");
-    //     recv_std(&mut output, "update_callback_internal")
-    //         .await
-    //         .expect("Didn't Get Download");
-    //     let _ = send.send(InMessage::Std("\n".to_string()));
-    //     recv_std(&mut output, "1 - ac.")
-    //         .await
-    //         .expect("Failed first line");
-    //     let _ = send.send(InMessage::Std("\n".to_string()));
-    //     recv_std(&mut output, "1 - a.")
-    //         .await
-    //         .expect("Failed Second Line");
-    //     let _ = send.send(InMessage::Std("exit\n".to_string()));
-    //     recv_exit(&mut output, Some(0))
-    //         .await
-    //         .expect("Wrong Exit Code");
-    // }
+        recv_std(&mut output, "0 - ab.")
+            .await
+            .expect("Failed first line");
+        let _ = send.send(InMessage::Std("\n".to_string()));
+        let _ = send.send(InMessage::Std("\n".to_string()));
+        recv_std(&mut output, "1 - a.")
+            .await
+            .expect("Failed first line");
+        let _ = send.send(InMessage::Std("\n".to_string()));
+        recv_std(&mut output, "1 - a.")
+            .await
+            .expect("Failed first line");
+        replace_library("state_scoped_end", &mut comms, &mut output, &send).await;
+        recv_std(&mut output, "1 - ac!")
+            .await
+            .expect("Failed first line");
+        let _ = send.send(InMessage::Std("\n".to_string()));
+        let _ = send.send(InMessage::Std("\n".to_string()));
+        recv_std(&mut output, "3 - a!")
+            .await
+            .expect("Failed Second Line");
+        let _ = send.send(InMessage::Std("exit\n".to_string()));
+        recv_exit(&mut output, Some(0))
+            .await
+            .expect("Wrong Exit Code");
+    }
 }

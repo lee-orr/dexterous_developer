@@ -71,6 +71,9 @@ reloadable_main!( bevy_main(initial_plugins) {
 fn set_next_state(mut next_state: ResMut<NextState<MyState>>) {
     next_state.set(MyState::Another);
 }
+fn set_another_next_state(mut next_state: ResMut<NextState<MyState>>) {
+    next_state.set(MyState::Third);
+}
 
 fn startup() {
     println!("Press Enter to Progress, or type 'exit' to exit");
@@ -110,21 +113,19 @@ fn update(state: Res<State<MyState>>, query: Query<&MySerializableComponent>) {
 
     let list = query.join("");
 
-    println!("{state} - {list}");
+    println!("{state} - {list}!");
 }
 
 reloadable_scope!(reloadable(app) {
     app
         .add_systems(Startup, startup)
         .add_systems(Update, set_next_state.run_if(in_state(MyState::Initial)))
+        .add_systems(Update, set_another_next_state.run_if(in_state(MyState::Another)))
         .add_systems(Update, update)
         .reset_setup::<MySerializableComponent, _>(|mut commands: Commands| {
             commands.spawn(MySerializableComponent {
                 first_field: "a".to_string()
             });
-            commands.spawn((MySerializableComponent {
-                first_field: "b".to_string()
-            }, StateScoped(MyState::Initial)));
             commands.spawn((MySerializableComponent {
                 first_field: "c".to_string()
             }, StateScoped(MyState::Another)));

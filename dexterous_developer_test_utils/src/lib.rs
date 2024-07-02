@@ -1,6 +1,7 @@
 use builder::{TestBuilder, TestBuilderComms};
 use camino::Utf8PathBuf;
 use dexterous_developer_manager::server::run_test_server;
+use tokio::sync::mpsc::UnboundedSender;
 use std::sync::Arc;
 use std::{
     env::current_exe,
@@ -52,7 +53,7 @@ pub async fn setup_test(
     comms.set_new_library(test_example.to_string());
 
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
-    let (out_tx, out_rx) = mpsc::unbounded_channel();
+    let (out_tx, mut out_rx) = mpsc::unbounded_channel();
 
     let runner = tokio::spawn(async move {
         let base = Utf8PathBuf::from_path_buf(current_exe().unwrap()).unwrap();
@@ -111,7 +112,7 @@ pub async fn setup_test(
                 Some(command) = command_rx.recv() => {
                     match command {
                         InMessage::Std(value) => {
-                            println!("STD IN ({port}): {value}");
+                            eprintln!("STD IN ({port}): {value}");
                             input.write_all(value.as_bytes()).await.unwrap();
                         }
                         InMessage::Exit => {
@@ -127,6 +128,13 @@ pub async fn setup_test(
 
         child.kill().await.unwrap();
     });
+
+    recv_std(&mut out_rx, "dexterous_developer_dylib_runner::remote_connection").await.expect("Failed to Setup Remote Connection");
+    recv_std(&mut out_rx, "Got Initial State").await.expect("Didn't get initial state");
+    recv_std(&mut out_rx, "all downloads completed").await.expect("Didn't complete downloads");
+    recv_std(&mut out_rx, "Loading Initial Root").await.expect("Didn't start loading initial root");
+    recv_std(&mut out_rx, "Calling Internal Main").await.expect("Didn't call internal main");
+    recv_std(&mut out_rx, "reload complete").await.expect("Didn't complete reload");
 
     (comms, command_tx, out_rx, (server, runner))
 }
@@ -237,4 +245,19 @@ pub async fn recv_exit(
     .await
     .map_err(|e| e.to_string())
     .and_then(|val| val)
+}
+
+pub async fn replace_library(name: impl ToString, comms: &mut TestBuilderComms, output: &mut UnboundedReceiver<OutMessage>, send: &UnboundedSender<InMessage>){
+    comms.set_new_library(name);
+    recv_std(output, "Received Hot Reload Message: BuildStart").await.expect("Build didn't start");
+    recv_std(output, "Received Hot Reload Message: BuildCompleted").await.expect("Build didn't complete");
+    recv_std(output, "Received Hot Reload Message: UpdatedLibs").await.expect("Didn't get updated libs");
+    recv_std(output, "Received Hot Reload Message: RootLibPath").await.expect("Didn't get root lib path");
+    recv_std(output, "all downloads completed").await.expect("didn't complete all downloads");
+    recv_std(output, "Preparing to call update_callback_internal").await.expect("didn't call update callback");
+
+    let _ = send.send(InMessage::Std("\n".to_string()));
+    recv_std(output, "Swapping Libraries").await.expect("Didn't start swap");
+    recv_std(output, "Loaded library").await.expect("didn't load library");
+    recv_std(output, "reload complete").await.expect("didn't complete reload");
 }

@@ -1,5 +1,5 @@
 mod component_test {
-    use dexterous_developer_test_utils::{recv_exit, recv_std, setup_test, InMessage};
+    use dexterous_developer_test_utils::{recv_exit, recv_std, replace_library, setup_test, InMessage};
     use test_temp_dir::*;
     use tracing_test::traced_test;
 
@@ -15,11 +15,7 @@ mod component_test {
         recv_std(&mut output, "a - b")
             .await
             .expect("Failed first line");
-        comms.set_new_library("serde_serializable_component_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("serde_serializable_component_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "a_? - b_?")
             .await
             .expect("Failed Second Line");
@@ -41,11 +37,7 @@ mod component_test {
         recv_std(&mut output, "a - b")
             .await
             .expect("Failed first line");
-        comms.set_new_library("replacable_component_end");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("replacable_component_end", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "a_? - b_?")
             .await
             .expect("Failed Second Line");
@@ -68,11 +60,7 @@ mod component_test {
         recv_std(&mut output, "a - b")
             .await
             .expect("Failed second line");
-        comms.set_new_library("reset_component");
-        recv_std(&mut output, "update_callback_internal")
-            .await
-            .expect("Didn't Get Download");
-        let _ = send.send(InMessage::Std("\n".to_string()));
+        replace_library("reset_component", &mut comms, &mut output, &send).await;
         recv_std(&mut output, "a").await.expect("Failed first line");
         let _ = send.send(InMessage::Std("\n".to_string()));
         recv_std(&mut output, "a - b")
