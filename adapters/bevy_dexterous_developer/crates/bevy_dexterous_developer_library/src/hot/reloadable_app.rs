@@ -299,6 +299,33 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
 
         self
     }
+    
+    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self {
+        let name = S::get_type_name();
+        if !self.resources.contains(name) {
+            self.register_serializable_resource::<State<S>>()
+                .add_event::<StateTransitionEvent<S>>();
+
+            let schedules = &mut self.schedules;
+
+            let wrapped: WrappedSchedule = WrappedSchedule::new(StateTransition);
+
+            if let Some((schedule, _)) = schedules.get_mut(&wrapped) {
+                info!("Adding systems to schedule");
+                S::register_computed_state_systems(schedule);
+            } else {
+                info!("Creating schedule with systems");
+                let reloadable = ReloadableSchedule::new(wrapped.clone());
+                let mut schedule = Schedule::new(reloadable.clone());
+
+                S::register_computed_state_systems(&mut schedule);
+                
+                schedules.insert(wrapped, (schedule, reloadable));
+            }
+        }
+
+        self
+    }
 }
 
 fn element_selection_condition(name: &'static str) -> impl Fn(Option<Res<ReloadSettings>>) -> bool {

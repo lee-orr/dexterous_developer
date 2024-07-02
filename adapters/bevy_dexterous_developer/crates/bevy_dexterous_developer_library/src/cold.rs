@@ -100,4 +100,9 @@ impl<'a> ReloadableApp for ReloadableAppContents<'a> {
         self.0.add_sub_state::<S>();
         self
     }
+
+    fn add_computed_state<S: bevy::state::state::ComputedStates + ReplacableType>(&mut self) -> &mut Self {
+        self.0.add_computed_state::<S>();
+        self
+    }
 }

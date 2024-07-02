@@ -80,6 +80,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
     }
 
     fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self;
+    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self;
 }
 
 pub trait ReloadableSetup {

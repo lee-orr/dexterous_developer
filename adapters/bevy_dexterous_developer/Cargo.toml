@@ -128,7 +128,6 @@ name = "replacable_state_end"
 crate-type = ["dylib"]
 required-features = ["hot"]
 
-
 [[example]]
 name = "replacable_sub_state_start"
 crate-type = ["dylib"]
@@ -136,5 +135,15 @@ required-features = ["hot"]
 
 [[example]]
 name = "replacable_sub_state_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_computed_state_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_computed_state_end"
 crate-type = ["dylib"]
 required-features = ["hot"]
