@@ -37,6 +37,27 @@ jobs:
       - name: Add Dependencies
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev build-essential libpulse-dev libdbus-1-dev g++ pkg-config libx11-dev libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
+      - name: get latest release with tag
+        id: latestrelease
+        run: |
+          echo "::set-output name=releasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[] | .tag_name | select(. | test("^.*\\d+\\.\\d+\\.\\d+$"))' | sed 's/\"//g' | head -n1)"
+      - name: confirm release tag
+        run: |
+          echo Release ${{ steps.latestrelease.outputs.releasetag }}
+
+      - name: get latest pre-release with tag
+        id: latestprerelease
+        run: |
+          echo "::set-output name=prereleasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[0] | .tag_name' | sed 's/\"//g')"
+      
+      - name: confirm pre-release tag
+        run: |
+          echo Release ${{ steps.latestprerelease.outputs.prereleasetag }}
+
+      - name: setup out dir
+        run: |
+          mkdir ../book
+          
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -47,40 +68,12 @@ jobs:
       - name: place files in folder
         run: |
           mv ./target/doc ./book/doc
-          mv ./book ../book-main
+          mv ./book ../book/main
 
-      - name: get latest release with tag
-        id: latestrelease
-        run: |
-          echo "::set-output name=releasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[] | .tag_name | select(. | test("^.*\\d+\\.\\d+\\.\\d+$"))' | sed 's/\"//g' | head -n1)"
-      - name: confirm release tag
-        run: |
-          echo ${{ steps.latestrelease.outputs.releasetag }}
       - name: tagcheckout
         uses: actions/checkout@v2
         with:
-          ref: ${{ steps.latestrelease.outputs.releasetag }}
-
-      - run: mdbook build
-      - name: build docs
-        run: cargo doc --no-deps
-      - name: place files in folder
-        run: |
-          mv ./target/doc ./book/doc
-          mv ./book ../book
-          mv ../book-main ../book/main
-
-      - name: get latest pre-release with tag
-        id: latestprerelease
-        run: |
-          echo "::set-output name=prereleasetag::$(curl -s https://api.github.com/repos/lee-orr/dexterous_developer/releases | jq '.[0] | .tag_name' | sed 's/\"//g')"
-      - name: confirm release tag
-        run: |
-          echo ${{ steps.latestrelease.outputs.prereleasetag }}
-      - name: tagcheckout
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ steps.latestrelease.outputs.prereleasetag }}
+          ref: ${{ steps.latestprerelease.outputs.prereleasetag }}
 
       - run: mdbook build
       - name: build docs
@@ -88,6 +81,27 @@ jobs:
       - name: place files in folder
         run: |
           mv ./book ../book/pre
+      
+
+      - name: tagcheckout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ steps.latestrelease.outputs.releasetag }}
+      
+      - name: add links to other doc version
+        run: |
+          echo "# Current Version ${{ steps.latestrelease.outputs.releasetag}}" >> ./docs/SUMMARY.md
+          echo "# Other Versions" >> ./docs/SUMMARY.md
+          echo "[Pre Release Docs](https://lee-orr.github.io/dexterous_developer/pre)" >> ./docs/SUMMARY.md
+          echo "[Main Branch Docs](https://lee-orr.github.io/dexterous_developer/main)" >> ./docs/SUMMARY.md
+
+      - run: mdbook build
+      - name: build docs
+        run: cargo doc --no-deps
+      - name: place files in folder
+        run: |
+          mv ./target/doc ./book/doc
+          mv ./book/* ../book/
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
