@@ -5,13 +5,13 @@ members = [
     "dexterous_developer_builder",
     "dexterous_developer_manager",
     "dexterous_developer_instance",
+    "dexterous_developer_dynamic",
     "dexterous_developer_dylib_runner",
     "dexterous_developer_cli",
     "dexterous_developer_test_utils",
     "adapters/*/crates/*",
     "adapters/*",
-    "dexterous_developer",
-    "dexterous_developer_dynamic",]
+    "dexterous_developer",]
 
 [workspace.package]
 version = "0.3.0-pre.2"
