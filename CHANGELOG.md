@@ -6,6 +6,222 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## `dexterous_developer` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer-v0.2.0...dexterous_developer-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `bevy_dexterous_developer` - [0.3.0](https://github.com/me/my-proj/compare/bevy_dexterous_developer-v0.2.0...bevy_dexterous_developer-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `bevy_dexterous_developer_library` - [0.3.0](https://github.com/me/my-proj/compare/bevy_dexterous_developer_library-v0.2.0...bevy_dexterous_developer_library-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `bevy_dexterous_developer_dynamic` - [0.3.0](https://github.com/me/my-proj/compare/bevy_dexterous_developer_dynamic-v0.2.0...bevy_dexterous_developer_dynamic-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `dexterous_developer_cli` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_cli-v0.2.0...dexterous_developer_cli-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `dexterous_developer_dynamic` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_dynamic-v0.2.0...dexterous_developer_dynamic-v0.3.0) - 2024-07-04
+
+### Other
+- *(bevy)* update to bevy 0.14
+
+## `dexterous_developer_instance` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_instance-v0.2.0...dexterous_developer_instance-v0.3.0) - 2024-07-04
+
+### Added
+- cross-platform compilation support ([#12](https://github.com/lee-orr/dexterous_developer/pull/12))
+
+### Fixed
+- fix markdown lint
+- fix publishing/version
+
+### Other
+- *(bevy)* update to bevy 0.14
+- *(workspace)* fix doc version
+- bump version and changelog
+- fix bevy version in docs
+- *(workspace)* Fix version used in docs
+- *(workspace)* adjusting docs further
+- *(workspace)* :memo: Adjust docs release process to generate multiple versions
+- *(workspace)* add pre-release book
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+- changelog
+- update
+- remove state for now
+- instructions on running with hot reload
+- add version alert
+- update readme
+- update docs
+- rename "hot_internal" to "hot"
+- rename "hot" feature to "runner"
+- rename `dexterous_developer_internal` to `dexterous_developer_instance`
+- add bevy quick start
+- better readme
+- remove macro crate, add `macro_rules!` macros to bevy_dexterous_developer
+- Update README.md
+- bump version
+- Update README.md
+- update readme
+- update bevy 0.13
+- clippy + fmt + readme
+- Extract bevy crate ([#55](https://github.com/lee-orr/dexterous_developer/pull/55))
+- Correct architecture detection on MacOS ([#39](https://github.com/lee-orr/dexterous_developer/pull/39))
+- bump version to 0.0.12
+- Revert "update to 0.12 - start work"
+- Revert "Merge branch 'main' of https://github.com/lee-orr/dexterous-developer"
+- Merge branch 'main' of https://github.com/lee-orr/dexterous-developer
+- Update README.md
+- 27 running examples via cli ([#32](https://github.com/lee-orr/dexterous_developer/pull/32))
+- 22 events ([#26](https://github.com/lee-orr/dexterous_developer/pull/26))
+- Merge branches 'main' and 'main' of https://github.com/lee-orr/dexterous-developer
+- update cargo for 0.0.12-pre.0
+- correct markdown, release notes
+- Dynamically add dylib ([#19](https://github.com/lee-orr/dexterous_developer/pull/19))
+- Revert "adjust docs"
+- adjust docs
+- update to 0.0.10
+- documentation
+- bump version
+- update version number
+- file endings
+- bump versions
+- update versions
+- readme + clippy
+- update
+- Readme & bump versions
+- remove the dexterous developer winit fork
+- update readme
+- update docs for 0,.0.3
+- update to InitialPlugins trait
+- improve docs
+- update readme
+- more renames and cleanup
+- add readme info
+
+## `dexterous_developer_manager` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_manager-v0.2.0...dexterous_developer_manager-v0.3.0) - 2024-07-04
+
+### Fixed
+- fix assets
+
+### Other
+- bump version and changelog
+- *(workspace)* :building_construction: adjust ordering of crates in workspace and release-plz settings
+- changelog
+- update
+- update dashma[
+- clippy, fmt, test
+- basic cli tests
+- build test works fast
+- start work towards setting up automated tests
+- format, clippy, cleanup printlnines
+- update version
+- moved bevy specific crates into a subdirectory of bevy_dexterous_developer
+- get simple cli test to run
+- clippy + fmt
+- recursive dependencies
+- adjustments to server/builder
+- build simple watcher
+- fmt + clippy
+- add watcher
+- start implementing simple builder
+- move builder & current state to have an optional root lib
+- move to utf8path
+- add file target
+- add connect to target
+- improve manager & builder APIs
+- add server feature to manager
+- move builder types to builder repo
+- start work on manager
+
+## `dexterous_developer_builder` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_builder-v0.2.0...dexterous_developer_builder-v0.3.0) - 2024-07-04
+
+### Fixed
+- *(workspace)* swap from INotifyWatcher to RecommendedWatcher
+- *(workspace)* import INotifyWatcher by it's full path
+- fix assets
+
+### Other
+- bump version and changelog
+- update
+- update dashma[
+- clippy, fmt, test
+- build test works fast
+- increase timeout for build test
+- adjust test time for builder
+- format, clippy, cleanup printlnines
+- test builder - actual build
+- add watcher tests
+- format
+- remove unused file
+- add current build state tests
+- update version
+- clippy + fmt
+- moved bevy specific crates into a subdirectory of bevy_dexterous_developer
+- continue work
+- clippy + fmt
+- get simple cli test to run
+- setup callbacks and all
+- start setting up for running dynamic libraries
+- clippy + fmt
+- recursive dependencies
+- adjustments to server/builder
+- build simple watcher
+- fmt + clippy
+- add watcher
+- start implementing simple builder
+- move builder & current state to have an optional root lib
+- move to utf8path
+- clippy + fmt
+- add dylib runner crate, comment out stuff in cli, builder & internal
+- add file target
+- add connect to target
+- improve manager & builder APIs
+- move builder types to builder repo
+- fmt + clippy
+- remove macro crate, add `macro_rules!` macros to bevy_dexterous_developer
+- update release
+- avoid direct implementation of ToString
+- move build process & shared types to separate crates
+
+## `dexterous_developer_types` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer_types-v0.2.0...dexterous_developer_types-v0.3.0) - 2024-07-04
+
+### Other
+- update
+- test builder - actual build
+- move config to types
+- update config extraction
+- start setting up new HotReloadInfo struct
+- start setting up for running dynamic libraries
+- clippy + fmt
+- recursive dependencies
+- adjustments to server/builder
+- build simple watcher
+- add watcher
+- move builder & current state to have an optional root lib
+- clippy + fmt + feature_list
+- generate build settings from config
+- move to utf8path
+- clippy + fmt and adjust cli
+- clippy + fmt
+- runner runs with env variables
+- add file target
+- add connect to target
+- improve manager & builder APIs
+- remove tokio from types
+- move builder types to builder repo
+- start work on manager
+- move build process & shared types to separate crates
+
 ## `bevy_dexterous_developer_library` - [0.3.0-pre.2](https://github.com/me/my-proj/compare/bevy_dexterous_developer_library-v0.2.0...bevy_dexterous_developer_library-v0.3.0-pre.2) - 2024-07-02
 
 ### Added

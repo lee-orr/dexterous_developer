@@ -24,8 +24,8 @@ hot = [
 
 [dependencies]
 anyhow = { version = "1" }
-dexterous_developer_types = { version = "0.3.0-pre.2", path = "../../../../dexterous_developer_types" }
-dexterous_developer_instance = { version = "0.3.0-pre.2", path = "../../../../dexterous_developer_instance" }
+dexterous_developer_types = { version = "0.3.0", path = "../../../../dexterous_developer_types" }
+dexterous_developer_instance = { version = "0.3.0", path = "../../../../dexterous_developer_instance" }
 bevy = { version = "0.14", default-features = false, features = [
     "serialize",
     "bevy_state"
