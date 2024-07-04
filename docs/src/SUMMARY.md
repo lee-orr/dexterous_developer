@@ -11,5 +11,7 @@
   - [Events](bevy/events.md)
   - [States](bevy/states.md)
 
-[Github Repository](https://github.com/lee-orr/dexterous_developer)
-[Crates.io](https://crates.io/crates/dexterous_developer)
+# Links
+
+- [Github Repository](https://github.com/lee-orr/dexterous_developer)
+- [Crates.io](https://crates.io/crates/dexterous_developer)
