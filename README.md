@@ -4,12 +4,10 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lee-orr/dexterous_developer/.github%2Fworkflows%2Fstatic-analysis.yml?label=Static%20Analysis)
  ![crates.io](https://img.shields.io/crates/v/dexterous_developer?label=dexterous_developer) ![cli](https://img.shields.io/crates/v/dexterous_developer_cli?label=dexterous_developer_cli)
 
-> [!CAUTION]
-> This readme is currently in flux, as part of the changes toward version `0.3`. To see the readme for `0.2`, go [here](https://github.com/lee-orr/dexterous_developer/tree/dexterous_developer-v0.2.0)
-
 A modular hot-reload system for Rust.
 
 Docs for the latest release are available at: <https://lee-orr.github.io/dexterous_developer/>
+
 You can also find [docs for the latest pre-release](https://lee-orr.github.io/dexterous_developer/pre) and [docs for the main branch](https://lee-orr.github.io/dexterous_developer/main)
 
 ## Features
