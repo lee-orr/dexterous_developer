@@ -14,7 +14,7 @@ members = [
     "dexterous_developer",]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.0-pre.2"
 authors = ["Lee-Orr"]
 description = "A modular hot reload system for rust"
 license = "MIT OR Apache-2.0"
