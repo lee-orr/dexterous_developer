@@ -63,11 +63,8 @@ jobs:
         with:
             ref: 'main'
       - run: mdbook build
-      - name: build docs
-        run: cargo doc --no-deps
       - name: place files in folder
         run: |
-          mv ./target/doc ./book/doc
           mv ./book ../book/main
 
       - name: tagcheckout
@@ -76,8 +73,6 @@ jobs:
           ref: ${{ steps.latestprerelease.outputs.prereleasetag }}
 
       - run: mdbook build
-      - name: build docs
-        run: cargo doc --no-deps
       - name: place files in folder
         run: |
           mv ./book ../book/pre
@@ -90,17 +85,14 @@ jobs:
       
       - name: add links to other doc version
         run: |
-          echo "# Current Version ${{ steps.latestrelease.outputs.releasetag}}" >> ./docs/src/SUMMARY.md
+          echo "# Current Version TEST" >> ./docs/src/SUMMARY.md
           echo "# Other Versions" >> ./docs/src/SUMMARY.md
           echo "[Pre Release Docs](https://lee-orr.github.io/dexterous_developer/pre)" >> ./docs/src/SUMMARY.md
           echo "[Main Branch Docs](https://lee-orr.github.io/dexterous_developer/main)" >> ./docs/src/SUMMARY.md
 
       - run: mdbook build
-      - name: build docs
-        run: cargo doc --no-deps
       - name: place files in folder
         run: |
-          mv ./target/doc ./book/doc
           mv ./book/* ../book/
 
       - name: Setup Pages
