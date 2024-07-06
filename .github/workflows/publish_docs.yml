@@ -87,8 +87,9 @@ jobs:
         run: |
           echo "# Current Version TEST" >> ./docs/src/SUMMARY.md
           echo "# Other Versions" >> ./docs/src/SUMMARY.md
-          echo "[Pre Release Docs](https://lee-orr.github.io/dexterous_developer/pre)" >> ./docs/src/SUMMARY.md
-          echo "[Main Branch Docs](https://lee-orr.github.io/dexterous_developer/main)" >> ./docs/src/SUMMARY.md
+          echo "- [Pre Release Docs](https://lee-orr.github.io/dexterous_developer/pre)" >> ./docs/src/SUMMARY.md
+          echo "- [Main Branch Docs](https://lee-orr.github.io/dexterous_developer/main)" >> ./docs/src/SUMMARY.md
+          cat ./docs/src/SUMMARY.md
 
       - run: mdbook build
       - name: place files in folder

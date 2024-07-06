@@ -149,4 +149,4 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_MARKDOWN: true
           DEFAULT_BRANCH: main
-          FILTER_REGEX_EXCLUDE: "(CHANGELOG.md | SUMMARY.md)"
+          FILTER_REGEX_EXCLUDE: "(CHANGELOG.md | docs/src/SUMMARY.md)"
