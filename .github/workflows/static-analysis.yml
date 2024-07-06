@@ -143,6 +143,9 @@ jobs:
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
+      - run: |
+          rm ./CHANGELOG.md
+          rm ./docs/src/SUMMARY.md
       - name: Run Markdown Lint
         uses: docker://ghcr.io/github/super-linter:slim-v4
         env:
