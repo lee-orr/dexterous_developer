@@ -21,10 +21,6 @@ Dexterous Developer is a modular hot-reload system for Rust. At this point, it p
 - Run systems after hot-reload
 - Create functions to set up & tear down upon either entering/exiting a state or on hot reload
 
-## Additional Resources
-
-We also have [API Docs](https://lee-orr.github.io/dexterous_developer/doc/dexterous_developer/index.html)
-
 ## Inspiration
 
 This project was inspired by [DGriffin91's Ridiculous bevy hot reloading](https://github.com/DGriffin91/ridiculous_bevy_hot_reloading).
