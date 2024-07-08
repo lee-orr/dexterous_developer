@@ -92,15 +92,15 @@ async fn build(
     };
 
     tokio::spawn(async move {
-        let mut outReader = BufReader::new(error).lines();
-        while let Ok(Some(line)) = outReader.next_line().await {
+        let mut out_reader = BufReader::new(error).lines();
+        while let Ok(Some(line)) = out_reader.next_line().await {
             error!("Compilation Error - {line}");
         }
     });
 
-    let mut outReader = BufReader::new(output).lines();
+    let mut out_reader = BufReader::new(output).lines();
 
-    while let Some(line) = outReader.next_line().await? {
+    while let Some(line) = out_reader.next_line().await? {
         info!("Compiler Output: {line}");
         let message = serde_json::from_str(&line)?;
 

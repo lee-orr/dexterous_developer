@@ -2,10 +2,10 @@ use dioxus::prelude::*;
 use dioxus_dexterous_developer::*;
 
 reloadable_main!(dioxus_main {
-    launch(|| use_background_hotreloader(app));
+    launch(|| use_background_hotreloader(App));
 });
 
-reloadable_app!(app {
+reloadable_app!(App {
 
     let value = "Will it load? 🐱";
     let mut count = use_signal(|| 0);

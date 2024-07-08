@@ -2,7 +2,7 @@ use crate::ReloadableDioxusApp;
 use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 use dioxus::prelude::*;
 
-pub fn use_background_hotreloader<App: ReloadableDioxusApp>(app: App) -> Element {
+pub fn use_background_hotreloader<App: ReloadableDioxusApp>(_: App) -> Element {
     let mut update = use_signal(|| 0u32);
     let info = HOT_RELOAD_INFO
         .get()
