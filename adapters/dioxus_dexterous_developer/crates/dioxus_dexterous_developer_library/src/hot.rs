@@ -1,6 +1,6 @@
+use crate::ReloadableDioxusApp;
 use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 use dioxus::prelude::*;
-use crate::ReloadableDioxusApp;
 
 pub fn use_background_hotreloader<App: ReloadableDioxusApp>(app: App) -> Element {
     let mut update = use_signal(|| 0u32);
@@ -9,7 +9,6 @@ pub fn use_background_hotreloader<App: ReloadableDioxusApp>(app: App) -> Element
         .expect("Hot Reload Info hasn't been set");
 
     info.update();
-    
 
     use_future(move || async move {
         loop {
@@ -21,7 +20,5 @@ pub fn use_background_hotreloader<App: ReloadableDioxusApp>(app: App) -> Element
         }
     });
 
-    update.with(|_| {
-        info.call_return(App::name(), &mut ()).unwrap()
-    })
+    update.with(|_| info.call_return(App::name(), &mut ()).unwrap())
 }

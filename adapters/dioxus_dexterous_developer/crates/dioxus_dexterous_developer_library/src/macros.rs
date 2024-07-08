@@ -1,4 +1,3 @@
-
 pub use paste::paste;
 
 #[cfg(not(feature = "hot"))]
@@ -49,7 +48,6 @@ mod hot {
             }
         };
     }
-
 
     #[macro_export]
     macro_rules! reloadable_app {

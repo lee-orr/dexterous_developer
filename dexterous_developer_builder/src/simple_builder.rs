@@ -10,7 +10,10 @@ use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 use tracing::{error, info};
 
 use crate::types::{
@@ -71,7 +74,10 @@ async fn build(
     }
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-    let mut child = cargo.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut child = cargo
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
     let mut succeeded = false;
 

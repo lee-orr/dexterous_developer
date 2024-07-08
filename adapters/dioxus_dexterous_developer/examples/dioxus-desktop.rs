@@ -1,5 +1,5 @@
-use dioxus_dexterous_developer::*;
 use dioxus::prelude::*;
+use dioxus_dexterous_developer::*;
 
 reloadable_main!(dioxus_main {
     launch(|| use_background_hotreloader(app));

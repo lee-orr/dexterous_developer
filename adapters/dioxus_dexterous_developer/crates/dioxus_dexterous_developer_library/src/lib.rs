@@ -10,8 +10,8 @@ mod hot;
 pub use cold::*;
 
 #[cfg(feature = "hot")]
-pub use hot::*;
-#[cfg(feature = "hot")]
 pub use dexterous_developer_instance;
+#[cfg(feature = "hot")]
+pub use hot::*;
 
 pub use types::*;
