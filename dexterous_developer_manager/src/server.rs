@@ -179,12 +179,14 @@ async fn connected_to_target(
     while let Ok(msg) = tokio::select! {
         val = builder_rx.recv() => {
             val.map(|msg| match &msg {
-                BuildOutputMessages::RootLibraryName(name) => Some(HotReloadMessage::RootLibPath(name.clone())),
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {  name, hash, dependencies, .. }) => Some(HotReloadMessage::UpdatedLibs(name.clone(), *hash, dependencies.clone())),
                 BuildOutputMessages::AssetUpdated(HashedFileRecord {  relative_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(relative_path.clone(), *hash)),
                 BuildOutputMessages::KeepAlive => None,
                 BuildOutputMessages::StartedBuild(id) => Some(HotReloadMessage::BuildStarted(*id)),
-                BuildOutputMessages::EndedBuild(id) => Some(HotReloadMessage::BuildCompleted(*id)),
+                BuildOutputMessages::EndedBuild { id, libraries, root_library } => Some(HotReloadMessage::BuildCompleted {
+                    id: *id,
+                    libraries: libraries.iter().map(|library| (library.name.clone(), library.hash, library.dependencies.clone())).collect(),
+                    root_library: root_library.clone()
+                }),
             })
         }
         _ = tokio::time::sleep(Duration::from_secs(5)) => Ok(Some(HotReloadMessage::KeepAlive))

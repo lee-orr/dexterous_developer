@@ -93,7 +93,7 @@ async fn main() {
             cmd.arg("--working-directory")
                 .arg(&current_directory)
                 .arg("--library-path")
-                .arg(current_directory.join(format!("./target/hot-reload/{target}/debug")))
+                .arg(current_directory.join(format!("./target/hot-reload/{target}/{target}/debug")))
                 .arg("--in-workspace");
 
             let mut child = cmd.spawn().expect("Couldn't execute runner");

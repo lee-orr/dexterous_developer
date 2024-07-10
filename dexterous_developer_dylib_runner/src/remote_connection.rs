@@ -172,24 +172,6 @@ pub(crate) async fn remote_connection(
                                 last_completed_id = most_recent_completed_build;
 
                             },
-                            HotReloadMessage::RootLibPath(path) => {
-                                let local_path = library_path.join(&path);
-                                root_lib_name = Some(path);
-                                info!("root library: {root_lib_path:?}");
-                                if pending_downloads.load(Ordering::SeqCst) == 0 {
-                                    info!("no remaining downloads");
-                                    if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
-                                        info!("triggering a reload");
-                                        last_triggered_id = last_completed_id;
-                                        let _ = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;                                    } else {
-                                        info!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
-                                    }
-                                }
-
-                            },
-                            HotReloadMessage::UpdatedLibs(path, hash, _) => {
-                                download_file(&server,target,  &library_path, Utf8PathBuf::from(path), hash, pending_downloads.clone(), download_tx.clone(), false, in_workspace);
-                            },
                             HotReloadMessage::UpdatedAssets(path, hash) => {
                                 download_file(&server, target, &working_directory, path, hash, pending_downloads.clone(), download_tx.clone(), true, in_workspace);
                             },
@@ -199,10 +181,16 @@ pub(crate) async fn remote_connection(
                                     last_started_id = id;
                                 }
                             },
-                            HotReloadMessage::BuildCompleted(id) => {
+                            HotReloadMessage::BuildCompleted { id, libraries, root_library } => {
                                 info!("build completed: {id:?}");
-                                if id > last_completed_id {
-                                    last_completed_id = id;
+                                if id <= last_completed_id {
+                                    continue;
+                                }
+                                last_completed_id = id;
+                                root_lib_name = Some(root_library);
+                                root_lib_path = None;
+                                for (path, hash, _) in &libraries {
+                                    download_file(&server,target,  &library_path, Utf8PathBuf::from(path), *hash, pending_downloads.clone(), download_tx.clone(), false, in_workspace);
                                 }
                             },
                             _ => {}
@@ -236,14 +224,18 @@ fn download_file(
 ) {
     if !in_workspace {
         info!("Starting Download of {remote_path}");
-        pending.fetch_add(1, Ordering::SeqCst);
+        if !is_asset {
+            pending.fetch_add(1, Ordering::SeqCst);
+        }
         let server = server.clone();
         let base_path = base_path.to_owned();
         tokio::spawn(async move {
             let result =
                 execute_download(server.clone(), target, base_path, remote_path.clone(), hash)
                     .await;
-            pending.fetch_sub(1, Ordering::SeqCst);
+            if !is_asset {
+                pending.fetch_sub(1, Ordering::SeqCst);
+            }
             match result {
                 Ok(path) => {
                     let name = remote_path.to_string();
@@ -268,14 +260,15 @@ fn download_file(
         });
     } else {
         let base_path = base_path.to_owned();
-        pending.fetch_add(1, Ordering::SeqCst);
+        if !is_asset {
+            pending.fetch_add(1, Ordering::SeqCst);
+        }
         tokio::spawn(async move {
             let name = remote_path.to_string();
 
             if is_asset {
                 let path = base_path.join(&remote_path);
                 if matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false)) {
-                    pending.fetch_sub(1, Ordering::SeqCst);
                     error!("Failed to find {path}");
                 } else {
                     let _ = tx.send((name, path, true));
@@ -288,7 +281,7 @@ fn download_file(
                 if !matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false)) {
                     info!("Found {name} at {path}");
                     pending.fetch_sub(1, Ordering::SeqCst);
-                    let _ = tx.send((name, path, true));
+                    let _ = tx.send((name, path, false));
                 } else if !matches!(tokio::fs::try_exists(&deps).await, Err(_) | Ok(false)) {
                     info!("Found {name} at {deps}");
                     pending.fetch_sub(1, Ordering::SeqCst);

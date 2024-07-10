@@ -44,19 +44,17 @@ impl TestBuilderComms {
             .send(BuildOutputMessages::StartedBuild(build))
             .unwrap();
         self.output_sender
-            .send(BuildOutputMessages::EndedBuild(build))
-            .unwrap();
-        self.output_sender
-            .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                relative_path: Utf8PathBuf::from("./").join(&example),
-                name: example.to_string(),
-                local_path: path,
-                hash: Default::default(),
-                dependencies: vec![],
-            }))
-            .unwrap();
-        self.output_sender
-            .send(BuildOutputMessages::RootLibraryName(example.clone()))
+            .send(BuildOutputMessages::EndedBuild {
+                id: build,
+                libraries: vec![HashedFileRecord {
+                    relative_path: Utf8PathBuf::from("./").join(&example),
+                    name: example.to_string(),
+                    local_path: path,
+                    hash: Default::default(),
+                    dependencies: vec![],
+                }],
+                root_library: example.clone(),
+            })
             .unwrap();
     }
 }

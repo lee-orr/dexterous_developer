@@ -277,18 +277,14 @@ pub async fn replace_library(
     recv_std(output, "Received Hot Reload Message: BuildCompleted")
         .await
         .expect("Build didn't complete");
-    recv_std(output, "Received Hot Reload Message: UpdatedLibs")
-        .await
-        .expect("Didn't get updated libs");
-    recv_std(output, "Received Hot Reload Message: RootLibPath")
-        .await
-        .expect("Didn't get root lib path");
     recv_std(output, "all downloads completed")
         .await
         .expect("didn't complete all downloads");
     recv_std(output, "Preparing to call update_callback_internal")
         .await
         .expect("didn't call update callback");
+
+    eprintln!("RUNNING THE UPDATE CALLBACK");
 
     let _ = send.send(InMessage::Std("\n".to_string()));
     recv_std(output, "Swapping Libraries")
