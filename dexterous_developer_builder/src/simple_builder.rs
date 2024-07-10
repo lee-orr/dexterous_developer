@@ -14,7 +14,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-use tracing::{error, info};
+use tracing::{debug, error, info, trace};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -42,6 +42,7 @@ async fn build(
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     id: u32,
 ) -> Result<(), anyhow::Error> {
+    info!("Build {id} Started");
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
         cargo.current_dir(&working_dir);
@@ -94,14 +95,14 @@ async fn build(
     tokio::spawn(async move {
         let mut out_reader = BufReader::new(error).lines();
         while let Ok(Some(line)) = out_reader.next_line().await {
-            info!("Compilation - {line}");
+            trace!("Compilation - {line}");
         }
     });
 
     let mut out_reader = BufReader::new(output).lines();
 
     while let Some(line) = out_reader.next_line().await? {
-        info!("Compiler Output: {line}");
+        trace!("Compiler Output: {line}");
         let message = serde_json::from_str(&line)?;
 
         match &message {
@@ -111,10 +112,10 @@ async fn build(
                 }
             }
             cargo_metadata::Message::BuildFinished(finished) => {
-                info!("Build Finished: {finished:?}");
+                trace!("Build Finished: {finished:?}");
                 succeeded = finished.success;
             }
-            msg => info!("Compiler: {msg:?}"),
+            msg => trace!("Compiler: {msg:?}"),
         }
     }
 
@@ -148,7 +149,7 @@ async fn build(
                                     file_section.split('#').last().unwrap_or_default();
                                 let package_name =
                                     package_name.split('@').next().unwrap_or_default();
-                                info!("Checking if {package_name} == {p}");
+                                trace!("Checking if {package_name} == {p}");
                                 if package_name == p {
                                     root_library = Some(name);
                                 }
@@ -212,7 +213,7 @@ async fn build(
         }
     }
 
-    info!("Path Var for DyLib Search: {path_var:?}");
+    trace!("Path Var for DyLib Search: {path_var:?}");
     let dir_collections = path_var.iter().map(|dir| {
         let dir = dir.clone();
         tokio::spawn(async {
@@ -290,6 +291,7 @@ async fn build(
         libraries,
         root_library,
     });
+    info!("Build {id} Completed");
     Ok(())
 }
 
@@ -346,7 +348,7 @@ fn process_dependencies_recursive(
             continue;
         }
         let Some(library_path) = searchable_files.get(library_name) else {
-            error!("Couldn't find library with name {library_name}");
+            debug!("Couldn't find library with name {library_name}");
             continue;
         };
         libraries.insert(library_name.to_string(), library_path.clone());
@@ -401,7 +403,7 @@ impl SimpleBuilder {
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
-                            info!("Builder Received Asset Change - {asset:?}");
+                            trace!("Builder Received Asset Change - {asset:?}");
                             let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
                         }
                     }

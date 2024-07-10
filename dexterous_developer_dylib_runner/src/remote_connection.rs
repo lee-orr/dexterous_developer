@@ -12,7 +12,7 @@ use dexterous_developer_types::{HotReloadMessage, Target};
 use futures_util::StreamExt;
 use tokio::{io::AsyncWriteExt, time::sleep};
 use tokio_tungstenite::connect_async;
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 use url::Url;
 
 use crate::{dylib_runner_message::DylibRunnerMessage, error::DylibRunnerError};
@@ -27,7 +27,7 @@ pub fn connect_to_server(
     let current_target = Target::current().ok_or(DylibRunnerError::NoCurrentTarget)?;
 
     let address = server.join("target/")?;
-    info!("Setting Up Route {address}");
+    trace!("Setting Up Route {address}");
     let mut address = address.join(current_target.as_str())?;
     let initial_scheme = address.scheme();
     let new_scheme = match initial_scheme {
@@ -104,39 +104,39 @@ pub(crate) async fn remote_connection(
         tokio::select! {
             Some((name, local_path, is_asset)) = download_rx.recv() => {
                 if is_asset {
-                    info!("downloaded asset {name}");
+                    trace!("downloaded asset {name}");
                     let _ = tx.send(DylibRunnerMessage::AssetUpdated { local_path, name }).await;
                 } else {
                     if let Some(root_name) = root_lib_name.as_ref() {
                         let root_name = root_name.replace("./", "");
                         let name = name.replace("./", "");
-                        info!("Checking {root_name} - {name} at {local_path}");
+                        trace!("Checking {root_name} - {name} at {local_path}");
                         if root_name == name {
-                            info!("Root {root_name} at {local_path}");
+                            trace!("Root {root_name} at {local_path}");
                             root_lib_path = Some(local_path.clone());
                         }
                     }
                     if pending_downloads.load(Ordering::SeqCst) == 0 {
-                        info!("all downloads completed");
+                        trace!("all downloads completed");
                         if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
                             if let Some(local_path) = root_lib_path.as_ref().cloned() {
                                 if local_path.exists() || ({
-                                    info!("waiting for library to be created");
+                                    trace!("waiting for library to be created");
                                     sleep(Duration::from_millis(100)).await;
                                     local_path.exists()
                                 }){
-                                    info!("local root lib exists - triggering a reload");
+                                    info!("Triggering a Reload");
                                     last_triggered_id = last_completed_id;
                                     let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
-                                    info!("Sent Reload Trigger: {e:?}");
+                                    trace!("Sent Reload Trigger: {e:?}");
                                 } else {
-                                    info!("local root doesn't exist yet - did download actually complete?");
+                                    trace!("local root doesn't exist yet - did download actually complete?");
                                 }
                             } else {
-                                info!("no local root path exists - not triggering a reload");
+                                trace!("no local root path exists - not triggering a reload");
                             }
                         } else {
-                            info!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
+                            trace!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
                         }
                     }
                 }
@@ -147,7 +147,7 @@ pub(crate) async fn remote_connection(
                 match msg {
                     tokio_tungstenite::tungstenite::Message::Binary(binary) => {
                         let msg: HotReloadMessage = rmp_serde::from_slice(&binary)?;
-                        info!("Received Hot Reload Message: {msg:?}");
+                        trace!("Received Hot Reload Message: {msg:?}");
                         match msg {
                             HotReloadMessage::InitialState {
                                 root_lib: initial_root_lib,
@@ -157,7 +157,7 @@ pub(crate) async fn remote_connection(
                                 most_recent_completed_build,
                                 ..
                             } => {
-                                info!(r#"Got Initial State:
+                                trace!(r#"Got Initial State:
                                 root library: {initial_root_lib:?}
                                 most recent started build: {most_recent_started_build}
                                 most_recent_completed_build: {most_recent_completed_build}"#);
@@ -223,7 +223,7 @@ fn download_file(
     in_workspace: bool,
 ) {
     if !in_workspace {
-        info!("Starting Download of {remote_path}");
+        trace!("Starting Download of {remote_path}");
         if !is_asset {
             pending.fetch_add(1, Ordering::SeqCst);
         }
@@ -243,7 +243,7 @@ fn download_file(
                     while matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false))
                         && wait < 3
                     {
-                        info!("Waiting for file to exist");
+                        trace!("Waiting for file to exist");
                         tokio::time::sleep(Duration::from_millis(500)).await;
                         wait += 1;
                     }
@@ -279,15 +279,15 @@ fn download_file(
                 let examples = base_path.join("examples").join(&remote_path);
 
                 if !matches!(tokio::fs::try_exists(&path).await, Err(_) | Ok(false)) {
-                    info!("Found {name} at {path}");
+                    trace!("Found {name} at {path}");
                     pending.fetch_sub(1, Ordering::SeqCst);
                     let _ = tx.send((name, path, false));
                 } else if !matches!(tokio::fs::try_exists(&deps).await, Err(_) | Ok(false)) {
-                    info!("Found {name} at {deps}");
+                    trace!("Found {name} at {deps}");
                     pending.fetch_sub(1, Ordering::SeqCst);
                     let _ = tx.send((name, deps, false));
                 } else if !matches!(tokio::fs::try_exists(&examples).await, Err(_) | Ok(false)) {
-                    info!("Found {name} at {examples}");
+                    trace!("Found {name} at {examples}");
                     pending.fetch_sub(1, Ordering::SeqCst);
                     let _ = tx.send((name, examples, false));
                 } else {
@@ -321,7 +321,7 @@ async fn execute_download(
         .join("files/")?
         .join(&format!("{target}/"))?
         .join(remote_path.as_str())?;
-    info!("downloading {remote_path} from {address:?}");
+    trace!("downloading {remote_path} from {address:?}");
     let req = reqwest::get(address).await?.error_for_status()?;
 
     let dir = local_path
@@ -336,7 +336,7 @@ async fn execute_download(
     let mut file = tokio::fs::File::create(&local_path).await?;
 
     file.write_all(&bytes).await?;
-    info!("downloaded {remote_path}");
+    trace!("downloaded {remote_path}");
 
     Ok(local_path)
 }

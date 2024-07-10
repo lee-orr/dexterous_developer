@@ -9,7 +9,7 @@ use error::DylibRunnerError;
 use ffi::{NEXT_LIBRARY, NEXT_UPDATE_VERSION, ORIGINAL_LIBRARY};
 use remote_connection::connect_to_server;
 use safer_ffi::prelude::c_slice;
-use tracing::{error, info, warn};
+use tracing::{error, trace, warn};
 
 use dexterous_developer_instance::library_holder::LibraryHolder;
 
@@ -67,7 +67,7 @@ pub fn run_app<
     let handle = connect(tx, out_rx)?;
 
     let (initial, id, path) = {
-        info!("Getting Initial Root");
+        trace!("Getting Initial Root");
         let mut library = None;
         let mut id = None;
         #[allow(unused_assignments)]
@@ -77,7 +77,7 @@ pub fn run_app<
                 warn!("We have a root set already...");
             }
             let initial = rx.recv_blocking()?;
-            warn!("Got Message While Looking For Root - {initial:?}");
+            trace!("Got Message While Looking For Root - {initial:?}");
             match initial {
                 DylibRunnerMessage::ConnectionClosed => {
                     let _ = handle.join().map_err(DylibRunnerError::JoinHandleFailed)?;
@@ -87,20 +87,20 @@ pub fn run_app<
                     build_id,
                     local_path,
                 } => {
-                    info!("Loading Initial Root");
+                    trace!("Loading Initial Root");
                     library = Some(LibraryHolder::new(&local_path, false)?);
                     path = Some(local_path);
                     id = Some(build_id);
                     break;
                 }
                 DylibRunnerMessage::AssetUpdated { local_path, name } => {
-                    info!("Asset: {name} {local_path}");
+                    trace!("Asset: {name} {local_path}");
                     continue;
                 }
                 DylibRunnerMessage::SerializedMessage { message: _ } => {}
             }
         }
-        info!("Initial Root ID: {id:?}");
+        trace!("Initial Root ID: {id:?}");
         (
             library.ok_or(DylibRunnerError::NoInitialLibrary)?,
             id.ok_or(DylibRunnerError::NoInitialLibrary)?,
@@ -121,7 +121,7 @@ pub fn run_app<
 
     let _handle = std::thread::spawn(|| update_loop(rx, handle));
 
-    info!("Setting Info");
+    trace!("Setting Info");
 
     let info = HotReloadInfoBuilder {
         internal_last_update_version: ffi::last_update_version,
@@ -134,10 +134,10 @@ pub fn run_app<
 
     initial.varied_call("dexterous_developer_instance_set_hot_reload_info", info)?;
     let _ = out_tx.send_blocking(DylibRunnerOutput::LoadedLib { build_id: id });
-    info!("Calling Internal Main");
+    trace!("Calling Internal Main");
     initial.call("dexterous_developer_instance_main", &mut ())?;
 
-    info!("Done.");
+    trace!("Done.");
 
     Ok(())
 }
@@ -146,7 +146,7 @@ fn update_loop(
     rx: async_channel::Receiver<DylibRunnerMessage>,
     handle: std::thread::JoinHandle<Result<(), DylibRunnerError>>,
 ) -> Result<(), DylibRunnerError> {
-    info!("Starting Secondary Update Loop");
+    trace!("Starting Secondary Update Loop");
     loop {
         let message = rx.recv_blocking()?;
         match message {
@@ -159,19 +159,19 @@ fn update_loop(
                 build_id,
                 local_path,
             } => {
-                info!("Load Root New Library {local_path}");
+                trace!("Load Root New Library {local_path}");
                 NEXT_UPDATE_VERSION.store(build_id, std::sync::atomic::Ordering::SeqCst);
-                info!("Stored Build ID: {build_id}");
+                trace!("Stored Build ID: {build_id}");
                 NEXT_LIBRARY.store(Some(Arc::new(local_path)));
-                info!("Stored Library");
+                trace!("Stored Library");
                 if let Some(library) = ORIGINAL_LIBRARY.get() {
-                    info!("Running Callback");
+                    trace!("Running Callback");
                     let _ = library.varied_call("update_callback_internal", build_id);
                 }
             }
             DylibRunnerMessage::AssetUpdated { local_path, name } => {
                 if let Some(library) = ORIGINAL_LIBRARY.get() {
-                    info!("Running Callback");
+                    trace!("Running Callback");
                     let inner_local_path = c_slice::Box::from(
                         local_path
                             .to_string()
@@ -193,7 +193,7 @@ fn update_loop(
             }
             DylibRunnerMessage::SerializedMessage { message } => {
                 if let Some(library) = ORIGINAL_LIBRARY.get() {
-                    info!("Sending Message");
+                    trace!("Sending Message");
                     let _ = library.varied_call(
                         "send_message_to_reloaded_app",
                         safer_ffi::Vec::from(message),

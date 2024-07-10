@@ -5,7 +5,7 @@ use crossbeam::atomic::AtomicCell;
 use dexterous_developer_instance::library_holder::LibraryHolder;
 use once_cell::sync::OnceCell;
 use safer_ffi::ffi_export;
-use tracing::{error, info};
+use tracing::{error, trace};
 
 use crate::dylib_runner_message::DylibRunnerOutput;
 
@@ -29,7 +29,7 @@ pub extern "C" fn last_update_version() -> u32 {
 pub extern "C" fn update_ready() -> bool {
     let last = LAST_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
     let next = NEXT_UPDATE_VERSION.load(std::sync::atomic::Ordering::SeqCst);
-    info!("Checking Readiness: {last} {next}");
+    trace!("Checking Readiness: {last} {next}");
     next > last
 }
 

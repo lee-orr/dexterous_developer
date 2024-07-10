@@ -8,7 +8,8 @@ use dexterous_developer_builder::{
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
-use tracing::info;
+use tracing::{info, trace};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -36,7 +37,10 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().pretty().init();
+    tracing_subscriber::registry()
+        .with(fmt::layer().pretty())
+        .with(EnvFilter::from_env("RUST_LOG"))
+        .init();
 
     let Args {
         package,
@@ -60,7 +64,7 @@ async fn main() {
         (Some(_), Some(_)) => panic!("Can only build either a package or an example, not both"),
     };
 
-    info!("Setting up builders for {package_or_example:?}");
+    trace!("Setting up builders for {package_or_example:?}");
 
     let builders = config
         .generate_build_settings(Some(package_or_example.clone()), &features)
@@ -73,7 +77,7 @@ async fn main() {
         })
         .collect::<Vec<_>>();
 
-    info!("Setting up Manager");
+    trace!("Setting up Manager");
 
     let manager = Manager::new(Arc::new(SimpleWatcher::default()))
         .add_builders(&builders)

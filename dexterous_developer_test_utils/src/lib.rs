@@ -73,7 +73,10 @@ pub async fn setup_test(
 
         let mut command = Command::new(runner);
         command
-            // .current_dir(dir_path)
+            .env(
+                "RUST_LOG",
+                "trace,dexterous_developer_runner=trace,dexterous_developer_dylib_runner=trace",
+            )
             .arg("-s")
             .arg(format!("http://127.0.0.1:{}", port))
             .arg("--in-workspace")

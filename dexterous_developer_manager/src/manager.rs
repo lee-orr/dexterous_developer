@@ -11,7 +11,7 @@ use tokio::{
     sync::{broadcast, mpsc},
     task::JoinHandle,
 };
-use tracing::{error, info};
+use tracing::{error, trace};
 
 #[derive(Default, Clone)]
 
@@ -72,8 +72,8 @@ impl Manager {
                             tokio::select! {
                                 Ok(msg) = outgoing.recv() => {
                                     match msg {
-                                        BuilderOutgoingMessages::Waiting => info!("Builder for {target:?} is waiting"),
-                                        BuilderOutgoingMessages::BuildStarted => info!("Started building for {target:?}"),
+                                        BuilderOutgoingMessages::Waiting => trace!("Builder for {target:?} is waiting"),
+                                        BuilderOutgoingMessages::BuildStarted => trace!("Started building for {target:?}"),
                                     }
                                 }
                                 Ok(msg) = output.recv() => {

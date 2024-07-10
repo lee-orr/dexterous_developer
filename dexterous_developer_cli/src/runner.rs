@@ -1,6 +1,12 @@
 use camino::Utf8PathBuf;
 use std::{env, process};
 use tracing::{error, info, warn};
+use tracing_subscriber::{
+    fmt::{self},
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter,
+};
 
 use clap::Parser;
 use dexterous_developer_types::cargo_path_utils::add_to_dylib_path;
@@ -31,7 +37,10 @@ struct Args {
 }
 
 fn main() {
-    tracing_subscriber::fmt().pretty().init();
+    tracing_subscriber::registry()
+        .with(fmt::layer().pretty())
+        .with(EnvFilter::from_default_env())
+        .init();
 
     let cwd =
         Utf8PathBuf::try_from(env::current_dir().expect("Couldn't determine curent directory"))
