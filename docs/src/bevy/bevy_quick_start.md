@@ -4,8 +4,8 @@
 
 Install the CLI by running: ```cargo install dexterous_developer_cli```. This installs 2 command line utilities:
 
-- `dexterous_developer_cli` - used to build the project
-- `dexterous_developer_runner` - used to run the project
+- `dexterous_developer_cli` - used to build the project, potentially running it at the same time
+- `dexterous_developer_runner` - used to run the project on another device
 
 ### Note for pre-relesse versions
 
