@@ -1,7 +1,4 @@
-use bevy::{
-    log::{debug, info},
-    prelude::*,
-};
+use bevy::{log::debug, prelude::*};
 use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 
 use crate::{
@@ -140,7 +137,7 @@ fn setup_reloadable_app_inner(
         return Err(ReloadableSetupCallError::CallFailed);
     }
 
-    info!("setup for {name} complete");
+    trace!("setup for {name} complete");
     Ok(())
 }
 

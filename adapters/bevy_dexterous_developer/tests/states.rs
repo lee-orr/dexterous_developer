@@ -2,15 +2,13 @@ mod state_test {
     use dexterous_developer_test_utils::{
         recv_exit, recv_std, recv_std_avoiding, replace_library, setup_test, InMessage,
     };
-    use test_temp_dir::*;
+
     use tracing_test::traced_test;
 
     #[traced_test]
     #[tokio::test]
     async fn can_initialize_a_state() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "replacable_state_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_state_start").await;
 
         recv_std(&mut output, "In Initial State")
             .await
@@ -40,9 +38,7 @@ mod state_test {
     #[traced_test]
     #[tokio::test]
     async fn triggers_on_enter_on_first_initialization_but_not_after() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "replacable_state_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_state_start").await;
 
         recv_std(&mut output, "Entered Initial")
             .await
@@ -77,10 +73,7 @@ mod state_test {
     #[traced_test]
     #[tokio::test]
     async fn can_add_a_sub_state() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "replacable_sub_state_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_sub_state_start").await;
 
         recv_std(&mut output, "In Initial State")
             .await
@@ -120,10 +113,7 @@ mod state_test {
     #[traced_test]
     #[tokio::test]
     async fn can_add_a_computed_state() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "replacable_computed_state_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_computed_state_start").await;
 
         recv_std(&mut output, "In Initial State")
             .await
@@ -163,9 +153,7 @@ mod state_test {
     #[traced_test]
     #[tokio::test]
     async fn can_enable_state_scoped() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "state_scoped_start").await;
+        let (mut comms, send, mut output, _) = setup_test("state_scoped_start").await;
 
         recv_std(&mut output, "0 - ab.")
             .await

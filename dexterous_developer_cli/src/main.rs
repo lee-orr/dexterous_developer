@@ -7,8 +7,9 @@ use dexterous_developer_builder::{
     simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder,
 };
 use dexterous_developer_manager::{server::run_server, Manager};
-use dexterous_developer_types::{config::DexterousConfig, PackageOrExample};
-use tracing::info;
+use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
+use tracing::{info, trace};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -36,7 +37,10 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().pretty().init();
+    tracing_subscriber::registry()
+        .with(fmt::layer().pretty())
+        .with(EnvFilter::from_env("RUST_LOG"))
+        .init();
 
     let Args {
         package,
@@ -60,7 +64,7 @@ async fn main() {
         (Some(_), Some(_)) => panic!("Can only build either a package or an example, not both"),
     };
 
-    info!("Setting up builders for {package_or_example:?}");
+    trace!("Setting up builders for {package_or_example:?}");
 
     let builders = config
         .generate_build_settings(Some(package_or_example.clone()), &features)
@@ -73,7 +77,7 @@ async fn main() {
         })
         .collect::<Vec<_>>();
 
-    info!("Setting up Manager");
+    trace!("Setting up Manager");
 
     let manager = Manager::new(Arc::new(SimpleWatcher::default()))
         .add_builders(&builders)
@@ -83,16 +87,18 @@ async fn main() {
     if serve_only {
         run_server(port, manager).await.expect("Server Error");
     } else {
-        let tempdir = async_tempfile::TempDir::new()
-            .await
-            .expect("Couldn't create temporary directory");
         tokio::spawn(async move {
             run_server(port, manager).await.expect("Server Error");
         });
         {
             let mut cmd = tokio::process::Command::new("dexterous_developer_runner");
+            let target = Target::current().expect("Can't find current target");
             cmd.arg("--server").arg(format!("http://localhost:{port}"));
-            cmd.current_dir(tempdir.dir_path());
+            cmd.arg("--working-directory")
+                .arg(&current_directory)
+                .arg("--library-path")
+                .arg(current_directory.join(format!("./target/hot-reload/{target}/{target}/debug")))
+                .arg("--in-workspace");
 
             let mut child = cmd.spawn().expect("Couldn't execute runner");
             match child.wait().await {

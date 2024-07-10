@@ -27,6 +27,7 @@ pub struct TestBuilderComms {
     pub target: Target,
     pub build_id: u32,
     pub examples: Utf8PathBuf,
+    pub target_directory: Utf8PathBuf,
     pub incoming_receiver: UnboundedReceiver<BuilderIncomingMessages>,
     pub outgoing_sender: broadcast::Sender<BuilderOutgoingMessages>,
     pub output_sender: broadcast::Sender<BuildOutputMessages>,
@@ -43,19 +44,17 @@ impl TestBuilderComms {
             .send(BuildOutputMessages::StartedBuild(build))
             .unwrap();
         self.output_sender
-            .send(BuildOutputMessages::EndedBuild(build))
-            .unwrap();
-        self.output_sender
-            .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                relative_path: Utf8PathBuf::from("./").join(&example),
-                name: example.to_string(),
-                local_path: path,
-                hash: Default::default(),
-                dependencies: vec![],
-            }))
-            .unwrap();
-        self.output_sender
-            .send(BuildOutputMessages::RootLibraryName(example.clone()))
+            .send(BuildOutputMessages::EndedBuild {
+                id: build,
+                libraries: vec![HashedFileRecord {
+                    relative_path: Utf8PathBuf::from("./").join(&example),
+                    name: example.to_string(),
+                    local_path: path,
+                    hash: Default::default(),
+                    dependencies: vec![],
+                }],
+                root_library: example.clone(),
+            })
             .unwrap();
     }
 }
@@ -68,7 +67,8 @@ impl TestBuilder {
         let (output_tx, _) = broadcast::channel(10);
 
         let base = Utf8PathBuf::from_path_buf(current_exe().unwrap()).unwrap();
-        let examples: Utf8PathBuf = base.parent().unwrap().parent().unwrap().join("examples");
+        let target_directory = base.parent().unwrap().parent().unwrap().to_owned();
+        let examples: Utf8PathBuf = target_directory.join("examples");
 
         (
             Self {
@@ -84,6 +84,7 @@ impl TestBuilder {
                 incoming_receiver: in_rx,
                 outgoing_sender: outgoing_tx,
                 output_sender: output_tx,
+                target_directory,
             },
         )
     }

@@ -4,7 +4,6 @@ use dexterous_developer_manager::server::run_test_server;
 use std::sync::Arc;
 use std::{
     env::current_exe,
-    path::PathBuf,
     process::{ExitStatus, Stdio},
     time::Duration,
 };
@@ -30,7 +29,6 @@ pub enum OutMessage {
 }
 
 pub async fn setup_test(
-    dir_path: PathBuf,
     test_example: impl ToString,
 ) -> (
     TestBuilderComms,
@@ -51,6 +49,7 @@ pub async fn setup_test(
 
     let port = port_rx.await.unwrap();
     comms.set_new_library(test_example.to_string());
+    let target_directory = comms.target_directory.clone();
 
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel();
@@ -74,9 +73,15 @@ pub async fn setup_test(
 
         let mut command = Command::new(runner);
         command
-            .current_dir(dir_path)
+            .env(
+                "RUST_LOG",
+                "trace,dexterous_developer_runner=trace,dexterous_developer_dylib_runner=trace",
+            )
             .arg("-s")
             .arg(format!("http://127.0.0.1:{}", port))
+            .arg("--in-workspace")
+            .arg("--library-path")
+            .arg(target_directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped());
@@ -275,18 +280,14 @@ pub async fn replace_library(
     recv_std(output, "Received Hot Reload Message: BuildCompleted")
         .await
         .expect("Build didn't complete");
-    recv_std(output, "Received Hot Reload Message: UpdatedLibs")
-        .await
-        .expect("Didn't get updated libs");
-    recv_std(output, "Received Hot Reload Message: RootLibPath")
-        .await
-        .expect("Didn't get root lib path");
     recv_std(output, "all downloads completed")
         .await
         .expect("didn't complete all downloads");
     recv_std(output, "Preparing to call update_callback_internal")
         .await
         .expect("didn't call update callback");
+
+    eprintln!("RUNNING THE UPDATE CALLBACK");
 
     let _ = send.send(InMessage::Std("\n".to_string()));
     recv_std(output, "Swapping Libraries")

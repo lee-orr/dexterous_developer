@@ -2,15 +2,13 @@ mod cli_test {
     use dexterous_developer_test_utils::{
         recv_exit, recv_std, replace_library, setup_test, InMessage,
     };
-    use test_temp_dir::*;
+
     use tracing_test::traced_test;
 
     #[traced_test]
     #[tokio::test]
     async fn simple_cli_can_run() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (_comms, send, mut output, _) = setup_test(dir_path, "simple_cli").await;
+        let (_comms, send, mut output, _) = setup_test("simple_cli").await;
 
         recv_std(&mut output, "Hey!")
             .await
@@ -28,9 +26,7 @@ mod cli_test {
     #[traced_test]
     #[tokio::test]
     async fn can_swap_a_system() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "simple_cli").await;
+        let (mut comms, send, mut output, _) = setup_test("simple_cli").await;
 
         recv_std(&mut output, "Hey!")
             .await

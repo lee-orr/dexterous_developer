@@ -211,10 +211,12 @@ pub enum HotReloadMessage {
         most_recent_started_build: u32,
         most_recent_completed_build: u32,
     },
-    RootLibPath(String),
-    UpdatedLibs(String, [u8; 32], Vec<String>),
     UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,
     BuildStarted(u32),
-    BuildCompleted(u32),
+    BuildCompleted {
+        id: u32,
+        libraries: Vec<(String, [u8; 32], Vec<String>)>,
+        root_library: String,
+    },
 }

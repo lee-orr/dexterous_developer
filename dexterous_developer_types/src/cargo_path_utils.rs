@@ -43,10 +43,13 @@ pub fn dylib_path() -> Vec<Utf8PathBuf> {
     }
 }
 
-pub fn add_to_dylib_path(path: &Utf8Path) -> Result<(&'static str, ffi::OsString), Error> {
-    let cannonical = path.canonicalize_utf8()?;
+pub fn add_to_dylib_path(path: &[&Utf8Path]) -> Result<(&'static str, ffi::OsString), Error> {
+    let mut cannonical = path
+        .iter()
+        .map(|path| path.canonicalize_utf8().map_err(|e| e.into()))
+        .collect::<Result<Vec<_>, Error>>()?;
     let mut dylibs = dylib_path();
-    dylibs.push(cannonical);
+    dylibs.append(&mut cannonical);
     let value = env::join_paths(&dylibs)?;
     let env_var = dylib_path_envvar();
     env::set_var(env_var, &value);

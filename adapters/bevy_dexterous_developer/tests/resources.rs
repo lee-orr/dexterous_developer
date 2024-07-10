@@ -2,15 +2,13 @@ mod resource_test {
     use dexterous_developer_test_utils::{
         recv_exit, recv_std, replace_library, setup_test, InMessage,
     };
-    use test_temp_dir::*;
+
     use tracing_test::traced_test;
 
     #[traced_test]
     #[tokio::test]
     async fn can_reset_a_resource() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "reset_resource_start").await;
+        let (mut comms, send, mut output, _) = setup_test("reset_resource_start").await;
 
         recv_std(&mut output, "Resource Initial")
             .await
@@ -28,10 +26,7 @@ mod resource_test {
     #[traced_test]
     #[tokio::test]
     async fn can_reset_a_resource_to_value() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "reset_resource_start").await;
+        let (mut comms, send, mut output, _) = setup_test("reset_resource_start").await;
 
         recv_std(&mut output, "Resource Initial")
             .await
@@ -49,11 +44,8 @@ mod resource_test {
     #[traced_test]
     #[tokio::test]
     async fn can_serialize_a_resource() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
         let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "serde_serializable_resource_start").await;
+            setup_test("serde_serializable_resource_start").await;
 
         recv_std(&mut output, "My Serializable Field")
             .await
@@ -77,11 +69,7 @@ mod resource_test {
     #[traced_test]
     #[tokio::test]
     async fn can_replace_a_resource() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
-        let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "replacable_resource_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_resource_start").await;
 
         recv_std(&mut output, "My First Field")
             .await

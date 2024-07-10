@@ -8,7 +8,8 @@
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/akhildevelops/devcontainer-features/apt:0": {
 			"PACKAGES": "g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld mold libssl-dev libwebkit2gtk-4.1-dev curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev"
-		}
+		},
+		"ghcr.io/lee-orr/rusty-dev-containers/cargo-nextest": {}
 	},
 	"customizations": {
 		"vscode": {
@@ -28,7 +29,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
+	"postCreateCommand": "rustup component add rustfmt && rustup component add clippy",
 	// Configure tool-specific properties.
 	// "customizations": {},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
