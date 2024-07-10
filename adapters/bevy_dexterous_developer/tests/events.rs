@@ -2,16 +2,13 @@ mod component_test {
     use dexterous_developer_test_utils::{
         recv_exit, recv_std, replace_library, setup_test, InMessage,
     };
-    use test_temp_dir::*;
+
     use tracing_test::traced_test;
 
     #[traced_test]
     #[tokio::test]
     async fn can_reset_events() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "events_start").await;
+        let (mut comms, send, mut output, _) = setup_test("events_start").await;
 
         recv_std(&mut output, "Running Update")
             .await

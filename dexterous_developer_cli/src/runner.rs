@@ -24,6 +24,10 @@ struct Args {
     /// Otherwise - it will try spawning a child process that sets the environment variables first.
     #[arg(long)]
     env_vars_preset: bool,
+    /// Used to indicate that the library path is the target directory
+    /// for builds, and the working directory is the root of the workspace
+    #[arg(long)]
+    in_workspace: bool,
 }
 
 fn main() {
@@ -46,7 +50,7 @@ fn main() {
         .expect("Couldn't set up remote");
 
     info!(
-        "Setting up connection to {server} in {working_directory} with libraries in{library_path}"
+        "Setting up connection to {server} in {working_directory} with libraries in {library_path}"
     );
 
     if !working_directory.exists() {
@@ -60,6 +64,7 @@ fn main() {
         &working_directory,
         &library_path,
         server.clone(),
+        args.in_workspace,
     ) {
         match e {
             dexterous_developer_dylib_runner::error::DylibRunnerError::DylibPathsMissingLibraries => {
@@ -69,16 +74,28 @@ fn main() {
                 }
                 warn!("Couldn't find library path - adding it to the environment variables and restarting");
                 let executable = env::current_exe().expect("Couldn't get current executable");
-                let (env_var, env_val) = add_to_dylib_path(&library_path)
+                let (env_var, env_val) = (if args.in_workspace {
+                    let deps = library_path.join("deps");
+                    let examples = library_path.join("examples");
+                    add_to_dylib_path(&[&library_path, &deps, &examples])
+                } else {
+                    add_to_dylib_path(&[&library_path])
+                })
                     .expect("Failed to add library path to dylib path");
-                let status = std::process::Command::new(executable)
-                    .arg("--working-directory")
-                    .arg(working_directory)
-                    .arg("--library-path")
-                    .arg(library_path)
-                    .arg("--server")
-                    .arg(server.to_string())
-                    .arg("--env-vars-preset")
+                let mut command = std::process::Command::new(executable);
+                command.arg("--working-directory")
+                .arg(working_directory)
+                .arg("--library-path")
+                .arg(library_path)
+                .arg("--server")
+                .arg(server.to_string())
+                .arg("--env-vars-preset");
+
+                if args.in_workspace {
+                    command.arg("--in-workspace");
+                }
+
+                let status = command
                     .env(env_var, env_val)
                     .status()
                     .expect("Couldn't run with env variables");

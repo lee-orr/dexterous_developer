@@ -2043,6 +2043,7 @@ dependencies = [
  "notify",
  "prefer-dynamic",
  "serde",
+ "serde_json",
  "test-temp-dir",
  "thiserror",
  "tokio",

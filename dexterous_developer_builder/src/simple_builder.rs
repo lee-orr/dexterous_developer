@@ -10,7 +10,10 @@ use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use tokio::process::Command;
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 use tracing::{error, info};
 
 use crate::types::{
@@ -71,18 +74,35 @@ async fn build(
     }
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-    let output = cargo.stdout(Stdio::piped()).output().await?;
-
-    if !output.status.success() {
-        bail!("Build Failed: {:?}", output.stderr);
-    }
+    let mut child = cargo
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
     let mut succeeded = false;
 
     let mut artifacts = Vec::with_capacity(20);
 
-    for msg in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
-        let message = msg?;
+    let Some(output) = child.stdout.take() else {
+        bail!("No Std Out");
+    };
+
+    let Some(error) = child.stderr.take() else {
+        bail!("No Std Err");
+    };
+
+    tokio::spawn(async move {
+        let mut out_reader = BufReader::new(error).lines();
+        while let Ok(Some(line)) = out_reader.next_line().await {
+            info!("Compilation - {line}");
+        }
+    });
+
+    let mut out_reader = BufReader::new(output).lines();
+
+    while let Some(line) = out_reader.next_line().await? {
+        info!("Compiler Output: {line}");
+        let message = serde_json::from_str(&line)?;
 
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {

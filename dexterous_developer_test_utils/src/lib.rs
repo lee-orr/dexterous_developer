@@ -4,7 +4,6 @@ use dexterous_developer_manager::server::run_test_server;
 use std::sync::Arc;
 use std::{
     env::current_exe,
-    path::PathBuf,
     process::{ExitStatus, Stdio},
     time::Duration,
 };
@@ -30,7 +29,6 @@ pub enum OutMessage {
 }
 
 pub async fn setup_test(
-    dir_path: PathBuf,
     test_example: impl ToString,
 ) -> (
     TestBuilderComms,
@@ -51,6 +49,7 @@ pub async fn setup_test(
 
     let port = port_rx.await.unwrap();
     comms.set_new_library(test_example.to_string());
+    let target_directory = comms.target_directory.clone();
 
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let (out_tx, mut out_rx) = mpsc::unbounded_channel();
@@ -74,9 +73,12 @@ pub async fn setup_test(
 
         let mut command = Command::new(runner);
         command
-            .current_dir(dir_path)
+            // .current_dir(dir_path)
             .arg("-s")
             .arg(format!("http://127.0.0.1:{}", port))
+            .arg("--in-workspace")
+            .arg("--library-path")
+            .arg(target_directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped());

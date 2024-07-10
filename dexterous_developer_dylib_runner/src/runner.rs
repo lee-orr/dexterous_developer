@@ -24,6 +24,7 @@ pub fn run_reloadable_app(
     working_directory: &Utf8Path,
     library_path: &Utf8Path,
     server: url::Url,
+    in_workspace: bool,
 ) -> Result<(), DylibRunnerError> {
     if !library_path.exists() {
         return Err(DylibRunnerError::LibraryDirectoryDoesntExist(
@@ -41,7 +42,15 @@ pub fn run_reloadable_app(
         return Err(DylibRunnerError::DylibPathsMissingLibraries);
     }
 
-    run_app(|tx, _| connect_to_server(working_directory, library_path, server.clone(), tx))
+    run_app(|tx, _| {
+        connect_to_server(
+            working_directory,
+            library_path,
+            server.clone(),
+            tx,
+            in_workspace,
+        )
+    })
 }
 
 pub fn run_app<

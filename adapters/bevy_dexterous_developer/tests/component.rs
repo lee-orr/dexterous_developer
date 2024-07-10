@@ -2,17 +2,14 @@ mod component_test {
     use dexterous_developer_test_utils::{
         recv_exit, recv_std, replace_library, setup_test, InMessage,
     };
-    use test_temp_dir::*;
+
     use tracing_test::traced_test;
 
     #[traced_test]
     #[tokio::test]
     async fn can_serialize_a_component() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
         let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "serde_serializable_component_start").await;
+            setup_test("serde_serializable_component_start").await;
 
         recv_std(&mut output, "a - b")
             .await
@@ -36,11 +33,7 @@ mod component_test {
     #[traced_test]
     #[tokio::test]
     async fn can_replace_a_component() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
-        let (mut comms, send, mut output, _) =
-            setup_test(dir_path, "replacable_component_start").await;
+        let (mut comms, send, mut output, _) = setup_test("replacable_component_start").await;
 
         recv_std(&mut output, "a - b")
             .await
@@ -58,10 +51,7 @@ mod component_test {
     #[traced_test]
     #[tokio::test]
     async fn can_reset_setup() {
-        let dir = test_temp_dir!();
-        let dir_path = dir.as_path_untracked().to_path_buf();
-
-        let (mut comms, send, mut output, _) = setup_test(dir_path, "reset_component").await;
+        let (mut comms, send, mut output, _) = setup_test("reset_component").await;
 
         recv_std(&mut output, "a").await.expect("Failed first line");
         let _ = send.send(InMessage::Std("\n".to_string()));

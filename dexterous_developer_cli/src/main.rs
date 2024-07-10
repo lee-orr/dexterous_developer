@@ -7,7 +7,7 @@ use dexterous_developer_builder::{
     simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder,
 };
 use dexterous_developer_manager::{server::run_server, Manager};
-use dexterous_developer_types::{config::DexterousConfig, PackageOrExample};
+use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
 use tracing::info;
 
 #[derive(Parser, Debug)]
@@ -83,16 +83,18 @@ async fn main() {
     if serve_only {
         run_server(port, manager).await.expect("Server Error");
     } else {
-        let tempdir = async_tempfile::TempDir::new()
-            .await
-            .expect("Couldn't create temporary directory");
         tokio::spawn(async move {
             run_server(port, manager).await.expect("Server Error");
         });
         {
             let mut cmd = tokio::process::Command::new("dexterous_developer_runner");
+            let target = Target::current().expect("Can't find current target");
             cmd.arg("--server").arg(format!("http://localhost:{port}"));
-            cmd.current_dir(tempdir.dir_path());
+            cmd.arg("--working-directory")
+                .arg(&current_directory)
+                .arg("--library-path")
+                .arg(current_directory.join(format!("./target/hot-reload/{target}/debug")))
+                .arg("--in-workspace");
 
             let mut child = cmd.spawn().expect("Couldn't execute runner");
             match child.wait().await {
