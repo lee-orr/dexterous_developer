@@ -5,7 +5,7 @@ use dashmap::DashMap;
 
 use notify::{RecommendedWatcher, Watcher as NotifyWatcher};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info, warn};
+use tracing::{error, info, trace, warn};
 
 use crate::types::{self, BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
 
@@ -27,25 +27,25 @@ impl Watcher for SimpleWatcher {
         info!("Watching Directories: {directories:?}");
         for directory in directories.iter() {
             {
-                info!("Checking {directory:?}");
+                trace!("Checking {directory:?}");
                 let subscribers = self.code_subscribers.entry(directory.clone()).or_default();
-                info!("Got Subscribers");
+                trace!("Got Subscribers");
                 subscribers.insert(subscriber.0, subscriber.1.clone());
             }
-            info!("Inserting a new subscriber");
+            trace!("Inserting a new subscriber");
             let _ = self
                 .watchers
                 .entry(directory.clone())
                 .or_try_insert_with::<WatcherError>(|| {
-                    info!("Adding watcher entry");
+                    trace!("Adding watcher entry");
                     let code_subscribers = self.code_subscribers.clone();
-                    info!("Getting Code Subscribers");
+                    trace!("Getting Code Subscribers");
                     let directory = directory.clone();
 
                     let mut watcher = {
                         let directory = directory.clone();
                         notify::recommended_watcher(move |_| {
-                            info!("Got Watch Event");
+                            trace!("Got Watch Event");
                             let Some(subscribers) = code_subscribers.get(&directory) else {
                                 error!("Couldn't Get Subscribers");
                                 return;
@@ -55,18 +55,18 @@ impl Watcher for SimpleWatcher {
                                 return;
                             }
                             for subscriber in subscribers.iter() {
-                                info!("Sending Code Changed Message to {}", subscriber.key());
+                                trace!("Sending Code Changed Message to {}", subscriber.key());
                                 let _ = subscriber.send(BuilderIncomingMessages::CodeChanged);
                             }
-                            info!("Finished Sending Code Changed Messages");
+                            trace!("Finished Sending Code Changed Messages");
                         })?
                     };
 
-                    info!("Watching Directory");
+                    trace!("Watching Directory");
 
                     watcher.watch(directory.as_std_path(), notify::RecursiveMode::Recursive)?;
 
-                    info!("Returning Watcher");
+                    trace!("Returning Watcher");
 
                     Ok(watcher)
                 })?;
@@ -83,38 +83,38 @@ impl Watcher for SimpleWatcher {
         let cwd = Utf8PathBuf::try_from(env::current_dir()?)?;
         for directory in directories.iter() {
             {
-                info!("Checking assets at {directory:?}");
+                trace!("Checking assets at {directory:?}");
                 let subscribers = self.asset_subscribers.entry(directory.clone()).or_default();
-                info!("Got asset Subscribers");
+                trace!("Got asset Subscribers");
                 subscribers.insert(subscriber.0, subscriber.1.clone());
 
                 let files = gather_directory_content(directory.clone(), &cwd)?;
-                info!("Publishing Current Directory Content {files:?}");
+                trace!("Publishing Current Directory Content {files:?}");
 
                 let _ = subscribers.iter().map(|subscriber| {
                     for file in files.iter() {
-                        info!("Sending Asset Changed Message to {}", subscriber.key());
+                        trace!("Sending Asset Changed Message to {}", subscriber.key());
                         let _ =
                             subscriber.send(BuilderIncomingMessages::AssetChanged(file.clone()));
                     }
                 });
                 for file in files.iter() {
-                    info!("Sending Asset Changed Message to {}", subscriber.0);
+                    trace!("Sending Asset Changed Message to {}", subscriber.0);
                     let _ = subscriber
                         .1
                         .send(BuilderIncomingMessages::AssetChanged(file.clone()));
                 }
             }
-            info!("Inserting a new asset subscriber");
+            trace!("Inserting a new asset subscriber");
             {
                 let cwd = cwd.clone();
                 let _ = self
                     .watchers
                     .entry(directory.clone())
                     .or_try_insert_with::<WatcherError>(move || {
-                        info!("Adding watcher entry");
+                        trace!("Adding watcher entry");
                         let asset_subscribers = self.asset_subscribers.clone();
-                        info!("Getting asset Subscribers");
+                        trace!("Getting asset Subscribers");
                         let directory = directory.clone();
 
                         let mut watcher = {
@@ -122,7 +122,7 @@ impl Watcher for SimpleWatcher {
 
                             notify::recommended_watcher(
                                 move |file: Result<notify::Event, notify::Error>| {
-                                    info!("Got Asset Event");
+                                    trace!("Got Asset Event");
                                     let Some(subscribers) = asset_subscribers.get(&directory)
                                     else {
                                         error!("Couldn't Get Asset Subscribers");
@@ -180,9 +180,9 @@ impl Watcher for SimpleWatcher {
                                                     .ok()
                                             })
                                             .collect::<Vec<_>>();
-                                        info!("Asset Change Records: {files:?}");
+                                        trace!("Asset Change Records: {files:?}");
                                         for subscriber in subscribers.iter() {
-                                            info!("Updating Subscriber {}", subscriber.key());
+                                            trace!("Updating Subscriber {}", subscriber.key());
                                             for file in files.iter() {
                                                 let _ = subscriber.send(
                                                     BuilderIncomingMessages::AssetChanged(
@@ -195,11 +195,11 @@ impl Watcher for SimpleWatcher {
                                 },
                             )?
                         };
-                        info!("Watching Directory");
+                        trace!("Watching Directory");
 
                         watcher.watch(directory.as_std_path(), notify::RecursiveMode::Recursive)?;
 
-                        info!("Returning Watcher");
+                        trace!("Returning Watcher");
 
                         Ok(watcher)
                     })?;

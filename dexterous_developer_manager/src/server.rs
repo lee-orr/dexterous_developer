@@ -26,7 +26,7 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use crate::{Manager, ManagerError};
 
@@ -72,7 +72,7 @@ pub async fn run_test_server(
 
     port_return.send(port).unwrap();
 
-    eprintln!("Listening on http://127.0.0.1:{port}");
+    info!("Listening on http://127.0.0.1:{port}");
 
     axum::serve(listener, app).await?;
     eprintln!("Ending");
@@ -118,7 +118,7 @@ async fn connect_to_target(
     state: State<ServerState>,
 ) -> Result<Response, Error> {
     let id = uuid::Uuid::new_v4();
-    info!("Client {id} Connecting to Target: {target:?}");
+    trace!("Client {id} Connecting to Target: {target:?}");
     let target: Target = target.0.parse()?;
 
     let (initial_build_state, builder_rx) = state.manager.watch_target(&target).await?;
@@ -179,12 +179,14 @@ async fn connected_to_target(
     while let Ok(msg) = tokio::select! {
         val = builder_rx.recv() => {
             val.map(|msg| match &msg {
-                BuildOutputMessages::RootLibraryName(name) => Some(HotReloadMessage::RootLibPath(name.clone())),
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {  name, hash, dependencies, .. }) => Some(HotReloadMessage::UpdatedLibs(name.clone(), *hash, dependencies.clone())),
                 BuildOutputMessages::AssetUpdated(HashedFileRecord {  relative_path, hash, .. }) => Some(HotReloadMessage::UpdatedAssets(relative_path.clone(), *hash)),
                 BuildOutputMessages::KeepAlive => None,
                 BuildOutputMessages::StartedBuild(id) => Some(HotReloadMessage::BuildStarted(*id)),
-                BuildOutputMessages::EndedBuild(id) => Some(HotReloadMessage::BuildCompleted(*id)),
+                BuildOutputMessages::EndedBuild { id, libraries, root_library } => Some(HotReloadMessage::BuildCompleted {
+                    id: *id,
+                    libraries: libraries.iter().map(|library| (library.name.clone(), library.hash, library.dependencies.clone())).collect(),
+                    root_library: root_library.clone()
+                }),
             })
         }
         _ = tokio::time::sleep(Duration::from_secs(5)) => Ok(Some(HotReloadMessage::KeepAlive))
@@ -215,7 +217,7 @@ async fn target_file_loader(
 ) -> Result<Response, Error> {
     let file = Utf8PathBuf::from("./").join(file);
     let target: Target = target.parse()?;
-    info!("Requested file {file:?} from {target}");
+    trace!("Requested file {file:?} from {target}");
     let file = match state.manager.get_filepath(&target, &file) {
         Ok(file) => file,
         Err(e) => {
@@ -223,9 +225,9 @@ async fn target_file_loader(
             return Ok(StatusCode::NOT_FOUND.into_response());
         }
     };
-    info!("Found File path: {file:?}");
+    trace!("Found File path: {file:?}");
     let serve = ServeFile::new(file);
     let result = serve.oneshot(request).await?;
-    info!("Result has status {:?}", result.status());
+    trace!("Result has status {:?}", result.status());
     Ok(result.into_response())
 }

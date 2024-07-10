@@ -55,7 +55,7 @@ macro_rules! reloadable_scope {
 
         impl bevy_dexterous_developer::ReloadableSetup for $f {
             fn setup_function_name() -> &'static str {
-                bevy::prelude::info!("Reloadable Scope Name: {}", stringify!($internal_f));
+                bevy::prelude::trace!("Reloadable Scope Name: {}", stringify!($internal_f));
                 stringify!($internal_f)
             }
 

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use dexterous_developer_types::cargo_path_utils;
 use thiserror::Error;
-use tracing::{debug, error, info};
+use tracing::{debug, error, trace};
 use uuid::Uuid;
 
 static LIBRARIES: Lazy<DashMap<Uuid, LibraryHolderInner>> = Lazy::new(Default::default);
@@ -22,7 +22,7 @@ impl Drop for LibraryHolderInner {
 
 impl LibraryHolderInner {
     pub fn new(path: &Utf8Path, use_original: bool) -> Result<(Self, Uuid), LibraryError> {
-        info!("Loading {path:?}");
+        trace!("Loading {path:?}");
         let path = path.to_owned();
         let uuid = uuid::Uuid::new_v4();
         let path = if use_original {
@@ -79,14 +79,14 @@ impl LibraryHolderInner {
             return Err(LibraryError::LibraryUnavailable(self.1.clone()));
         };
 
-        info!("Preparing to call {name}");
+        trace!("Preparing to call {name}");
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(T)> = lib.get(name.as_bytes())?;
-            info!("Got symbol");
+            trace!("Got symbol");
             func(args);
-            info!("Call complete");
+            trace!("Call complete");
         };
         Ok(())
     }
@@ -96,15 +96,15 @@ impl LibraryHolderInner {
             return Err(LibraryError::LibraryUnavailable(self.1.clone()));
         };
 
-        info!("Preparing to call {name}");
+        trace!("Preparing to call {name}");
 
         // SAFETY: This should be safe due to relying on rust ownership semantics for passing values between two rust crates. Since we know that the library itself is a rust rather than C library, we know that it will respect a mutable borrow internally.
         let result = unsafe {
             let func: libloading::Symbol<unsafe extern "C" fn(T) -> R> =
                 lib.get(name.as_bytes())?;
-            info!("Got symbol");
+            trace!("Got symbol");
             let result = func(args);
-            info!("Call complete");
+            trace!("Call complete");
             result
         };
         Ok(result)

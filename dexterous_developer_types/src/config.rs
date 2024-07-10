@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::info;
+use tracing::trace;
 
 use crate::{PackageOrExample, Target, TargetBuildSettings};
 use camino::Utf8PathBuf;
@@ -49,7 +49,7 @@ impl DexterousConfig {
         };
 
         if !path.exists() {
-            info!("No config found at {path}, using a default config");
+            trace!("No config found at {path}, using a default config");
             return Ok(Default::default());
         }
 

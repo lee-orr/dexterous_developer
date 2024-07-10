@@ -11,7 +11,7 @@ use tokio::{
     sync::{broadcast, mpsc},
     task::JoinHandle,
 };
-use tracing::{error, info};
+use tracing::{error, trace};
 
 #[derive(Default, Clone)]
 
@@ -72,8 +72,8 @@ impl Manager {
                             tokio::select! {
                                 Ok(msg) = outgoing.recv() => {
                                     match msg {
-                                        BuilderOutgoingMessages::Waiting => info!("Builder for {target:?} is waiting"),
-                                        BuilderOutgoingMessages::BuildStarted => info!("Started building for {target:?}"),
+                                        BuilderOutgoingMessages::Waiting => trace!("Builder for {target:?} is waiting"),
+                                        BuilderOutgoingMessages::BuildStarted => trace!("Started building for {target:?}"),
                                     }
                                 }
                                 Ok(msg) = output.recv() => {
@@ -274,15 +274,19 @@ mod tests {
                                 break;
                             }
                             if output_tx
-                                .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord::new(
-                                    "root_lib_path",
-                                    Utf8PathBuf::new(),
-                                    "root_lib_path",
-                                    [
-                                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    ],
-                                )))
+                                .send(BuildOutputMessages::EndedBuild {
+                                    libraries: vec![HashedFileRecord::new(
+                                        "root_lib_path",
+                                        Utf8PathBuf::new(),
+                                        "root_lib_path",
+                                        [
+                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        ],
+                                    )],
+                                    id: 1,
+                                    root_library: "root_lib".to_string(),
+                                })
                                 .is_err()
                             {
                                 break;
@@ -290,15 +294,19 @@ mod tests {
                         }
                         if let BuilderIncomingMessages::CodeChanged = recv {
                             output_tx
-                                .send(BuildOutputMessages::LibraryUpdated(HashedFileRecord::new(
-                                    "root_lib_path",
-                                    Utf8PathBuf::new(),
-                                    "root_lib_path",
-                                    [
-                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    ],
-                                )))
+                                .send(BuildOutputMessages::EndedBuild {
+                                    libraries: vec![HashedFileRecord::new(
+                                        "root_lib_path",
+                                        Utf8PathBuf::new(),
+                                        "root_lib_path",
+                                        [
+                                            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        ],
+                                    )],
+                                    id: 1,
+                                    root_library: "root_lib".to_string(),
+                                })
                                 .expect("Failed to send watch");
                         }
                     }
@@ -379,13 +387,17 @@ mod tests {
 
             let message = rx.recv().await.unwrap();
             match message {
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                    relative_path,
-                    hash,
-                    ..
-                }) => {
+                BuildOutputMessages::EndedBuild { libraries, .. } => {
+                    let Some(HashedFileRecord {
+                        relative_path,
+                        hash,
+                        ..
+                    }) = libraries.first()
+                    else {
+                        panic!("No Updated Libraries");
+                    };
                     assert_eq!(relative_path.to_string(), "root_lib_path");
-                    hash
+                    *hash
                 }
                 _ => panic!("Message is wrong type"),
             }
@@ -495,13 +507,17 @@ mod tests {
 
             let message = rx.recv().await.unwrap();
             match message {
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                    relative_path,
-                    hash,
-                    ..
-                }) => {
+                BuildOutputMessages::EndedBuild { libraries, .. } => {
+                    let Some(HashedFileRecord {
+                        relative_path,
+                        hash,
+                        ..
+                    }) = libraries.first()
+                    else {
+                        panic!("No Updated Libraries");
+                    };
                     assert_eq!(relative_path.to_string(), "root_lib_path");
-                    hash
+                    *hash
                 }
                 _ => panic!("Message is wrong type"),
             }
@@ -535,13 +551,17 @@ mod tests {
 
             let message = rx.recv().await.unwrap();
             let new_hash = match message {
-                BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                    relative_path,
-                    hash,
-                    ..
-                }) => {
+                BuildOutputMessages::EndedBuild { libraries, .. } => {
+                    let Some(HashedFileRecord {
+                        relative_path,
+                        hash,
+                        ..
+                    }) = libraries.first()
+                    else {
+                        panic!("No Updated Libraries");
+                    };
                     assert_eq!(relative_path.to_string(), "root_lib_path");
-                    hash
+                    *hash
                 }
                 _ => panic!("Message is wrong type"),
             };

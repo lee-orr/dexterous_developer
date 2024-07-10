@@ -10,8 +10,11 @@ use anyhow::bail;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
-use tokio::process::Command;
-use tracing::{error, info};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
+use tracing::{debug, error, info, trace};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -39,6 +42,7 @@ async fn build(
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     id: u32,
 ) -> Result<(), anyhow::Error> {
+    info!("Build {id} Started");
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
         cargo.current_dir(&working_dir);
@@ -71,18 +75,35 @@ async fn build(
     }
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-    let output = cargo.stdout(Stdio::piped()).output().await?;
-
-    if !output.status.success() {
-        bail!("Build Failed: {:?}", output.stderr);
-    }
+    let mut child = cargo
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
     let mut succeeded = false;
 
     let mut artifacts = Vec::with_capacity(20);
 
-    for msg in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
-        let message = msg?;
+    let Some(output) = child.stdout.take() else {
+        bail!("No Std Out");
+    };
+
+    let Some(error) = child.stderr.take() else {
+        bail!("No Std Err");
+    };
+
+    tokio::spawn(async move {
+        let mut out_reader = BufReader::new(error).lines();
+        while let Ok(Some(line)) = out_reader.next_line().await {
+            trace!("Compilation - {line}");
+        }
+    });
+
+    let mut out_reader = BufReader::new(output).lines();
+
+    while let Some(line) = out_reader.next_line().await? {
+        trace!("Compiler Output: {line}");
+        let message = serde_json::from_str(&line)?;
 
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
@@ -91,10 +112,10 @@ async fn build(
                 }
             }
             cargo_metadata::Message::BuildFinished(finished) => {
-                info!("Build Finished: {finished:?}");
+                trace!("Build Finished: {finished:?}");
                 succeeded = finished.success;
             }
-            msg => info!("Compiler: {msg:?}"),
+            msg => trace!("Compiler: {msg:?}"),
         }
     }
 
@@ -128,7 +149,7 @@ async fn build(
                                     file_section.split('#').last().unwrap_or_default();
                                 let package_name =
                                     package_name.split('@').next().unwrap_or_default();
-                                info!("Checking if {package_name} == {p}");
+                                trace!("Checking if {package_name} == {p}");
                                 if package_name == p {
                                     root_library = Some(name);
                                 }
@@ -192,7 +213,7 @@ async fn build(
         }
     }
 
-    info!("Path Var for DyLib Search: {path_var:?}");
+    trace!("Path Var for DyLib Search: {path_var:?}");
     let dir_collections = path_var.iter().map(|dir| {
         let dir = dir.clone();
         tokio::spawn(async {
@@ -244,28 +265,33 @@ async fn build(
         )?;
     }
 
-    for (library, local_path) in libraries.iter() {
-        let file = std::fs::read(local_path)?;
-        let hash = blake3::hash(&file);
+    let libraries = libraries
+        .iter()
+        .map(|(library, local_path)| {
+            let file = std::fs::read(local_path)?;
+            let hash = blake3::hash(&file);
 
-        let _ = sender.send(BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-            name: library.clone(),
-            local_path: local_path.clone(),
-            relative_path: Utf8PathBuf::from(format!("./{library}")),
-            hash: hash.as_bytes().to_owned(),
-            dependencies: dependencies.get(library).cloned().unwrap_or_default(),
-        }));
-    }
+            Ok(HashedFileRecord {
+                name: library.clone(),
+                local_path: local_path.clone(),
+                relative_path: Utf8PathBuf::from(format!("./{library}")),
+                hash: hash.as_bytes().to_owned(),
+                dependencies: dependencies.get(library).cloned().unwrap_or_default(),
+            })
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
 
-    if let Some(root_library) = root_library {
-        let _ = sender.send(BuildOutputMessages::RootLibraryName(
-            root_library.to_string(),
-        ));
-    } else {
+    let Some(root_library) = root_library.map(|r| r.to_string()) else {
         error!("No Root Library");
-    }
+        bail!("No Root Library");
+    };
 
-    let _ = sender.send(BuildOutputMessages::EndedBuild(id));
+    let _ = sender.send(BuildOutputMessages::EndedBuild {
+        id,
+        libraries,
+        root_library,
+    });
+    info!("Build {id} Completed");
     Ok(())
 }
 
@@ -322,7 +348,7 @@ fn process_dependencies_recursive(
             continue;
         }
         let Some(library_path) = searchable_files.get(library_name) else {
-            error!("Couldn't find library with name {library_name}");
+            debug!("Couldn't find library with name {library_name}");
             continue;
         };
         libraries.insert(library_name.to_string(), library_path.clone());
@@ -377,7 +403,7 @@ impl SimpleBuilder {
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
-                            info!("Builder Received Asset Change - {asset:?}");
+                            trace!("Builder Received Asset Change - {asset:?}");
                             let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
                         }
                     }
@@ -525,26 +551,29 @@ mod test {
                         assert_eq!(id, 1);
                         started = true;
                     }
-                    BuildOutputMessages::EndedBuild(id) => {
+                    BuildOutputMessages::EndedBuild {
+                        id,
+                        libraries,
+                        root_library,
+                    } => {
                         assert_eq!(id, 1);
                         ended = true;
-                        break;
-                    }
-                    BuildOutputMessages::RootLibraryName(name) => {
-                        assert_eq!(name, target.dynamic_lib_name("test_lib"));
+                        assert_eq!(root_library, target.dynamic_lib_name("test_lib"));
                         root_lib_confirmed = true;
-                    }
-                    BuildOutputMessages::LibraryUpdated(HashedFileRecord {
-                        local_path,
-                        dependencies,
-                        name,
-                        ..
-                    }) => {
-                        assert!(local_path.exists());
-                        if name == target.dynamic_lib_name("test_lib") {
-                            assert!(dependencies.len() == 1, "Dependencies: {dependencies:?}");
-                            library_update_received = true;
+                        for HashedFileRecord {
+                            local_path,
+                            dependencies,
+                            name,
+                            ..
+                        } in libraries.into_iter()
+                        {
+                            assert!(local_path.exists());
+                            if name == target.dynamic_lib_name("test_lib") {
+                                assert!(dependencies.len() == 1, "Dependencies: {dependencies:?}");
+                                library_update_received = true;
+                            }
                         }
+                        break;
                     }
                     BuildOutputMessages::AssetUpdated(_) => {}
                     BuildOutputMessages::KeepAlive => {}
