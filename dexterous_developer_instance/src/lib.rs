@@ -66,7 +66,7 @@ pub mod internal {
 
         use super::{HotReloadAccessError, HOT_RELOAD_INFO};
 
-        static CURRENT_LIBRARY: RwLock<Option<LibraryHolder>> = RwLock::new(None);
+        static CURRENT_LIBRARY: RwLock<Vec<LibraryHolder>> = RwLock::new(vec![]);
         static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn() + Send + Sync>>> = RwLock::new(None);
         static UPDATED_ASSET_CALLBACK: RwLock<Option<Arc<dyn Fn(UpdatedAsset) + Send + Sync>>> =
             RwLock::new(None);
@@ -93,7 +93,7 @@ pub mod internal {
                 }
             };
 
-            *writer = Some(holder);
+            writer.push(holder);
             println!("Set Current Library");
         }
 
@@ -141,7 +141,7 @@ pub mod internal {
                 .try_read()
                 .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
 
-            match current.as_ref() {
+            match current.last() {
                 Some(current) => {
                     current.call(name, args).map_err(|e| {
                         HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}"))
@@ -164,7 +164,7 @@ pub mod internal {
                 .try_read()
                 .map_err(|e| HotReloadAccessError::AtomicError(format!("{e}")))?;
 
-            let result = match current.as_ref() {
+            let result = match current.last() {
                 Some(current) => current.call_return(name, args).map_err(|e| {
                     HotReloadAccessError::LibraryError(format!("Couldn't Call {name} - {e:?}"))
                 })?,
