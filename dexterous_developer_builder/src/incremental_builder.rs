@@ -1,4 +1,5 @@
 use futures_util::future::join_all;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     env, fs,
@@ -44,21 +45,22 @@ async fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     info!("Build {id} Started");
+    let linker = which::which("dexterous_developer_incremental_linker")?;
+    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
+        bail!("Couldn't get linker path");
+    };
+    let linker = linker.canonicalize_utf8()?;
+
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
         cargo.current_dir(&working_dir);
     }
     cargo
         .env_remove("LD_DEBUG")
+        .env("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN", serde_json::to_string(&IncrementalRunParams::InitialRun)?)
         .env("RUSTFLAGS", "-Cprefer-dynamic")
         .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
-        .arg("rustc")
-        .arg("--lib")
-        .arg("--message-format=json-render-diagnostics")
-        .arg("--profile")
-        .arg("dev")
-        .arg("--target")
-        .arg(target.to_string());
+        .arg("rustc");
 
     if let Some(manifest) = manifest_path {
         cargo.arg("--manifest-path").arg(manifest.canonicalize()?);
@@ -67,10 +69,12 @@ async fn build(
     match &package_or_example {
         dexterous_developer_types::PackageOrExample::DefaulPackage => {}
         dexterous_developer_types::PackageOrExample::Package(package) => {
-            cargo.arg("-p").arg(package.as_str());
+            cargo
+                .arg("--lib").arg("-p").arg(package.as_str());
         }
         dexterous_developer_types::PackageOrExample::Example(example) => {
-            cargo.arg("--example").arg(example.as_str());
+            cargo
+                .arg("--example").arg(example.as_str());
         }
     }
 
@@ -78,6 +82,16 @@ async fn build(
         cargo.arg("--features");
         cargo.arg(features.join(",").as_str());
     }
+
+    cargo
+        .arg("--message-format=json-render-diagnostics")
+        .arg("--profile")
+        .arg("dev")
+        .arg("--target")
+        .arg(target.to_string())
+        .arg("--")
+        .arg("-C")
+        .arg(format!("linker={linker}"));
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
     let mut child = cargo
@@ -457,6 +471,16 @@ impl Builder for IncrementalBuilder {
 
     fn get_asset_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
         self.settings.asset_folders.clone()
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum IncrementalRunParams {
+    InitialRun,
+    Patch {
+        id: u32,
+        out_path_base: Utf8PathBuf,
+        timestamp: std::time::SystemTime,
     }
 }
 

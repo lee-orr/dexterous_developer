@@ -2104,12 +2104,14 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "which",
 ]
 
 [[package]]
 name = "dexterous_developer_cli"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "async-tempfile",
  "camino",
  "cargo_toml",
@@ -2122,6 +2124,7 @@ dependencies = [
  "futures-util",
  "locate-cargo-manifest",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "toml",

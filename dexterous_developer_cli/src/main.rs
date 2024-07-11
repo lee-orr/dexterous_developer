@@ -4,7 +4,7 @@ use camino::Utf8PathBuf;
 
 use clap::Parser;
 use dexterous_developer_builder::{
-    simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder,
+    incremental_builder::IncrementalBuilder, simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
@@ -73,7 +73,7 @@ async fn main() {
         .map(|(target, build_settings)| {
             let build: Arc<dyn Builder> = match build_settings.builder {
                 dexterous_developer_types::BuilderTypes::Simple => {
-                    Arc::new(SimpleBuilder::new(target, build_settings))
+                    Arc::new(IncrementalBuilder::new(target, build_settings))
                 }
             };
             build

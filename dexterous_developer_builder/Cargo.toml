@@ -36,10 +36,7 @@ futures-util = { version = "0.3", default-features = false,  features = [
 ] }
 serde_json = "1"
 bollard = "0.16"
+which = "6"
 
 [dev-dependencies]
 test-temp-dir = { version = "0.2 "}
-
-[[bin]]
-name = "incremental_linker"
-path = "src/incremental_linker.rs"
