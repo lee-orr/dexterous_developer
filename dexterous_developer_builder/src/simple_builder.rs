@@ -14,7 +14,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -95,7 +95,7 @@ async fn build(
     tokio::spawn(async move {
         let mut out_reader = BufReader::new(error).lines();
         while let Ok(Some(line)) = out_reader.next_line().await {
-            trace!("Compilation - {line}");
+            warn!("Compilation - {line}");
         }
     });
 
@@ -112,7 +112,7 @@ async fn build(
                 }
             }
             cargo_metadata::Message::BuildFinished(finished) => {
-                trace!("Build Finished: {finished:?}");
+                info!("Build Finished: {finished:?}");
                 succeeded = finished.success;
             }
             msg => trace!("Compiler: {msg:?}"),

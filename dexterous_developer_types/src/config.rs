@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::trace;
 
-use crate::{PackageOrExample, Target, TargetBuildSettings};
+use crate::{BuilderTypes, PackageOrExample, Target, TargetBuildSettings};
 use camino::Utf8PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -37,6 +37,8 @@ pub struct ReloadTargetConfig {
     pub asset_folders: Vec<camino::Utf8PathBuf>,
     #[serde(default)]
     pub environment: HashMap<String, String>,
+    #[serde(default)]
+    pub builder: Option<BuilderTypes>
 }
 
 impl DexterousConfig {
@@ -94,6 +96,8 @@ impl DexterousConfig {
             }
         };
 
+        let global_builder = package_specific_config.builder;
+
         let global_features = features
             .iter()
             .chain(package_specific_config.features.iter())
@@ -122,6 +126,7 @@ impl DexterousConfig {
                     settings.features.clone(),
                     settings.asset_folders.clone(),
                     settings.environment.clone(),
+                    settings.builder.clone()
                 )
             })
             .collect::<Vec<_>>();
@@ -129,13 +134,13 @@ impl DexterousConfig {
         if targets.is_empty() {
             let default_target =
                 Target::current().ok_or(BuildSettingsGenerationError::NoDefaultTarget)?;
-            targets.push((default_target, vec![], vec![], HashMap::new()))
+            targets.push((default_target, vec![], vec![], HashMap::new(), None))
         }
 
         Ok(targets
             .into_iter()
             .map(
-                move |(target, mut features, mut asset_folders, mut environment)| {
+                move |(target, mut features, mut asset_folders, mut environment, builder)| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
                     }
@@ -154,6 +159,7 @@ impl DexterousConfig {
                             asset_folders,
                             code_watch_folders: self.code_watch_folders.clone(),
                             environment,
+                            builder: global_builder.as_ref().cloned().or(builder).unwrap_or_default()
                         },
                     )
                 },
@@ -170,7 +176,7 @@ pub enum BuildSettingsGenerationError {
 
 #[cfg(test)]
 mod test {
-    use crate::{PackageOrExample, Target};
+    use crate::{config::BuilderTypes, PackageOrExample, Target};
     use camino::Utf8PathBuf;
 
     use super::{DexterousConfig, ReloadTargetConfig};
@@ -212,6 +218,7 @@ mod test {
                     environment: [("env".to_string(), "value".to_string())]
                         .into_iter()
                         .collect(),
+                    builder: None
                 },
             )])
             .into_iter()

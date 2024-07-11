@@ -46,7 +46,12 @@ pub fn dylib_path() -> Vec<Utf8PathBuf> {
 pub fn add_to_dylib_path(path: &[&Utf8Path]) -> Result<(&'static str, ffi::OsString), Error> {
     let mut cannonical = path
         .iter()
-        .map(|path| path.canonicalize_utf8().map_err(|e| e.into()))
+        .map(|path| {
+            if !path.exists() {
+                std::fs::create_dir_all(path);
+            }
+            path.canonicalize_utf8().map_err(|e| e.into())
+        })
         .collect::<Result<Vec<_>, Error>>()?;
     let mut dylibs = dylib_path();
     dylibs.append(&mut cannonical);

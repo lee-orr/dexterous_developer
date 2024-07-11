@@ -71,8 +71,10 @@ async fn main() {
         .expect("Failed determine build settings")
         .into_iter()
         .map(|(target, build_settings)| {
-            let builder = SimpleBuilder::new(target, build_settings);
-            let build: Arc<dyn Builder> = Arc::new(builder);
+            let build: Arc<dyn Builder> = match build_settings.builder {
+                dexterous_developer_types::BuilderTypes::Simple => Arc::new(SimpleBuilder::new(target, build_settings)),
+                
+            };
             build
         })
         .collect::<Vec<_>>();

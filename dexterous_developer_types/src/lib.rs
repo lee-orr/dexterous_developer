@@ -46,6 +46,12 @@ pub enum PackageOrExample {
     Example(String),
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub enum BuilderTypes {
+    #[default]
+    Simple,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TargetBuildSettings {
     pub working_dir: Option<camino::Utf8PathBuf>,
@@ -54,6 +60,7 @@ pub struct TargetBuildSettings {
     pub asset_folders: Vec<camino::Utf8PathBuf>,
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
     pub environment: HashMap<String, String>,
+    pub builder: BuilderTypes
 }
 
 #[repr(C)]
