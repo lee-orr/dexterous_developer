@@ -1,0 +1,21 @@
+[package]
+name = "dioxus_dexterous_developer_dynamic"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+dioxus = "0.5"
+dioxus_dexterous_developer_library = { path = "../dioxus_dexterous_developer_library" }
+dexterous_developer_types = { version = "0.3.0", path = "../../../../dexterous_developer_types" }
+dexterous_developer_instance = { version = "0.3.0", path = "../../../../dexterous_developer_instance" }
