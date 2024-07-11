@@ -39,3 +39,7 @@ bollard = "0.16"
 
 [dev-dependencies]
 test-temp-dir = { version = "0.2 "}
+
+[[bin]]
+name = "incremental_linker"
+path = "src/incremental_linker.rs"
