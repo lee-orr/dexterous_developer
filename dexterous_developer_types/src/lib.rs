@@ -49,7 +49,7 @@ pub struct TargetBuildSettings {
     pub asset_folders: Vec<camino::Utf8PathBuf>,
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
     pub environment: HashMap<String, String>,
-    pub builder: BuilderTypes
+    pub builder: BuilderTypes,
 }
 
 #[repr(C)]

@@ -101,8 +101,11 @@ impl DexterousConfig {
         };
 
         let global_builder = package_specific_config.builder;
-        
-        let global_manifest = package_specific_config.manifest_path.as_ref().or(self.manifest_path.as_ref());
+
+        let global_manifest = package_specific_config
+            .manifest_path
+            .as_ref()
+            .or(self.manifest_path.as_ref());
 
         let global_features = features
             .iter()
@@ -133,7 +136,7 @@ impl DexterousConfig {
                     settings.asset_folders.clone(),
                     settings.environment.clone(),
                     settings.builder.clone(),
-                    settings.manifest_path.clone()
+                    settings.manifest_path.clone(),
                 )
             })
             .collect::<Vec<_>>();
@@ -147,7 +150,14 @@ impl DexterousConfig {
         Ok(targets
             .into_iter()
             .map(
-                move |(target, mut features, mut asset_folders, mut environment, builder, manifest_path)| {
+                move |(
+                    target,
+                    mut features,
+                    mut asset_folders,
+                    mut environment,
+                    builder,
+                    manifest_path,
+                )| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
                     }
@@ -166,8 +176,12 @@ impl DexterousConfig {
                             asset_folders,
                             code_watch_folders: self.code_watch_folders.clone(),
                             environment,
-                            builder: global_builder.as_ref().cloned().or(builder).unwrap_or_default(),
-                            manifest_path: manifest_path.or(global_manifest.cloned())
+                            builder: global_builder
+                                .as_ref()
+                                .cloned()
+                                .or(builder)
+                                .unwrap_or_default(),
+                            manifest_path: manifest_path.or(global_manifest.cloned()),
                         },
                     )
                 },
@@ -184,7 +198,7 @@ pub enum BuildSettingsGenerationError {
 
 #[cfg(test)]
 mod test {
-    use crate::{config::BuilderTypes, PackageOrExample, Target};
+    use crate::{PackageOrExample, Target};
     use camino::Utf8PathBuf;
 
     use super::{DexterousConfig, ReloadTargetConfig};
@@ -227,7 +241,7 @@ mod test {
                         .into_iter()
                         .collect(),
                     builder: None,
-                    manifest_path: None
+                    manifest_path: None,
                 },
             )])
             .into_iter()

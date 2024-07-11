@@ -52,7 +52,7 @@ async fn build(
         .env_remove("LD_DEBUG")
         .env("RUSTFLAGS", "-Cprefer-dynamic")
         .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
-        .arg("build")
+        .arg("rustc")
         .arg("--lib")
         .arg("--message-format=json-render-diagnostics")
         .arg("--profile")

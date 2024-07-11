@@ -48,7 +48,7 @@ pub fn add_to_dylib_path(path: &[&Utf8Path]) -> Result<(&'static str, ffi::OsStr
         .iter()
         .map(|path| {
             if !path.exists() {
-                std::fs::create_dir_all(path);
+                std::fs::create_dir_all(path)?;
             }
             path.canonicalize_utf8().map_err(|e| e.into())
         })
