@@ -27,6 +27,8 @@ pub struct DexterousConfig {
     pub default_package: Option<ReloadTargetConfig>,
     #[serde(default)]
     pub environment: HashMap<String, String>,
+    #[serde(default)]
+    pub manifest_path: Option<Utf8PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -38,7 +40,9 @@ pub struct ReloadTargetConfig {
     #[serde(default)]
     pub environment: HashMap<String, String>,
     #[serde(default)]
-    pub builder: Option<BuilderTypes>
+    pub builder: Option<BuilderTypes>,
+    #[serde(default)]
+    pub manifest_path: Option<Utf8PathBuf>,
 }
 
 impl DexterousConfig {
@@ -97,6 +101,8 @@ impl DexterousConfig {
         };
 
         let global_builder = package_specific_config.builder;
+        
+        let global_manifest = package_specific_config.manifest_path.as_ref().or(self.manifest_path.as_ref());
 
         let global_features = features
             .iter()
@@ -126,7 +132,8 @@ impl DexterousConfig {
                     settings.features.clone(),
                     settings.asset_folders.clone(),
                     settings.environment.clone(),
-                    settings.builder.clone()
+                    settings.builder.clone(),
+                    settings.manifest_path.clone()
                 )
             })
             .collect::<Vec<_>>();
@@ -134,13 +141,13 @@ impl DexterousConfig {
         if targets.is_empty() {
             let default_target =
                 Target::current().ok_or(BuildSettingsGenerationError::NoDefaultTarget)?;
-            targets.push((default_target, vec![], vec![], HashMap::new(), None))
+            targets.push((default_target, vec![], vec![], HashMap::new(), None, None))
         }
 
         Ok(targets
             .into_iter()
             .map(
-                move |(target, mut features, mut asset_folders, mut environment, builder)| {
+                move |(target, mut features, mut asset_folders, mut environment, builder, manifest_path)| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
                     }
@@ -159,7 +166,8 @@ impl DexterousConfig {
                             asset_folders,
                             code_watch_folders: self.code_watch_folders.clone(),
                             environment,
-                            builder: global_builder.as_ref().cloned().or(builder).unwrap_or_default()
+                            builder: global_builder.as_ref().cloned().or(builder).unwrap_or_default(),
+                            manifest_path: manifest_path.or(global_manifest.cloned())
                         },
                     )
                 },
@@ -218,7 +226,8 @@ mod test {
                     environment: [("env".to_string(), "value".to_string())]
                         .into_iter()
                         .collect(),
-                    builder: None
+                    builder: None,
+                    manifest_path: None
                 },
             )])
             .into_iter()

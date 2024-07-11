@@ -37,6 +37,7 @@ async fn build(
         working_dir,
         package_or_example,
         features,
+        manifest_path,
         ..
     }: TargetBuildSettings,
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
@@ -58,6 +59,10 @@ async fn build(
         .arg("dev")
         .arg("--target")
         .arg(target.to_string());
+
+    if let Some(manifest) = manifest_path {
+        cargo.arg("--manifest-path").arg(manifest.canonicalize()?);
+    }
 
     match &package_or_example {
         dexterous_developer_types::PackageOrExample::DefaulPackage => {}

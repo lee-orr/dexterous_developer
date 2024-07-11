@@ -26,18 +26,6 @@ impl LibraryPath {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct HotReloadOptions {
-    pub manifest_path: Option<Utf8PathBuf>,
-    pub package: Option<String>,
-    pub example: Option<String>,
-    pub lib_name: Option<String>,
-    pub watch_folders: Vec<Utf8PathBuf>,
-    pub target_folder: Option<Utf8PathBuf>,
-    pub features: Vec<String>,
-    pub build_target: Option<Target>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, Default, Hash, PartialEq, Eq)]
 pub enum PackageOrExample {
     #[default]
@@ -55,6 +43,7 @@ pub enum BuilderTypes {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TargetBuildSettings {
     pub working_dir: Option<camino::Utf8PathBuf>,
+    pub manifest_path: Option<Utf8PathBuf>,
     pub package_or_example: PackageOrExample,
     pub features: Vec<String>,
     pub asset_folders: Vec<camino::Utf8PathBuf>,

@@ -8,4 +8,4 @@ code_watch_folders = ["./adapters/bevy_dexterous_developer/examples"]
 asset_folders = ["./assets"]
 
 [examples.simple_cli]
-builder = "Zigbuild"
+manifest_path = "./adapters/bevy_dexterous_developer/Cargo.toml"
