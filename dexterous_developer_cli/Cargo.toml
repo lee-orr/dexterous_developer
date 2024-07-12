@@ -47,6 +47,7 @@ serde = { version = "1", features = ["derive"]}
 serde_json = "1"
 async-tempfile = "0.6"
 anyhow = "1"
+which = "6"
 
 dexterous_developer_types = { version = "0.3.0", path = "../dexterous_developer_types", features = ["config"] }
 dexterous_developer_builder = { version = "0.3.0", path = "../dexterous_developer_builder"}

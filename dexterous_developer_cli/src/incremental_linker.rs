@@ -1,6 +1,6 @@
 //! A linker that catches incremental change artifacts applies recent changes to a dynamic library
-//! 
-//! Heavily derived from Jon Kelley's work - https://github.com/jkelleyrtp/ipbp/blob/main/packages/patch-linker/src/main.rs
+//!
+//! Heavily derived from Jon Kelley's work - <https://github.com/jkelleyrtp/ipbp/blob/main/packages/patch-linker/src/main.rs>
 
 use std::time::SystemTime;
 
@@ -10,17 +10,22 @@ use futures_util::future::join_all;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = std::env::args().filter(|v| !v.contains("dexterous_developer_incremental_linker")).collect::<Vec<String>>();
-    let incremental_run_params : IncrementalRunParams = serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
-
-    
+    let args = std::env::args()
+        .filter(|v| !v.contains("dexterous_developer_incremental_linker"))
+        .collect::<Vec<String>>();
+    let incremental_run_params: IncrementalRunParams =
+        serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
         IncrementalRunParams::InitialRun => basic_link(args).await,
-        IncrementalRunParams::Patch {id,timestamp, previous_versions, lib_directories } => patch_link(args, id, timestamp, previous_versions, lib_directories).await
+        IncrementalRunParams::Patch {
+            timestamp,
+            previous_versions,
+            lib_directories,
+            ..
+        } => patch_link(args, timestamp, previous_versions, lib_directories).await,
     }
 }
-
 
 async fn basic_link(args: Vec<String>) -> anyhow::Result<()> {
     let mut next_is_output = false;
@@ -38,24 +43,35 @@ async fn basic_link(args: Vec<String>) -> anyhow::Result<()> {
     let Some(output_file) = output_file else {
         panic!("Couldn't determine output file")
     };
-    
+
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
     }
 
-    let output = tokio::process::Command::new("zig").arg("cc").arg("-fPIC").args(&args).spawn()?.wait_with_output().await?;
+    let output = tokio::process::Command::new("zig")
+        .arg("cc")
+        .arg("-fPIC")
+        .args(&args)
+        .spawn()?
+        .wait_with_output()
+        .await?;
     std::process::exit(output.status.code().unwrap_or_default());
 }
 
-async fn patch_link(args: Vec<String>, id: u32, timestamp: SystemTime, previous_versions: Vec<Utf8PathBuf>, lib_directories: Vec<Utf8PathBuf>) -> anyhow::Result<()> {
+async fn patch_link(
+    args: Vec<String>,
+    timestamp: SystemTime,
+    previous_versions: Vec<Utf8PathBuf>,
+    lib_directories: Vec<Utf8PathBuf>,
+) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
-    let mut object_files : Vec<String> = vec![];
+    let mut object_files: Vec<String> = vec![];
     let mut next_is_output = false;
     let mut output_file = None;
     let mut next_is_arch = false;
     let mut arch = None;
-    let mut include_args : Vec<String> = vec![];
+    let mut include_args: Vec<String> = vec![];
 
     for arg in args {
         if next_is_output {
@@ -70,9 +86,7 @@ async fn patch_link(args: Vec<String>, id: u32, timestamp: SystemTime, previous_
             next_is_arch = true;
         } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
             object_files.push(arg);
-        } else if arg.contains("=") {
-            include_args.push(arg);
-        } else if arg.starts_with("-l") {
+        } else if arg.contains('=') || arg.starts_with("-l") {
             include_args.push(arg);
         } else if arg.contains("rustup/toolchains") {
             include_args.push("-L".to_string());
@@ -89,10 +103,17 @@ async fn patch_link(args: Vec<String>, id: u32, timestamp: SystemTime, previous_
         tokio::fs::remove_file(&output_file).await?;
     }
 
-    let object_files = join_all(object_files.into_iter().map(|path| filter_new_paths(path, timestamp))).await.into_iter().collect::<anyhow::Result<Vec<_>>>()?;
-    let object_files = object_files.into_iter().filter_map(|v| v).collect::<Vec<_>>();
+    let object_files = join_all(
+        object_files
+            .into_iter()
+            .map(|path| filter_new_paths(path, timestamp)),
+    )
+    .await
+    .into_iter()
+    .collect::<anyhow::Result<Vec<_>>>()?;
+    let object_files = object_files.into_iter().flatten().collect::<Vec<_>>();
 
-    if object_files.len() == 0 {
+    if object_files.is_empty() {
         eprintln!("No Object Files Changed");
         std::process::exit(0);
     }
@@ -100,7 +121,6 @@ async fn patch_link(args: Vec<String>, id: u32, timestamp: SystemTime, previous_
     let mut cc = tokio::process::Command::new("zig");
 
     let mut args = vec!["cc".to_string()];
-
 
     args.push("-shared".to_string());
     args.push("-rdynamic".to_string());
@@ -120,7 +140,7 @@ async fn patch_link(args: Vec<String>, id: u32, timestamp: SystemTime, previous_
     }
 
     for file in previous_versions.iter().rev() {
-        if let Some(filename)= file.file_name() {
+        if let Some(filename) = file.file_name() {
             let filename = filename.replacen("lib", "", 1).replace(".so", "");
             args.push(format!("-l{filename}"));
         }

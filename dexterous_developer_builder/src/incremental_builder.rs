@@ -4,7 +4,10 @@ use std::{
     collections::{HashMap, HashSet},
     env, fs,
     process::Stdio,
-    sync::{atomic::{AtomicBool, AtomicU32}, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicU32},
+        Arc,
+    },
 };
 
 use anyhow::bail;
@@ -12,7 +15,10 @@ use anyhow::bail;
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader}, process::Command, sync::Mutex, task::JoinHandle
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+    sync::Mutex,
+    task::JoinHandle,
 };
 use tracing::{debug, error, info, trace, warn};
 
@@ -51,11 +57,11 @@ async fn build(
     };
     let linker = linker.canonicalize_utf8()?;
 
-
     let incremental_run_settings = if id == 1 {
         IncrementalRunParams::InitialRun
     } else {
-        let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}/{target}/debug")).canonicalize_utf8()?;
+        let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}/{target}/debug"))
+            .canonicalize_utf8()?;
         let deps = target_dir.join("deps");
         let examples = target_dir.join("examples");
         if !target_dir.exists() {
@@ -67,11 +73,16 @@ async fn build(
         if !examples.exists() {
             std::fs::create_dir_all(&examples)?;
         }
-        IncrementalRunParams::Patch { id, timestamp: std::time::SystemTime::now(), previous_versions: {
-            let previous_versions = previous_versions.lock().await;
-            let previous_versions = previous_versions.clone();
-            previous_versions
-         }, lib_directories: vec![target_dir, deps, examples] }
+        IncrementalRunParams::Patch {
+            id,
+            timestamp: std::time::SystemTime::now(),
+            previous_versions: {
+                let previous_versions = previous_versions.lock().await;
+
+                previous_versions.clone()
+            },
+            lib_directories: vec![target_dir, deps, examples],
+        }
     };
 
     let mut cargo = Command::new("cargo");
@@ -81,7 +92,10 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
-        .env("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN", serde_json::to_string(&incremental_run_settings)?)
+        .env(
+            "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
+            serde_json::to_string(&incremental_run_settings)?,
+        )
         .env("RUSTFLAGS", "-Cprefer-dynamic")
         .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
         .arg("rustc");
@@ -93,12 +107,10 @@ async fn build(
     match &package_or_example {
         dexterous_developer_types::PackageOrExample::DefaulPackage => {}
         dexterous_developer_types::PackageOrExample::Package(package) => {
-            cargo
-                .arg("--lib").arg("-p").arg(package.as_str());
+            cargo.arg("--lib").arg("-p").arg(package.as_str());
         }
         dexterous_developer_types::PackageOrExample::Example(example) => {
-            cargo
-                .arg("--example").arg(example.as_str());
+            cargo.arg("--example").arg(example.as_str());
         }
     }
 
@@ -316,37 +328,37 @@ async fn build(
     let libraries = {
         let mut previous_versions = previous_versions.lock().await;
         libraries
-        .iter()
-        .map(|(library, local_path)| {
-            let (library, local_path) = if library == &root_library {
-                let library = library.replace(".so", "");
-                let library = format!("{library}.{id}.so");
-                let mut path = local_path.clone();
-                path.set_extension(format!("{id}.{}", path.extension().unwrap_or_default()));
-                if path.exists() {
-                    let _ = std::fs::remove_file(&path);
+            .iter()
+            .map(|(library, local_path)| {
+                let (library, local_path) = if library == &root_library {
+                    let library = library.replace(".so", "");
+                    let library = format!("{library}.{id}.so");
+                    let mut path = local_path.clone();
+                    path.set_extension(format!("{id}.{}", path.extension().unwrap_or_default()));
+                    if path.exists() {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                    let _ = std::fs::rename(local_path, &path);
+                    root_library.clone_from(&library);
+                    (library, path)
+                } else {
+                    (library.clone(), local_path.clone())
+                };
+                if !previous_versions.contains(&local_path) {
+                    previous_versions.push(local_path.clone());
                 }
-                let _ = std::fs::rename(local_path, &path);
-                root_library = library.clone();
-                (library, path)
-            } else {
-                (library.clone(), local_path.clone())
-            };
-            if !previous_versions.contains(&local_path) {
-                previous_versions.push(local_path.clone());
-            }
-            let file = std::fs::read(&local_path)?;
-            let hash = blake3::hash(&file);
+                let file = std::fs::read(&local_path)?;
+                let hash = blake3::hash(&file);
 
-            Ok(HashedFileRecord {
-                name: library.clone(),
-                local_path: local_path.clone(),
-                relative_path: Utf8PathBuf::from(format!("./{library}")),
-                hash: hash.as_bytes().to_owned(),
-                dependencies: dependencies.get(&library).cloned().unwrap_or_default(),
+                Ok(HashedFileRecord {
+                    name: library.clone(),
+                    local_path: local_path.clone(),
+                    relative_path: Utf8PathBuf::from(format!("./{library}")),
+                    hash: hash.as_bytes().to_owned(),
+                    dependencies: dependencies.get(&library).cloned().unwrap_or_default(),
+                })
             })
-        })
-        .collect::<anyhow::Result<Vec<_>>>()?
+            .collect::<anyhow::Result<Vec<_>>>()?
     };
 
     let _ = sender.send(BuildOutputMessages::EndedBuild {
@@ -445,11 +457,29 @@ impl IncrementalBuilder {
                     match recv {
                         BuilderIncomingMessages::RequestBuild => {
                             should_build = true;
-                            trigger_build(&build_active, &build_pending, &id, &outgoing_tx, target, &settings, &output_tx, &previous_versions);
+                            trigger_build(
+                                &build_active,
+                                &build_pending,
+                                &id,
+                                &outgoing_tx,
+                                target,
+                                &settings,
+                                &output_tx,
+                                &previous_versions,
+                            );
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
-                                trigger_build(&build_active, &build_pending, &id, &outgoing_tx, target, &settings, &output_tx, &previous_versions);
+                                trigger_build(
+                                    &build_active,
+                                    &build_pending,
+                                    &id,
+                                    &outgoing_tx,
+                                    target,
+                                    &settings,
+                                    &output_tx,
+                                    &previous_versions,
+                                );
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
@@ -472,7 +502,16 @@ impl IncrementalBuilder {
     }
 }
 
-fn trigger_build(build_active: &Arc<AtomicBool>, build_pending: &Arc<AtomicBool>, id: &Arc<AtomicU32>, outgoing_tx: &tokio::sync::broadcast::Sender<BuilderOutgoingMessages>, target: Target, settings: &TargetBuildSettings, output_tx: &tokio::sync::broadcast::Sender<BuildOutputMessages>, previous_versions: &Arc<Mutex<Vec<Utf8PathBuf>>>) {
+fn trigger_build(
+    build_active: &Arc<AtomicBool>,
+    build_pending: &Arc<AtomicBool>,
+    id: &Arc<AtomicU32>,
+    outgoing_tx: &tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
+    target: Target,
+    settings: &TargetBuildSettings,
+    output_tx: &tokio::sync::broadcast::Sender<BuildOutputMessages>,
+    previous_versions: &Arc<Mutex<Vec<Utf8PathBuf>>>,
+) {
     let previous = build_active.swap(true, std::sync::atomic::Ordering::SeqCst);
     if previous {
         build_pending.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -480,7 +519,6 @@ fn trigger_build(build_active: &Arc<AtomicBool>, build_pending: &Arc<AtomicBool>
         let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
         let output_tx = output_tx.clone();
-        let target = target.clone();
         let settings = settings.clone();
         let build_pending = build_pending.clone();
         let build_active = build_active.clone();
@@ -493,7 +531,8 @@ fn trigger_build(build_active: &Arc<AtomicBool>, build_pending: &Arc<AtomicBool>
                 previous_versions.clone(),
                 output_tx.clone(),
                 id,
-            ).await?;
+            )
+            .await?;
 
             loop {
                 let pending = build_pending.swap(false, std::sync::atomic::Ordering::SeqCst);
@@ -504,7 +543,8 @@ fn trigger_build(build_active: &Arc<AtomicBool>, build_pending: &Arc<AtomicBool>
                         previous_versions.clone(),
                         output_tx.clone(),
                         id,
-                    ).await?;
+                    )
+                    .await?;
                 } else {
                     break;
                 }
@@ -555,8 +595,8 @@ pub enum IncrementalRunParams {
         id: u32,
         timestamp: std::time::SystemTime,
         previous_versions: Vec<Utf8PathBuf>,
-        lib_directories: Vec<Utf8PathBuf>
-    }
+        lib_directories: Vec<Utf8PathBuf>,
+    },
 }
 
 #[cfg(test)]

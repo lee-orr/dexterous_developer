@@ -25,11 +25,12 @@ impl LibraryHolderInner {
         trace!("Loading {path:?}");
         let path = path.to_owned();
 
-        let incremental_library = if let Some(path_end) = path.as_str().replace(".so", "").split(".").last() {
-            path_end.parse::<u32>().is_ok()
-        } else {
-            false
-        };
+        let incremental_library =
+            if let Some(path_end) = path.as_str().replace(".so", "").split('.').last() {
+                path_end.parse::<u32>().is_ok()
+            } else {
+                false
+            };
 
         let uuid = uuid::Uuid::new_v4();
         let path = if incremental_library || use_original {
@@ -64,7 +65,7 @@ impl LibraryHolderInner {
         println!("Loading Library");
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
-        let library = unsafe{
+        let library = unsafe {
             #[cfg(target_family = "unix")]
             {
                 use libloading::os::unix::*;

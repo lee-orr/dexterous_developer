@@ -4,11 +4,12 @@ use camino::Utf8PathBuf;
 
 use clap::Parser;
 use dexterous_developer_builder::{
-    incremental_builder::IncrementalBuilder, simple_builder::SimpleBuilder, simple_watcher::SimpleWatcher, types::Builder
+    incremental_builder::IncrementalBuilder, simple_builder::SimpleBuilder,
+    simple_watcher::SimpleWatcher, types::Builder,
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
-use tracing::{info, trace};
+use tracing::{info, trace, warn};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Parser, Debug)]
@@ -66,6 +67,12 @@ async fn main() {
 
     trace!("Setting up builders for {package_or_example:?}");
 
+    let zig_exists = which::which("zig").is_ok();
+
+    if !zig_exists {
+        warn!("The Incremental builder requires the zig cc linker. Defaulting to the standard builder instead.");
+    }
+
     let builders = config
         .generate_build_settings(Some(package_or_example.clone()), &features)
         .expect("Failed determine build settings")
@@ -73,7 +80,11 @@ async fn main() {
         .map(|(target, build_settings)| {
             let build: Arc<dyn Builder> = match build_settings.builder {
                 dexterous_developer_types::BuilderTypes::Simple => {
-                    Arc::new(IncrementalBuilder::new(target, build_settings))
+                    if zig_exists {
+                        Arc::new(IncrementalBuilder::new(target, build_settings))
+                    } else {
+                        Arc::new(SimpleBuilder::new(target, build_settings))
+                    }
                 }
             };
             build
