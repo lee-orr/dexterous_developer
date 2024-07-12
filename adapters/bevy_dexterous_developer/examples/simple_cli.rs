@@ -30,7 +30,7 @@ reloadable_main!( bevy_main(initial_plugins) {
 });
 
 fn update() {
-    println!("Hey!!");
+    println!("Hey!");
 }
 
 fn startup() {
@@ -41,3 +41,7 @@ reloadable_scope!(reloadable(app) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
 });
+
+fn main() {
+    println!("MAIN");
+}

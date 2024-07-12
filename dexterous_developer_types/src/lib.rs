@@ -134,11 +134,15 @@ impl Target {
         }
     }
 
-    pub fn dynamic_lib_name(&self, name: &str) -> String {
-        let prefix = match self {
+    pub fn dynamic_lib_prefix(&self) -> &'static str {
+        match self {
             Target::Windows => "",
             _ => "lib",
-        };
+        }
+    }
+
+    pub fn dynamic_lib_name(&self, name: &str) -> String {
+        let prefix = self.dynamic_lib_prefix();
         let extension = self.dynamic_lib_extension();
         format!("{prefix}{name}.{extension}")
     }

@@ -1,5 +1,9 @@
+use cargo_metadata::Metadata;
+use debounce::EventDebouncer;
+use debounced::debounced;
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
+use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use std::{
     collections::{HashMap, HashSet},
     env, fs,
@@ -7,7 +11,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32},
         Arc,
-    },
+    }, time::Duration,
 };
 
 use anyhow::bail;
@@ -43,7 +47,7 @@ async fn build(
         working_dir,
         package_or_example,
         features,
-        manifest_path,
+        mut manifest_path,
         ..
     }: TargetBuildSettings,
     previous_versions: Arc<Mutex<Vec<Utf8PathBuf>>>,
@@ -56,6 +60,62 @@ async fn build(
         bail!("Couldn't get linker path");
     };
     let linker = linker.canonicalize_utf8()?;
+
+    let (artifact_name, artifact_file_name) = {
+        let mut cmd = Command::new("cargo");
+        cmd.arg("metadata");
+        if let Some(manifest_path) = &manifest_path {
+            cmd.arg("--manifest-path").arg(&manifest_path);
+        }
+        
+        let output = cmd.output().await?;
+
+        if !output.status.success() {
+            bail!("Failed to get Cargo metadata");
+        }
+        let output: Metadata = serde_json::from_slice(&output.stdout)?;
+
+        match &package_or_example {
+            dexterous_developer_types::PackageOrExample::DefaulPackage => {
+                let Some(root) = (if let Some(package) = output.root_package() {
+                    find_package_target(package, target, id)
+                } else if output.workspace_default_members.len() == 1 {
+                    let default_member = output.workspace_default_members.first().unwrap();
+                    if let Some(package) = output.packages.iter().find(|p| p.id == *default_member) {
+                        find_package_target(package, target, id)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }) else {
+                    bail!("Can't find default package target");
+                };
+                root
+            },
+            dexterous_developer_types::PackageOrExample::Package(package) => {
+                let Some(package) = output.packages.iter().find(|p| p.name == *package) else {
+                    bail!("Couldn't find package");
+                };
+                let Some(p) = find_package_target(package, target, id) else {
+                    bail!("Can't find package target");
+                };
+                p
+            },
+            dexterous_developer_types::PackageOrExample::Example(e) => {
+                let Some((example_target, package)) = output.packages.into_iter().flat_map(|e| e.targets.iter().map(|t| (t.clone(), e.clone())).collect::<Vec<_>>()).find(|(t,_)| t.is_example() && t.name == *e) else {
+                    bail!("No such example");
+                };
+
+                if !manifest_path.is_some() {
+                    manifest_path = Some(package.manifest_path);
+                }
+                let artifact_name = example_target.name.clone();
+                let artifact_file_name = target.dynamic_lib_name(&format!("{artifact_name}.{id}"));
+                (artifact_name, artifact_file_name)
+            },
+        }
+    };
 
     let incremental_run_settings = if id == 1 {
         IncrementalRunParams::InitialRun
@@ -78,12 +138,17 @@ async fn build(
             timestamp: std::time::SystemTime::now(),
             previous_versions: {
                 let previous_versions = previous_versions.lock().await;
-
                 previous_versions.clone()
             },
             lib_directories: vec![target_dir, deps, examples],
         }
     };
+
+    let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}")).canonicalize_utf8()?;
+    let default_out = target_dir.join(format!("{target}")).join("debug");
+    let deps = default_out.join("deps");
+    let examples = default_out.join("examples");
+    let artifact_path = default_out.join(&artifact_file_name);
 
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
@@ -92,15 +157,17 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
+        .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
+        .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
         .env(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
         .env("RUSTFLAGS", "-Cprefer-dynamic")
-        .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
+        .env("CARGO_TARGET_DIR", target_dir)
         .arg("rustc");
 
-    if let Some(manifest) = manifest_path {
+    if let Some(manifest) = &manifest_path {
         cargo.arg("--manifest-path").arg(manifest.canonicalize()?);
     }
 
@@ -150,7 +217,7 @@ async fn build(
     tokio::spawn(async move {
         let mut out_reader = BufReader::new(error).lines();
         while let Ok(Some(line)) = out_reader.next_line().await {
-            warn!("Compilation - {line}");
+            println!("Compilation - {line}");
         }
     });
 
@@ -162,9 +229,7 @@ async fn build(
 
         match &message {
             cargo_metadata::Message::CompilerArtifact(artifact) => {
-                if artifact.target.crate_types.iter().any(|v| v == "dylib") {
-                    artifacts.push(artifact.clone());
-                }
+                artifacts.push(artifact.clone());
             }
             cargo_metadata::Message::BuildFinished(finished) => {
                 info!("Build Finished: {finished:?}");
@@ -180,54 +245,7 @@ async fn build(
     }
 
     let mut libraries = HashMap::<String, Utf8PathBuf>::with_capacity(20);
-    let mut root_dir = HashSet::new();
-
-    let mut root_library = None;
-
-    for artifact in artifacts.iter() {
-        for path in artifact.filenames.iter() {
-            if let Some(ext) = path.extension() {
-                if ext == target.dynamic_lib_extension() {
-                    if let Some(name) = path.file_name() {
-                        match &package_or_example {
-                            dexterous_developer_types::PackageOrExample::DefaulPackage => {
-                                root_library = Some(name);
-                            }
-                            dexterous_developer_types::PackageOrExample::Package(p) => {
-                                let file_section = artifact
-                                    .package_id
-                                    .repr
-                                    .split('/')
-                                    .last()
-                                    .unwrap_or_default();
-                                let package_name =
-                                    file_section.split('#').last().unwrap_or_default();
-                                let package_name =
-                                    package_name.split('@').next().unwrap_or_default();
-                                trace!("Checking if {package_name} == {p}");
-                                if package_name == p {
-                                    root_library = Some(name);
-                                }
-                            }
-                            dexterous_developer_types::PackageOrExample::Example(e) => {
-                                if artifact.target.kind.contains(&"example".to_string())
-                                    && &artifact.target.name == e
-                                {
-                                    root_library = Some(name);
-                                }
-                            }
-                        }
-                        let path = path.canonicalize_utf8()?;
-                        let parent = path
-                            .parent()
-                            .ok_or_else(|| anyhow::Error::msg("file has no parent"))?;
-                        root_dir.insert(parent.to_path_buf());
-                        libraries.insert(name.to_string(), path);
-                    }
-                }
-            }
-        }
-    }
+    libraries.insert(artifact_file_name.clone(), artifact_path.clone());
 
     let initial_libraries = libraries
         .iter()
@@ -241,7 +259,7 @@ async fn build(
         None => Vec::new(),
     };
     let mut dylib_paths = dylib_path();
-    let mut root_dirs = root_dir.into_iter().collect::<Vec<_>>();
+    let mut root_dirs = vec![default_out, deps, examples];
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
     path_var.push(
@@ -320,33 +338,10 @@ async fn build(
         )?;
     }
 
-    let Some(mut root_library) = root_library.map(|r| r.to_string()) else {
-        error!("No Root Library");
-        bail!("No Root Library");
-    };
-
     let libraries = {
-        let mut previous_versions = previous_versions.lock().await;
         libraries
             .iter()
             .map(|(library, local_path)| {
-                let (library, local_path) = if library == &root_library {
-                    let library = library.replace(".so", "");
-                    let library = format!("{library}.{id}.so");
-                    let mut path = local_path.clone();
-                    path.set_extension(format!("{id}.{}", path.extension().unwrap_or_default()));
-                    if path.exists() {
-                        let _ = std::fs::remove_file(&path);
-                    }
-                    let _ = std::fs::rename(local_path, &path);
-                    root_library.clone_from(&library);
-                    (library, path)
-                } else {
-                    (library.clone(), local_path.clone())
-                };
-                if !previous_versions.contains(&local_path) {
-                    previous_versions.push(local_path.clone());
-                }
                 let file = std::fs::read(&local_path)?;
                 let hash = blake3::hash(&file);
 
@@ -355,19 +350,44 @@ async fn build(
                     local_path: local_path.clone(),
                     relative_path: Utf8PathBuf::from(format!("./{library}")),
                     hash: hash.as_bytes().to_owned(),
-                    dependencies: dependencies.get(&library).cloned().unwrap_or_default(),
+                    dependencies: dependencies.get(library.as_str()).cloned().unwrap_or_default(),
                 })
             })
             .collect::<anyhow::Result<Vec<_>>>()?
     };
 
+    {
+        let mut previous = previous_versions.lock().await;
+        previous.push(artifact_path.clone());
+    }
+
     let _ = sender.send(BuildOutputMessages::EndedBuild {
         id,
         libraries,
-        root_library,
+        root_library: artifact_file_name,
     });
     info!("Build {id} Completed");
     Ok(())
+}
+
+fn find_package_target(package: &cargo_metadata::Package, target: Target, id: u32) -> Option<(String, String)> {
+    let targets = &package.targets;
+
+    let package_target = if let Some(lib) = targets.iter().find(|target| target.is_lib()) {
+        lib
+    } else if let Some(default_run) = &package.default_run {
+        targets.iter().find(|target| target.is_bin() && &target.name == default_run)?
+    } else if let Some(first_bin) = targets.iter().find(|target| target.is_bin()) {
+        first_bin
+    } else {
+        return None;
+    };
+
+
+    let artifact_name = package_target.name.clone();
+    let artifact_file_name = target.dynamic_lib_name(&format!("{artifact_name}.{id}"));
+
+    Some((artifact_name, artifact_file_name))
 }
 
 fn process_dependencies_recursive(
@@ -453,7 +473,13 @@ impl IncrementalBuilder {
             tokio::spawn(async move {
                 let mut should_build = false;
 
-                while let Some(recv) = incoming_rx.recv().await {
+                let delay = Duration::from_secs(1);
+
+                let stream = UnboundedReceiverStream::new(incoming_rx);
+
+                let mut debounced = debounced(stream, delay);
+
+                while let Some(recv) = debounced.next().await {
                     match recv {
                         BuilderIncomingMessages::RequestBuild => {
                             should_build = true;

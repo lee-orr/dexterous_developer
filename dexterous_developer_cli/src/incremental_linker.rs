@@ -4,45 +4,73 @@
 
 use std::time::SystemTime;
 
+use anyhow::bail;
 use camino::Utf8PathBuf;
 use dexterous_developer_builder::incremental_builder::IncrementalRunParams;
 use futures_util::future::join_all;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = std::env::args()
-        .filter(|v| !v.contains("dexterous_developer_incremental_linker"))
+    let args = std::env::args().filter(|v| !
+        v.contains("dexterous_developer_incremental_linker")).collect::<Vec<_>>();
+
+    let output_name = {
+        let mut next_is_output = false;
+        args.iter().find(|arg| {
+            if arg.as_str() == "-o" {
+                next_is_output = true;
+            } else if next_is_output {
+                return true;
+            }
+            false            
+        }).expect("Can't determine output file").to_owned()
+    };
+
+    let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
+    let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
+
+    if !output_name.contains(&package_name) {
+        eprintln!("Linking Non-Main File - {output_name}");
+        let output = tokio::process::Command::new("zig")
+            .arg("cc")
+            .args(args)
+            .spawn()?
+            .wait_with_output()
+            .await?;
+        std::process::exit(output.status.code().unwrap_or_default());
+    }
+
+    let mut next_is_output = false;
+
+    let args = 
+        args.into_iter().filter(|v|
+            !(v.contains("--gc-sections") || v.contains("-pie"))
+        ).filter(|v| if v == "-o" {
+            next_is_output = true;
+            false
+        } else if next_is_output {
+            next_is_output = true;
+            false
+        } else {
+            true
+        })
         .collect::<Vec<String>>();
+
     let incremental_run_params: IncrementalRunParams =
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args).await,
+        IncrementalRunParams::InitialRun => basic_link(args, output_file).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             lib_directories,
             ..
-        } => patch_link(args, timestamp, previous_versions, lib_directories).await,
+        } => patch_link(args, timestamp, previous_versions, lib_directories, output_file).await,
     }
 }
 
-async fn basic_link(args: Vec<String>) -> anyhow::Result<()> {
-    let mut next_is_output = false;
-    let mut output_file = None;
-
-    for arg in &args {
-        if next_is_output {
-            output_file = Some(arg.to_string());
-            next_is_output = false;
-        } else if arg == "-o" {
-            next_is_output = true;
-        }
-    }
-
-    let Some(output_file) = output_file else {
-        panic!("Couldn't determine output file")
-    };
+async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()> {
 
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
@@ -53,6 +81,10 @@ async fn basic_link(args: Vec<String>) -> anyhow::Result<()> {
         .arg("cc")
         .arg("-fPIC")
         .args(&args)
+        .arg("-o")
+        .arg(path)
+        .arg("-shared")
+        .arg("-rdynamic")
         .spawn()?
         .wait_with_output()
         .await?;
@@ -64,24 +96,18 @@ async fn patch_link(
     timestamp: SystemTime,
     previous_versions: Vec<Utf8PathBuf>,
     lib_directories: Vec<Utf8PathBuf>,
+    output_file: String
 ) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
     let mut object_files: Vec<String> = vec![];
-    let mut next_is_output = false;
-    let mut output_file = None;
     let mut next_is_arch = false;
     let mut arch = None;
     let mut include_args: Vec<String> = vec![];
 
     for arg in args {
-        if next_is_output {
-            output_file = Some(arg);
-            next_is_output = false;
-        } else if next_is_arch {
+        if next_is_arch {
             arch = Some(arg);
             next_is_arch = false;
-        } else if arg == "-o" {
-            next_is_output = true;
         } else if arg == "-arch" {
             next_is_arch = true;
         } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
@@ -93,10 +119,6 @@ async fn patch_link(
             include_args.push(arg);
         }
     }
-
-    let Some(output_file) = output_file else {
-        panic!("Couldn't determine output file")
-    };
 
     let output_file = Utf8PathBuf::from(output_file);
     if output_file.exists() {
