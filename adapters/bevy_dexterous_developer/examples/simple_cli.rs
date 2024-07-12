@@ -41,7 +41,3 @@ reloadable_scope!(reloadable(app) {
     app.add_systems(Startup, startup)
         .add_systems(Update, update);
 });
-
-fn main() {
-    println!("MAIN");
-}

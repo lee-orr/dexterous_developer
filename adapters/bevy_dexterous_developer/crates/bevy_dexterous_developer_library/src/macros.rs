@@ -4,6 +4,9 @@ pub use paste::paste;
 mod hot {
     #[macro_export]
     macro_rules! reloadable_main {
+        (($attr: ident) $body:block) => {
+            reloadable_main!(main ($attr) $body);
+        };
         ($f:ident ($attr: ident) $body:block) => {
             fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 
@@ -25,6 +28,9 @@ mod hot {
 mod cold {
     #[macro_export]
     macro_rules! reloadable_main {
+        (($attr: ident) $body:block) => {
+            reloadable_main!(main ($attr) $body);
+        };
         ($f:ident ($attr: ident) $body:block) => {
             fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 

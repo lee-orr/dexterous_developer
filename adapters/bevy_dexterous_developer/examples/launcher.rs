@@ -21,14 +21,6 @@ fn terminal_runner(mut app: App) -> AppExit {
     AppExit::Error(NonZero::<u8>::new(1).unwrap())
 }
 
-reloadable_main!( bevy_main(initial_plugins) {
-    App::new()
-        .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
-        .set_runner(terminal_runner)
-        .setup_reloadable_elements::<reloadable>()
-        .run();
-});
-
 fn update() {
     println!("Hey!");
 }
@@ -42,6 +34,10 @@ reloadable_scope!(reloadable(app) {
         .add_systems(Update, update);
 });
 
-fn main() {
-    bevy_main();
-}
+reloadable_main!((initial_plugins) {
+    App::new()
+        .add_plugins(initial_plugins.initialize::<MinimalPlugins>())
+        .set_runner(terminal_runner)
+        .setup_reloadable_elements::<reloadable>()
+        .run();
+});
