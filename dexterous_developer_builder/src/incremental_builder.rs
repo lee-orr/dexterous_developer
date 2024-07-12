@@ -4,7 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     env, fs,
     process::Stdio,
-    sync::{atomic::AtomicU32, Arc},
+    sync::{atomic::{AtomicBool, AtomicU32}, Arc},
 };
 
 use anyhow::bail;
@@ -12,8 +12,7 @@ use anyhow::bail;
 use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuildSettings};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    process::Command,
+    io::{AsyncBufReadExt, BufReader}, process::Command, sync::Mutex, task::JoinHandle
 };
 use tracing::{debug, error, info, trace, warn};
 
@@ -41,6 +40,7 @@ async fn build(
         manifest_path,
         ..
     }: TargetBuildSettings,
+    previous_versions: Arc<Mutex<Vec<Utf8PathBuf>>>,
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     id: u32,
 ) -> Result<(), anyhow::Error> {
@@ -51,13 +51,37 @@ async fn build(
     };
     let linker = linker.canonicalize_utf8()?;
 
+
+    let incremental_run_settings = if id == 1 {
+        IncrementalRunParams::InitialRun
+    } else {
+        let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}/{target}/debug")).canonicalize_utf8()?;
+        let deps = target_dir.join("deps");
+        let examples = target_dir.join("examples");
+        if !target_dir.exists() {
+            std::fs::create_dir_all(&target_dir)?;
+        }
+        if !deps.exists() {
+            std::fs::create_dir_all(&deps)?;
+        }
+        if !examples.exists() {
+            std::fs::create_dir_all(&examples)?;
+        }
+        IncrementalRunParams::Patch { id, timestamp: std::time::SystemTime::now(), previous_versions: {
+            let previous_versions = previous_versions.lock().await;
+            let previous_versions = previous_versions.clone();
+            previous_versions
+         }, lib_directories: vec![target_dir, deps, examples] }
+    };
+
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
         cargo.current_dir(&working_dir);
     }
+
     cargo
         .env_remove("LD_DEBUG")
-        .env("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN", serde_json::to_string(&IncrementalRunParams::InitialRun)?)
+        .env("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN", serde_json::to_string(&incremental_run_settings)?)
         .env("RUSTFLAGS", "-Cprefer-dynamic")
         .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
         .arg("rustc");
@@ -284,10 +308,34 @@ async fn build(
         )?;
     }
 
-    let libraries = libraries
+    let Some(mut root_library) = root_library.map(|r| r.to_string()) else {
+        error!("No Root Library");
+        bail!("No Root Library");
+    };
+
+    let libraries = {
+        let mut previous_versions = previous_versions.lock().await;
+        libraries
         .iter()
         .map(|(library, local_path)| {
-            let file = std::fs::read(local_path)?;
+            let (library, local_path) = if library == &root_library {
+                let library = library.replace(".so", "");
+                let library = format!("{library}.{id}.so");
+                let mut path = local_path.clone();
+                path.set_extension(format!("{id}.{}", path.extension().unwrap_or_default()));
+                if path.exists() {
+                    let _ = std::fs::remove_file(&path);
+                }
+                let _ = std::fs::rename(local_path, &path);
+                root_library = library.clone();
+                (library, path)
+            } else {
+                (library.clone(), local_path.clone())
+            };
+            if !previous_versions.contains(&local_path) {
+                previous_versions.push(local_path.clone());
+            }
+            let file = std::fs::read(&local_path)?;
             let hash = blake3::hash(&file);
 
             Ok(HashedFileRecord {
@@ -295,14 +343,10 @@ async fn build(
                 local_path: local_path.clone(),
                 relative_path: Utf8PathBuf::from(format!("./{library}")),
                 hash: hash.as_bytes().to_owned(),
-                dependencies: dependencies.get(library).cloned().unwrap_or_default(),
+                dependencies: dependencies.get(&library).cloned().unwrap_or_default(),
             })
         })
-        .collect::<anyhow::Result<Vec<_>>>()?;
-
-    let Some(root_library) = root_library.map(|r| r.to_string()) else {
-        error!("No Root Library");
-        bail!("No Root Library");
+        .collect::<anyhow::Result<Vec<_>>>()?
     };
 
     let _ = sender.send(BuildOutputMessages::EndedBuild {
@@ -385,6 +429,9 @@ impl IncrementalBuilder {
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
+        let build_active = Arc::new(AtomicBool::new(false));
+        let build_pending = Arc::new(AtomicBool::new(false));
+        let previous_versions = Arc::new(Mutex::new(vec![]));
 
         let handle = {
             let outgoing_tx = outgoing_tx.clone();
@@ -398,27 +445,11 @@ impl IncrementalBuilder {
                     match recv {
                         BuilderIncomingMessages::RequestBuild => {
                             should_build = true;
-                            let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                            let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                            #[allow(clippy::let_underscore_future)]
-                            let _ = tokio::spawn(build(
-                                target,
-                                settings.clone(),
-                                output_tx.clone(),
-                                id,
-                            ));
+                            trigger_build(&build_active, &build_pending, &id, &outgoing_tx, target, &settings, &output_tx, &previous_versions);
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
-                                let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                                let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                                #[allow(clippy::let_underscore_future)]
-                                let _ = tokio::spawn(build(
-                                    target,
-                                    settings.clone(),
-                                    output_tx.clone(),
-                                    id,
-                                ));
+                                trigger_build(&build_active, &build_pending, &id, &outgoing_tx, target, &settings, &output_tx, &previous_versions);
                             }
                         }
                         BuilderIncomingMessages::AssetChanged(asset) => {
@@ -438,6 +469,49 @@ impl IncrementalBuilder {
             output: output_tx,
             handle,
         }
+    }
+}
+
+fn trigger_build(build_active: &Arc<AtomicBool>, build_pending: &Arc<AtomicBool>, id: &Arc<AtomicU32>, outgoing_tx: &tokio::sync::broadcast::Sender<BuilderOutgoingMessages>, target: Target, settings: &TargetBuildSettings, output_tx: &tokio::sync::broadcast::Sender<BuildOutputMessages>, previous_versions: &Arc<Mutex<Vec<Utf8PathBuf>>>) {
+    let previous = build_active.swap(true, std::sync::atomic::Ordering::SeqCst);
+    if previous {
+        build_pending.store(true, std::sync::atomic::Ordering::SeqCst);
+    } else {
+        let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
+        let output_tx = output_tx.clone();
+        let target = target.clone();
+        let settings = settings.clone();
+        let build_pending = build_pending.clone();
+        let build_active = build_active.clone();
+        let previous_versions = previous_versions.clone();
+        #[allow(clippy::let_underscore_future)]
+        let _: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+            build(
+                target,
+                settings.clone(),
+                previous_versions.clone(),
+                output_tx.clone(),
+                id,
+            ).await?;
+
+            loop {
+                let pending = build_pending.swap(false, std::sync::atomic::Ordering::SeqCst);
+                if pending {
+                    build(
+                        target,
+                        settings.clone(),
+                        previous_versions.clone(),
+                        output_tx.clone(),
+                        id,
+                    ).await?;
+                } else {
+                    break;
+                }
+            }
+            build_active.swap(false, std::sync::atomic::Ordering::SeqCst);
+            Ok(())
+        });
     }
 }
 
@@ -479,8 +553,9 @@ pub enum IncrementalRunParams {
     InitialRun,
     Patch {
         id: u32,
-        out_path_base: Utf8PathBuf,
         timestamp: std::time::SystemTime,
+        previous_versions: Vec<Utf8PathBuf>,
+        lib_directories: Vec<Utf8PathBuf>
     }
 }
 

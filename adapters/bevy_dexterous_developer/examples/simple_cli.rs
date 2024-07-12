@@ -30,7 +30,7 @@ reloadable_main!( bevy_main(initial_plugins) {
 });
 
 fn update() {
-    println!("Hey!");
+    println!("Hey!!");
 }
 
 fn startup() {
