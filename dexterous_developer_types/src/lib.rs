@@ -38,6 +38,7 @@ pub enum PackageOrExample {
 pub enum BuilderTypes {
     #[default]
     Simple,
+    Incremental
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -124,7 +125,35 @@ impl Target {
         }
     }
 
-    pub fn dynamic_lib_extension(&self) -> &'static str {
+    pub const fn zig_rustc_target(self) -> &'static str {
+        match self {
+            Target::Linux => "x86_64-unknown-linux-gnu",
+            Target::LinuxArm => "aarch64-unknown-linux-gnu",
+            Target::Windows => {
+                "x86_64-pc-windows-gnu"                
+            }
+            Target::Mac => "x86_64-apple-darwin",
+            Target::MacArm => "aarch64-apple-darwin",
+            Target::Android => "aarch64-linux-android",
+            Target::IOS => "aarch64-apple-ios",
+        }
+    }
+
+    pub const fn zig_linker_target(self) -> &'static str {
+        match self {
+            Target::Linux => "x86_64-linux-gnu",
+            Target::LinuxArm => "aarch64-linux-gnu",
+            Target::Windows => {
+                "x86_64-windows-gnu"
+            }
+            Target::Mac => "x86_64-macos",
+            Target::MacArm => "aarch64-macos",
+            Target::Android => "aarch64-android",
+            Target::IOS => "aarch64-ios",
+        }
+    }
+
+    pub const fn dynamic_lib_extension(&self) -> &'static str {
         match self {
             Target::Windows => "dll",
             Target::Mac => "dylib",
@@ -134,7 +163,7 @@ impl Target {
         }
     }
 
-    pub fn dynamic_lib_prefix(&self) -> &'static str {
+    pub const fn dynamic_lib_prefix(&self) -> &'static str {
         match self {
             Target::Windows => "",
             _ => "lib",
@@ -147,7 +176,7 @@ impl Target {
         format!("{prefix}{name}.{extension}")
     }
 
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         self.to_static()
     }
 }

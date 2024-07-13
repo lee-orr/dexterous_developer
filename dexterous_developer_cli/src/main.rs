@@ -86,6 +86,9 @@ async fn main() {
                         Arc::new(SimpleBuilder::new(target, build_settings))
                     }
                 }
+                dexterous_developer_types::BuilderTypes::Incremental => {
+                    Arc::new(IncrementalBuilder::new(target, build_settings))
+                }
             };
             build
         })

@@ -28,11 +28,14 @@ async fn main() -> anyhow::Result<()> {
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
+    let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
         let output = tokio::process::Command::new("zig")
             .arg("cc")
+            .arg("-target")
+            .arg(target)
             .args(args)
             .spawn()?
             .wait_with_output()
@@ -60,17 +63,17 @@ async fn main() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file).await,
+        IncrementalRunParams::InitialRun => basic_link(args, output_file, target).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             lib_directories,
             ..
-        } => patch_link(args, timestamp, previous_versions, lib_directories, output_file).await,
+        } => patch_link(args, timestamp, previous_versions, lib_directories, output_file, target).await,
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()> {
+async fn basic_link(args: Vec<String>, output_file: String, target: String) -> anyhow::Result<()> {
 
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
@@ -79,6 +82,8 @@ async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()
 
     let output = tokio::process::Command::new("zig")
         .arg("cc")
+        .arg("-target")
+        .arg(target)
         .arg("-fPIC")
         .args(&args)
         .arg("-o")
@@ -96,7 +101,8 @@ async fn patch_link(
     timestamp: SystemTime,
     previous_versions: Vec<Utf8PathBuf>,
     lib_directories: Vec<Utf8PathBuf>,
-    output_file: String
+    output_file: String,
+    target: String
 ) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
     let mut object_files: Vec<String> = vec![];
@@ -142,7 +148,7 @@ async fn patch_link(
 
     let mut cc = tokio::process::Command::new("zig");
 
-    let mut args = vec!["cc".to_string()];
+    let mut args = vec!["cc".to_string(), "-target".to_string(), target];
 
     args.push("-shared".to_string());
     args.push("-rdynamic".to_string());

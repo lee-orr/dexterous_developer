@@ -157,6 +157,7 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
+        .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.zig_linker_target())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
         .env(
