@@ -29,6 +29,8 @@ async fn main() -> anyhow::Result<()> {
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
+    let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
+    let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
@@ -63,38 +65,45 @@ async fn main() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file, target).await,
+        IncrementalRunParams::InitialRun => basic_link(args, output_file, lib_directories, target).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
-            lib_directories,
             ..
         } => patch_link(args, timestamp, previous_versions, lib_directories, output_file, target).await,
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String, target: String) -> anyhow::Result<()> {
+async fn basic_link(args: Vec<String>, output_file: String, lib_directories: Vec<Utf8PathBuf>, target: String) -> anyhow::Result<()> {
 
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
     }
 
+    let mut dirs = vec![];
+
+    for dir in lib_directories.iter().rev() {
+        dirs.push("-L".to_string());
+        dirs.push(dir.to_string());
+    }
+
     let output = tokio::process::Command::new("zig")
         .arg("cc")
         .arg("-target")
-        .arg(target)
+        .arg(&target)
         .arg("-fPIC")
+        .args(&dirs)
         .args(&args)
         .arg("-o")
-        .arg(path)
+        .arg(&path)
         .arg("-shared")
         .arg("-rdynamic")
         .spawn()?
         .wait_with_output()
         .await?;
     if !output.status.success() {
-        eprintln!("Failed Link Parameters:\nzig {}", args.join(" "));
+        eprintln!("Failed Link Parameters - initial:\nzig cc -target {target} -fPIC {} {} -o {path} -shared -rdynamic", dirs.join(" "), args.join(" "));
     }
     std::process::exit(output.status.code().unwrap_or_default());
 }

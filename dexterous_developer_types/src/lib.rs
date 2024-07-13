@@ -51,6 +51,7 @@ pub struct TargetBuildSettings {
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
     pub environment: HashMap<String, String>,
     pub builder: BuilderTypes,
+    pub additional_library_directories: Vec<Utf8PathBuf>
 }
 
 #[repr(C)]

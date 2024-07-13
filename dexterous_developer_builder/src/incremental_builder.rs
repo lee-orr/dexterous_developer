@@ -48,6 +48,7 @@ async fn build(
         package_or_example,
         features,
         mut manifest_path,
+        additional_library_directories,
         ..
     }: TargetBuildSettings,
     previous_versions: Arc<Mutex<Vec<Utf8PathBuf>>>,
@@ -145,7 +146,6 @@ async fn build(
                 let previous_versions = previous_versions.lock().await;
                 previous_versions.clone()
             },
-            lib_directories: vec![target_dir, deps, examples],
         }
     };
 
@@ -160,12 +160,18 @@ async fn build(
         cargo.current_dir(&working_dir);
     }
 
+    let mut lib_directories = additional_library_directories.clone();
+    lib_directories.push(target_dir.clone());
+    lib_directories.push(deps.clone());
+    lib_directories.push(examples.clone());
+
     cargo
         .env_remove("LD_DEBUG")
         .env("CC", cc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.zig_linker_target())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
+        .env("DEXTEROUS_DEVELOPER_LIB_DIRECTORES", serde_json::to_string(&lib_directories)?)
         .env(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
@@ -628,7 +634,6 @@ pub enum IncrementalRunParams {
         id: u32,
         timestamp: std::time::SystemTime,
         previous_versions: Vec<Utf8PathBuf>,
-        lib_directories: Vec<Utf8PathBuf>,
     },
 }
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -29,6 +29,8 @@ pub struct DexterousConfig {
     pub environment: HashMap<String, String>,
     #[serde(default)]
     pub manifest_path: Option<Utf8PathBuf>,
+    #[serde(default)]
+    pub additional_library_directories: Vec<Utf8PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -43,6 +45,8 @@ pub struct ReloadTargetConfig {
     pub builder: Option<BuilderTypes>,
     #[serde(default)]
     pub manifest_path: Option<Utf8PathBuf>,
+    #[serde(default)]
+    pub additional_library_directories: Vec<Utf8PathBuf>,
 }
 
 impl DexterousConfig {
@@ -125,6 +129,12 @@ impl DexterousConfig {
             .chain(self.environment.iter())
             .map(|(key, value)| (key.to_owned(), value.to_owned()))
             .collect::<HashMap<_, _>>();
+        let global_library_directories = package_specific_config
+            .additional_library_directories
+            .iter()
+            .chain(self.additional_library_directories.iter())
+            .cloned()
+            .collect::<Vec<_>>();
 
         let mut targets = self
             .targets
@@ -137,6 +147,7 @@ impl DexterousConfig {
                     settings.environment.clone(),
                     settings.builder.clone(),
                     settings.manifest_path.clone(),
+                    settings.additional_library_directories.clone()
                 )
             })
             .collect::<Vec<_>>();
@@ -144,7 +155,7 @@ impl DexterousConfig {
         if targets.is_empty() {
             let default_target =
                 Target::current().ok_or(BuildSettingsGenerationError::NoDefaultTarget)?;
-            targets.push((default_target, vec![], vec![], HashMap::new(), None, None))
+            targets.push((default_target, vec![], vec![], HashMap::new(), None, None, vec![]))
         }
 
         Ok(targets
@@ -157,12 +168,16 @@ impl DexterousConfig {
                     mut environment,
                     builder,
                     manifest_path,
+                    mut additional_library_directories,
                 )| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
                     }
                     for a in global_asset_folders.iter() {
                         asset_folders.push(Utf8PathBuf::from(*a));
+                    }
+                    for l in global_library_directories.iter() {
+                        additional_library_directories.push(l.clone());
                     }
                     for (key, value) in global_environment_variables.iter() {
                         environment.insert(key.to_owned(), value.to_owned());
@@ -182,6 +197,7 @@ impl DexterousConfig {
                                 .or(builder)
                                 .unwrap_or_default(),
                             manifest_path: manifest_path.or(global_manifest.cloned()),
+                            additional_library_directories,
                         },
                     )
                 },
@@ -242,6 +258,7 @@ mod test {
                         .collect(),
                     builder: None,
                     manifest_path: None,
+                    additional_library_directories: vec![]
                 },
             )])
             .into_iter()
