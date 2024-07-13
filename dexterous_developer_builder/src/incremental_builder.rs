@@ -60,6 +60,11 @@ async fn build(
         bail!("Couldn't get linker path");
     };
     let linker = linker.canonicalize_utf8()?;
+    let cc = which::which("dexterous_developer_incremental_c_compiler")?;
+    let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
+        bail!("Couldn't get cc path");
+    };
+    let cc = cc.canonicalize_utf8()?;
 
     let (artifact_name, artifact_file_name) = {
         let mut cmd = Command::new("cargo");
@@ -157,6 +162,7 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
+        .env("CC", cc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.zig_linker_target())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)

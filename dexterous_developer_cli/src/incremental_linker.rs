@@ -12,7 +12,7 @@ use futures_util::future::join_all;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = std::env::args().filter(|v| !
-        v.contains("dexterous_developer_incremental_linker")).collect::<Vec<_>>();
+        v.contains("dexterous_developer_incremental_linker") && !v.contains("incremental_c_compiler")).collect::<Vec<_>>();
 
     let output_name = {
         let mut next_is_output = false;
@@ -93,6 +93,9 @@ async fn basic_link(args: Vec<String>, output_file: String, target: String) -> a
         .spawn()?
         .wait_with_output()
         .await?;
+    if !output.status.success() {
+        eprintln!("Failed Link Parameters:\nzig {}", args.join(" "));
+    }
     std::process::exit(output.status.code().unwrap_or_default());
 }
 
