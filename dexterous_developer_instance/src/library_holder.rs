@@ -4,7 +4,7 @@ use libloading::Library;
 use once_cell::sync::Lazy;
 use std::time::Duration;
 
-use dexterous_developer_types::cargo_path_utils;
+use dexterous_developer_types::{cargo_path_utils, BuilderTypes};
 use thiserror::Error;
 use tracing::{debug, error, trace};
 use uuid::Uuid;
@@ -21,16 +21,18 @@ impl Drop for LibraryHolderInner {
 }
 
 impl LibraryHolderInner {
-    pub fn new(path: &Utf8Path, use_original: bool) -> Result<(Self, Uuid), LibraryError> {
+    pub fn new(
+        path: &Utf8Path,
+        use_original: bool,
+        builder_type: BuilderTypes,
+    ) -> Result<(Self, Uuid), LibraryError> {
         trace!("Loading {path:?}");
         let path = path.to_owned();
 
-        let incremental_library =
-            if let Some(path_end) = path.as_str().replace(".so", "").split('.').last() {
-                path_end.parse::<u32>().is_ok()
-            } else {
-                false
-            };
+        let incremental_library = match builder_type {
+            BuilderTypes::Simple => false,
+            BuilderTypes::Incremental => true,
+        };
 
         let uuid = uuid::Uuid::new_v4();
         let path = if incremental_library || use_original {
@@ -144,8 +146,12 @@ fn await_file(iterations: usize, path: &Utf8PathBuf) {
 pub struct LibraryHolder(Uuid, Utf8PathBuf);
 
 impl LibraryHolder {
-    pub fn new(path: &Utf8Path, use_original: bool) -> Result<Self, LibraryError> {
-        let (inner, uuid) = LibraryHolderInner::new(path, use_original)?;
+    pub fn new(
+        path: &Utf8Path,
+        use_original: bool,
+        builder_type: BuilderTypes,
+    ) -> Result<Self, LibraryError> {
+        let (inner, uuid) = LibraryHolderInner::new(path, use_original, builder_type)?;
         let path = inner.1.clone();
         LIBRARIES.insert(uuid, inner);
         Ok(Self(uuid, path))

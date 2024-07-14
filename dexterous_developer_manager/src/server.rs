@@ -162,6 +162,7 @@ async fn connected_to_target(
             most_recent_completed_build: initial_build_state
                 .most_recent_completed_build
                 .load(std::sync::atomic::Ordering::SeqCst),
+            builder_type: initial_build_state.builder_type,
         };
         let Ok(message) = rmp_serde::to_vec(&initial_state_message) else {
             error!("Failed to serialize initial state message for {id}");

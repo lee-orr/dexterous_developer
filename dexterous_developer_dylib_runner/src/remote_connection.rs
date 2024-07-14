@@ -8,7 +8,7 @@ use std::{
 };
 
 use camino::{Utf8Path, Utf8PathBuf};
-use dexterous_developer_types::{HotReloadMessage, Target};
+use dexterous_developer_types::{BuilderTypes, HotReloadMessage, Target};
 use futures_util::StreamExt;
 use tokio::{io::AsyncWriteExt, time::sleep};
 use tokio_tungstenite::connect_async;
@@ -98,6 +98,7 @@ pub(crate) async fn remote_connection(
     let mut last_triggered_id = 0;
     let mut root_lib_path: Option<Utf8PathBuf> = None;
     let mut root_lib_name: Option<String> = None;
+    let mut builder_type: Option<BuilderTypes> = None;
     let pending_downloads = Arc::new(AtomicU32::new(0));
 
     loop {
@@ -119,21 +120,25 @@ pub(crate) async fn remote_connection(
                     if pending_downloads.load(Ordering::SeqCst) == 0 {
                         trace!("all downloads completed");
                         if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
-                            if let Some(local_path) = root_lib_path.as_ref().cloned() {
-                                if local_path.exists() || ({
-                                    trace!("waiting for library to be created");
-                                    sleep(Duration::from_millis(100)).await;
-                                    local_path.exists()
-                                }){
-                                    info!("Triggering a Reload");
-                                    last_triggered_id = last_completed_id;
-                                    let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path }).await;
-                                    trace!("Sent Reload Trigger: {e:?}");
+                            if let Some(builder_type) = builder_type.as_ref().cloned() {
+                                if let Some(local_path) = root_lib_path.as_ref().cloned() {
+                                    if local_path.exists() || ({
+                                        trace!("waiting for library to be created");
+                                        sleep(Duration::from_millis(100)).await;
+                                        local_path.exists()
+                                    }){
+                                        info!("Triggering a Reload");
+                                        last_triggered_id = last_completed_id;
+                                        let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path, builder_type }).await;
+                                        trace!("Sent Reload Trigger: {e:?}");
+                                    } else {
+                                        trace!("local root doesn't exist yet - did download actually complete?");
+                                    }
                                 } else {
-                                    trace!("local root doesn't exist yet - did download actually complete?");
+                                    trace!("no local root path exists - not triggering a reload");
                                 }
                             } else {
-                                trace!("no local root path exists - not triggering a reload");
+                                trace!("no builder type found");
                             }
                         } else {
                             trace!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
@@ -155,12 +160,15 @@ pub(crate) async fn remote_connection(
                                 assets,
                                 most_recent_started_build,
                                 most_recent_completed_build,
+                                builder_type: bt,
                                 ..
                             } => {
                                 trace!(r#"Got Initial State:
                                 root library: {initial_root_lib:?}
                                 most recent started build: {most_recent_started_build}
                                 most_recent_completed_build: {most_recent_completed_build}"#);
+
+                                builder_type = Some(bt);
                                 root_lib_name = initial_root_lib.as_ref().cloned();
                                 for (path, hash) in libraries {
                                     download_file(&server, target, &library_path, path, hash, pending_downloads.clone(), download_tx.clone(), false, in_workspace);

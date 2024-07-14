@@ -1,9 +1,7 @@
 use cargo_metadata::Metadata;
-use debounce::EventDebouncer;
 use debounced::debounced;
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
-use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 use std::{
     collections::{HashMap, HashSet},
     env, fs,
@@ -11,8 +9,10 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32},
         Arc,
-    }, time::Duration,
+    },
+    time::Duration,
 };
+use tokio_stream::{wrappers::UnboundedReceiverStream, StreamExt};
 
 use anyhow::bail;
 
@@ -24,7 +24,7 @@ use tokio::{
     sync::Mutex,
     task::JoinHandle,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace};
 
 use crate::types::{
     BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
@@ -49,9 +49,10 @@ async fn build(
         features,
         mut manifest_path,
         additional_library_directories,
+        apple_sdk_directory,
         ..
     }: TargetBuildSettings,
-    previous_versions: Arc<Mutex<Vec<Utf8PathBuf>>>,
+    previous_versions: Arc<Mutex<Vec<(String, Utf8PathBuf)>>>,
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     id: u32,
 ) -> Result<(), anyhow::Error> {
@@ -71,9 +72,9 @@ async fn build(
         let mut cmd = Command::new("cargo");
         cmd.arg("metadata");
         if let Some(manifest_path) = &manifest_path {
-            cmd.arg("--manifest-path").arg(&manifest_path);
+            cmd.arg("--manifest-path").arg(manifest_path);
         }
-        
+
         let output = cmd.output().await?;
 
         if !output.status.success() {
@@ -87,7 +88,8 @@ async fn build(
                     find_package_target(package, target, id)
                 } else if output.workspace_default_members.len() == 1 {
                     let default_member = output.workspace_default_members.first().unwrap();
-                    if let Some(package) = output.packages.iter().find(|p| p.id == *default_member) {
+                    if let Some(package) = output.packages.iter().find(|p| p.id == *default_member)
+                    {
                         find_package_target(package, target, id)
                     } else {
                         None
@@ -98,7 +100,7 @@ async fn build(
                     bail!("Can't find default package target");
                 };
                 root
-            },
+            }
             dexterous_developer_types::PackageOrExample::Package(package) => {
                 let Some(package) = output.packages.iter().find(|p| p.name == *package) else {
                     bail!("Couldn't find package");
@@ -107,19 +109,29 @@ async fn build(
                     bail!("Can't find package target");
                 };
                 p
-            },
+            }
             dexterous_developer_types::PackageOrExample::Example(e) => {
-                let Some((example_target, package)) = output.packages.into_iter().flat_map(|e| e.targets.iter().map(|t| (t.clone(), e.clone())).collect::<Vec<_>>()).find(|(t,_)| t.is_example() && t.name == *e) else {
+                let Some((example_target, package)) = output
+                    .packages
+                    .into_iter()
+                    .flat_map(|e| {
+                        e.targets
+                            .iter()
+                            .map(|t| (t.clone(), e.clone()))
+                            .collect::<Vec<_>>()
+                    })
+                    .find(|(t, _)| t.is_example() && t.name == *e)
+                else {
                     bail!("No such example");
                 };
 
-                if !manifest_path.is_some() {
+                if manifest_path.is_none() {
                     manifest_path = Some(package.manifest_path);
                 }
                 let artifact_name = example_target.name.clone();
                 let artifact_file_name = target.dynamic_lib_name(&format!("{artifact_name}.{id}"));
                 (artifact_name, artifact_file_name)
-            },
+            }
         }
     };
 
@@ -144,12 +156,22 @@ async fn build(
             timestamp: std::time::SystemTime::now(),
             previous_versions: {
                 let previous_versions = previous_versions.lock().await;
-                previous_versions.clone()
+                previous_versions
+                    .iter()
+                    .filter_map(|(name, path)| {
+                        if path.exists() {
+                            Some(name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
             },
         }
     };
 
-    let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}")).canonicalize_utf8()?;
+    let target_dir =
+        Utf8PathBuf::from(format!("./target/hot-reload/{target}")).canonicalize_utf8()?;
     let default_out = target_dir.join(format!("{target}")).join("debug");
     let deps = default_out.join("deps");
     let examples = default_out.join("examples");
@@ -161,17 +183,36 @@ async fn build(
     }
 
     let mut lib_directories = additional_library_directories.clone();
-    lib_directories.push(target_dir.clone());
+    lib_directories.push(default_out.clone());
     lib_directories.push(deps.clone());
     lib_directories.push(examples.clone());
+
+    for dir in &apple_sdk_directory {
+        lib_directories.push(dir.join("usr").join("lib"));
+    }
 
     cargo
         .env_remove("LD_DEBUG")
         .env("CC", cc)
-        .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.zig_linker_target())
+        .env(
+            "DEXTEROUS_DEVELOPER_LINKER_TARGET",
+            target.zig_linker_target(),
+        )
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
-        .env("DEXTEROUS_DEVELOPER_LIB_DIRECTORES", serde_json::to_string(&lib_directories)?)
+        .env(
+            "DEXTEROUS_DEVELOPER_LIB_DIRECTORES",
+            serde_json::to_string(&lib_directories)?,
+        )
+        .env(
+            "DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES",
+            serde_json::to_string(
+                &apple_sdk_directory
+                    .iter()
+                    .map(|v| v.join("System/Library/Frameworks"))
+                    .collect::<Vec<_>>(),
+            )?,
+        )
         .env(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
@@ -210,6 +251,7 @@ async fn build(
         .arg(format!("linker={linker}"));
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
+
     let mut child = cargo
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -271,8 +313,10 @@ async fn build(
             .collect(),
         None => Vec::new(),
     };
+
     let mut dylib_paths = dylib_path();
     let mut root_dirs = vec![default_out, deps, examples];
+
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
     path_var.push(
@@ -300,6 +344,7 @@ async fn build(
     }
 
     trace!("Path Var for DyLib Search: {path_var:?}");
+
     let dir_collections = path_var.iter().map(|dir| {
         let dir = dir.clone();
         tokio::spawn(async {
@@ -355,7 +400,7 @@ async fn build(
         libraries
             .iter()
             .map(|(library, local_path)| {
-                let file = std::fs::read(&local_path)?;
+                let file = std::fs::read(local_path)?;
                 let hash = blake3::hash(&file);
 
                 Ok(HashedFileRecord {
@@ -363,7 +408,10 @@ async fn build(
                     local_path: local_path.clone(),
                     relative_path: Utf8PathBuf::from(format!("./{library}")),
                     hash: hash.as_bytes().to_owned(),
-                    dependencies: dependencies.get(library.as_str()).cloned().unwrap_or_default(),
+                    dependencies: dependencies
+                        .get(library.as_str())
+                        .cloned()
+                        .unwrap_or_default(),
                 })
             })
             .collect::<anyhow::Result<Vec<_>>>()?
@@ -371,7 +419,7 @@ async fn build(
 
     {
         let mut previous = previous_versions.lock().await;
-        previous.push(artifact_path.clone());
+        previous.push((format!("{artifact_name}.{id}"), artifact_path.clone()));
     }
 
     let _ = sender.send(BuildOutputMessages::EndedBuild {
@@ -383,19 +431,24 @@ async fn build(
     Ok(())
 }
 
-fn find_package_target(package: &cargo_metadata::Package, target: Target, id: u32) -> Option<(String, String)> {
+fn find_package_target(
+    package: &cargo_metadata::Package,
+    target: Target,
+    id: u32,
+) -> Option<(String, String)> {
     let targets = &package.targets;
 
     let package_target = if let Some(lib) = targets.iter().find(|target| target.is_lib()) {
         lib
     } else if let Some(default_run) = &package.default_run {
-        targets.iter().find(|target| target.is_bin() && &target.name == default_run)?
+        targets
+            .iter()
+            .find(|target| target.is_bin() && &target.name == default_run)?
     } else if let Some(first_bin) = targets.iter().find(|target| target.is_bin()) {
         first_bin
     } else {
         return None;
     };
-
 
     let artifact_name = package_target.name.clone();
     let artifact_file_name = target.dynamic_lib_name(&format!("{artifact_name}.{id}"));
@@ -470,7 +523,7 @@ fn process_dependencies_recursive(
 
 impl IncrementalBuilder {
     pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (incoming, incoming_rx) = tokio::sync::mpsc::unbounded_channel();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
@@ -508,6 +561,7 @@ impl IncrementalBuilder {
                             );
                         }
                         BuilderIncomingMessages::CodeChanged => {
+                            trace!("Code Changed");
                             if should_build {
                                 trigger_build(
                                     &build_active,
@@ -549,8 +603,9 @@ fn trigger_build(
     target: Target,
     settings: &TargetBuildSettings,
     output_tx: &tokio::sync::broadcast::Sender<BuildOutputMessages>,
-    previous_versions: &Arc<Mutex<Vec<Utf8PathBuf>>>,
+    previous_versions: &Arc<Mutex<Vec<(String, Utf8PathBuf)>>>,
 ) {
+    trace!("Triggering Build");
     let previous = build_active.swap(true, std::sync::atomic::Ordering::SeqCst);
     if previous {
         build_pending.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -625,6 +680,10 @@ impl Builder for IncrementalBuilder {
     fn get_asset_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
         self.settings.asset_folders.clone()
     }
+
+    fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+        dexterous_developer_types::BuilderTypes::Incremental
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -633,7 +692,7 @@ pub enum IncrementalRunParams {
     Patch {
         id: u32,
         timestamp: std::time::SystemTime,
-        previous_versions: Vec<Utf8PathBuf>,
+        previous_versions: Vec<String>,
     },
 }
 

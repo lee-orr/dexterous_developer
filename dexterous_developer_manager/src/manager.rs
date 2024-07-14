@@ -59,7 +59,7 @@ impl Manager {
             let id = self.target_count;
             let target = builder.target();
             self.targets.entry(target).or_insert_with(|| {
-                let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name()));
+                let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name(), builder.builder_type()));
                 let (outgoing, output) = builder.outgoing_channel();
 
                 let handle = {
@@ -183,6 +183,10 @@ mod tests {
         fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
         }
+
+        fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+            dexterous_developer_types::BuilderTypes::Simple
+        }
     }
 
     struct TestBuilder2;
@@ -215,6 +219,10 @@ mod tests {
 
         fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
+        }
+
+        fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+            dexterous_developer_types::BuilderTypes::Simple
         }
     }
 
@@ -351,6 +359,10 @@ mod tests {
 
         fn get_asset_subscriptions(&self) -> Vec<Utf8PathBuf> {
             vec![]
+        }
+
+        fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+            dexterous_developer_types::BuilderTypes::Simple
         }
     }
 

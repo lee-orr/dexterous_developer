@@ -125,4 +125,8 @@ impl Builder for TestBuilder {
     fn get_asset_subscriptions(&self) -> Vec<camino::Utf8PathBuf> {
         vec![]
     }
+
+    fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+        dexterous_developer_types::BuilderTypes::Simple
+    }
 }

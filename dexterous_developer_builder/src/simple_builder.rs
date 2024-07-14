@@ -432,6 +432,10 @@ impl Builder for SimpleBuilder {
         self.target
     }
 
+    fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+        dexterous_developer_types::BuilderTypes::Simple
+    }
+
     fn incoming_channel(
         &self,
     ) -> tokio::sync::mpsc::UnboundedSender<crate::types::BuilderIncomingMessages> {

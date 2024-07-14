@@ -34,11 +34,11 @@ pub enum PackageOrExample {
     Example(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum BuilderTypes {
     #[default]
     Simple,
-    Incremental
+    Incremental,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -51,7 +51,8 @@ pub struct TargetBuildSettings {
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
     pub environment: HashMap<String, String>,
     pub builder: BuilderTypes,
-    pub additional_library_directories: Vec<Utf8PathBuf>
+    pub additional_library_directories: Vec<Utf8PathBuf>,
+    pub apple_sdk_directory: Vec<Utf8PathBuf>,
 }
 
 #[repr(C)]
@@ -130,9 +131,7 @@ impl Target {
         match self {
             Target::Linux => "x86_64-linux-gnu",
             Target::LinuxArm => "aarch64-linux-gnu",
-            Target::Windows => {
-                "x86_64-windows-gnu"
-            }
+            Target::Windows => "x86_64-windows-gnu",
             Target::Mac => "x86_64-macos",
             Target::MacArm => "aarch64-macos",
             Target::Android => "aarch64-android",
@@ -144,9 +143,7 @@ impl Target {
         match self {
             Target::Linux => "x86_64-linux-gnu",
             Target::LinuxArm => "aarch64-linux-gnu",
-            Target::Windows => {
-                "x86_64-windows-gnu"
-            }
+            Target::Windows => "x86_64-windows-gnu",
             Target::Mac => "x86_64-macos",
             Target::MacArm => "aarch64-macos",
             Target::Android => "aarch64-android",
@@ -240,6 +237,7 @@ pub enum HotReloadMessage {
         assets: Vec<(Utf8PathBuf, [u8; 32])>,
         most_recent_started_build: u32,
         most_recent_completed_build: u32,
+        builder_type: BuilderTypes,
     },
     UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,

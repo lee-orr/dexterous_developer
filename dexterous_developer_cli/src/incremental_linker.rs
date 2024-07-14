@@ -4,26 +4,32 @@
 
 use std::time::SystemTime;
 
-use anyhow::bail;
 use camino::Utf8PathBuf;
 use dexterous_developer_builder::incremental_builder::IncrementalRunParams;
 use futures_util::future::join_all;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = std::env::args().filter(|v| !
-        v.contains("dexterous_developer_incremental_linker") && !v.contains("incremental_c_compiler")).collect::<Vec<_>>();
+    let args = std::env::args()
+        .filter(|v| {
+            !v.contains("dexterous_developer_incremental_linker")
+                && !v.contains("incremental_c_compiler")
+        })
+        .collect::<Vec<_>>();
 
     let output_name = {
         let mut next_is_output = false;
-        args.iter().find(|arg| {
-            if arg.as_str() == "-o" {
-                next_is_output = true;
-            } else if next_is_output {
-                return true;
-            }
-            false            
-        }).expect("Can't determine output file").to_owned()
+        args.iter()
+            .find(|arg| {
+                if arg.as_str() == "-o" {
+                    next_is_output = true;
+                } else if next_is_output {
+                    return true;
+                }
+                false
+            })
+            .expect("Can't determine output file")
+            .to_owned()
     };
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
@@ -31,6 +37,8 @@ async fn main() -> anyhow::Result<()> {
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
+    let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
+    let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
@@ -47,17 +55,19 @@ async fn main() -> anyhow::Result<()> {
 
     let mut next_is_output = false;
 
-    let args = 
-        args.into_iter().filter(|v|
-            !(v.contains("--gc-sections") || v.contains("-pie"))
-        ).filter(|v| if v == "-o" {
-            next_is_output = true;
-            false
-        } else if next_is_output {
-            next_is_output = true;
-            false
-        } else {
-            true
+    let args = args
+        .into_iter()
+        .filter(|v| !(v.contains("--gc-sections") || v.contains("-pie")))
+        .filter(|v| {
+            if v == "-o" {
+                next_is_output = true;
+                false
+            } else if next_is_output {
+                next_is_output = true;
+                false
+            } else {
+                true
+            }
         })
         .collect::<Vec<String>>();
 
@@ -65,17 +75,43 @@ async fn main() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file, lib_directories, target).await,
+        IncrementalRunParams::InitialRun => {
+            basic_link(
+                args,
+                output_file,
+                lib_directories,
+                framework_directories,
+                target,
+            )
+            .await
+        }
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
-            ..
-        } => patch_link(args, timestamp, previous_versions, lib_directories, output_file, target).await,
+            id,
+        } => {
+            patch_link(
+                args,
+                timestamp,
+                previous_versions,
+                lib_directories,
+                output_file,
+                framework_directories,
+                target,
+                id,
+            )
+            .await
+        }
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String, lib_directories: Vec<Utf8PathBuf>, target: String) -> anyhow::Result<()> {
-
+async fn basic_link(
+    args: Vec<String>,
+    output_file: String,
+    lib_directories: Vec<Utf8PathBuf>,
+    framework_directories: Vec<Utf8PathBuf>,
+    target: String,
+) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
@@ -85,6 +121,11 @@ async fn basic_link(args: Vec<String>, output_file: String, lib_directories: Vec
 
     for dir in lib_directories.iter().rev() {
         dirs.push("-L".to_string());
+        dirs.push(dir.to_string());
+    }
+
+    for dir in framework_directories.iter() {
+        dirs.push("-F".to_string());
         dirs.push(dir.to_string());
     }
 
@@ -111,10 +152,12 @@ async fn basic_link(args: Vec<String>, output_file: String, lib_directories: Vec
 async fn patch_link(
     args: Vec<String>,
     timestamp: SystemTime,
-    previous_versions: Vec<Utf8PathBuf>,
+    previous_versions: Vec<String>,
     lib_directories: Vec<Utf8PathBuf>,
     output_file: String,
-    target: String
+    framework_directories: Vec<Utf8PathBuf>,
+    target: String,
+    id: u32,
 ) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
     let mut object_files: Vec<String> = vec![];
@@ -160,11 +203,20 @@ async fn patch_link(
 
     let mut cc = tokio::process::Command::new("zig");
 
-    let mut args = vec!["cc".to_string(), "-target".to_string(), target];
+    let mut args = vec!["cc".to_string(), "-target".to_string(), target.clone()];
 
-    args.push("-shared".to_string());
-    args.push("-rdynamic".to_string());
-    args.push("-fvisibility=default".to_string());
+    if target.contains("mac") {
+        args.push("-undefined".to_string());
+        args.push("dynamic_lookup".to_string());
+        args.push("-dylib".to_string());
+        args.push("-shared".to_string());
+        args.push("-rdynamic".to_string());
+    } else {
+        args.push("-shared".to_string());
+        args.push("-rdynamic".to_string());
+        args.push("-fvisibility=default".to_string());
+    }
+
     args.push("-nodefaultlibs".to_string());
     args.push("-fPIC".to_string());
     args.push("-o".to_string());
@@ -179,10 +231,14 @@ async fn patch_link(
         args.push(dir.to_string());
     }
 
-    for file in previous_versions.iter().rev() {
-        if let Some(filename) = file.file_name() {
-            let filename = filename.replacen("lib", "", 1).replace(".so", "");
-            args.push(format!("-l{filename}"));
+    for dir in framework_directories.iter() {
+        args.push("-F".to_string());
+        args.push(dir.to_string());
+    }
+
+    for name in previous_versions.iter().rev() {
+        if !name.ends_with(&format!(".{id}")) {
+            args.push(format!("-l{name}"));
         }
     }
 
@@ -192,7 +248,7 @@ async fn patch_link(
 
     let output = cc.args(&args).spawn()?.wait_with_output().await?;
     if !output.status.success() {
-        eprintln!("Failed Link Parameters:\nzig {}", args.join(" "));
+        eprintln!("Failed Link Parameters {id}:\nzig {}", args.join(" "));
     }
     std::process::exit(output.status.code().unwrap_or_default());
 }

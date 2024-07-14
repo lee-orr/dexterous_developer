@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -31,6 +31,8 @@ pub struct DexterousConfig {
     pub manifest_path: Option<Utf8PathBuf>,
     #[serde(default)]
     pub additional_library_directories: Vec<Utf8PathBuf>,
+    #[serde(default)]
+    pub apple_sdk_directory: Vec<Utf8PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -47,6 +49,8 @@ pub struct ReloadTargetConfig {
     pub manifest_path: Option<Utf8PathBuf>,
     #[serde(default)]
     pub additional_library_directories: Vec<Utf8PathBuf>,
+    #[serde(default)]
+    pub apple_sdk_directory: Vec<Utf8PathBuf>,
 }
 
 impl DexterousConfig {
@@ -135,6 +139,12 @@ impl DexterousConfig {
             .chain(self.additional_library_directories.iter())
             .cloned()
             .collect::<Vec<_>>();
+        let global_apple_sdk = package_specific_config
+            .apple_sdk_directory
+            .iter()
+            .chain(self.apple_sdk_directory.iter())
+            .cloned()
+            .collect::<Vec<_>>();
 
         let mut targets = self
             .targets
@@ -145,9 +155,10 @@ impl DexterousConfig {
                     settings.features.clone(),
                     settings.asset_folders.clone(),
                     settings.environment.clone(),
-                    settings.builder.clone(),
+                    settings.builder,
                     settings.manifest_path.clone(),
-                    settings.additional_library_directories.clone()
+                    settings.additional_library_directories.clone(),
+                    settings.apple_sdk_directory.clone(),
                 )
             })
             .collect::<Vec<_>>();
@@ -155,7 +166,16 @@ impl DexterousConfig {
         if targets.is_empty() {
             let default_target =
                 Target::current().ok_or(BuildSettingsGenerationError::NoDefaultTarget)?;
-            targets.push((default_target, vec![], vec![], HashMap::new(), None, None, vec![]))
+            targets.push((
+                default_target,
+                vec![],
+                vec![],
+                HashMap::new(),
+                None,
+                None,
+                vec![],
+                vec![],
+            ))
         }
 
         Ok(targets
@@ -169,6 +189,7 @@ impl DexterousConfig {
                     builder,
                     manifest_path,
                     mut additional_library_directories,
+                    mut apple_sdk_directory,
                 )| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
@@ -181,6 +202,9 @@ impl DexterousConfig {
                     }
                     for (key, value) in global_environment_variables.iter() {
                         environment.insert(key.to_owned(), value.to_owned());
+                    }
+                    for l in global_apple_sdk.iter() {
+                        apple_sdk_directory.push(l.clone());
                     }
                     (
                         target,
@@ -198,6 +222,7 @@ impl DexterousConfig {
                                 .unwrap_or_default(),
                             manifest_path: manifest_path.or(global_manifest.cloned()),
                             additional_library_directories,
+                            apple_sdk_directory,
                         },
                     )
                 },
@@ -258,7 +283,8 @@ mod test {
                         .collect(),
                     builder: None,
                     manifest_path: None,
-                    additional_library_directories: vec![]
+                    additional_library_directories: vec![],
+                    apple_sdk_directory: vec![],
                 },
             )])
             .into_iter()

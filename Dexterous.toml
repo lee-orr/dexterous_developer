@@ -12,8 +12,8 @@ manifest_path = "./adapters/bevy_dexterous_developer/Cargo.toml"
 
 [targets.aarch64-apple-darwin]
 builder = "Incremental"
-additional_library_directories = [
-    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/usr/lib"
+apple_sdk_directory = [
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk"
 ]
 
 
