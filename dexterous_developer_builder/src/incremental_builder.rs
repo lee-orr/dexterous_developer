@@ -193,7 +193,8 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
-        .env("CC", cc)
+        .env("CC", &cc)
+        .env("AR", &linker)
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
