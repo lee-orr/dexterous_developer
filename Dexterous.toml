@@ -19,3 +19,6 @@ apple_sdk_directory = [
 
 [targets.x86_64-unknown-linux-gnu]
 builder = "Incremental"
+
+[targets.x86_64-unknown-windows-gnu]
+builder = "Incremental"

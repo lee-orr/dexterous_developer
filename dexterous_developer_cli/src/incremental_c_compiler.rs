@@ -4,6 +4,7 @@
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    eprintln!("Called Incremental C Compiler");
     let mut args = std::env::args()
         .filter(|v| {
             !v.contains("dexterous_developer_incremental_linker")
@@ -17,6 +18,8 @@ async fn main() -> anyhow::Result<()> {
     args.insert(0, target);
     args.insert(0, "-target".to_string());
     args.insert(0, "cc".to_string());
+
+    eprintln!("Calling Zig cc - {args:?}");
 
     let output = tokio::process::Command::new("zig")
         .args(&args)
