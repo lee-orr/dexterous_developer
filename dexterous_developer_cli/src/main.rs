@@ -67,12 +67,6 @@ async fn main() {
 
     trace!("Setting up builders for {package_or_example:?}");
 
-    let zig_exists = which::which("zig").is_ok();
-
-    if !zig_exists {
-        warn!("The Incremental builder requires the zig cc linker. Defaulting to the standard builder instead.");
-    }
-
     let builders = config
         .generate_build_settings(Some(package_or_example.clone()), &features)
         .expect("Failed determine build settings")
@@ -80,11 +74,7 @@ async fn main() {
         .map(|(target, build_settings)| {
             let build: Arc<dyn Builder> = match build_settings.builder {
                 dexterous_developer_types::BuilderTypes::Simple => {
-                    if zig_exists {
-                        Arc::new(IncrementalBuilder::new(target, build_settings))
-                    } else {
-                        Arc::new(SimpleBuilder::new(target, build_settings))
-                    }
+                    Arc::new(SimpleBuilder::new(target, build_settings))
                 }
                 dexterous_developer_types::BuilderTypes::Incremental => {
                     Arc::new(IncrementalBuilder::new(target, build_settings))

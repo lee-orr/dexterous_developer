@@ -39,6 +39,13 @@ bollard = "0.16"
 which = "6"
 debounced = "0.1"
 tokio-stream = "0.1"
+directories = "5"
+reqwest = "0.12"
+semver = "1"
+tar = "0.4"
+xz2 = "0.1"
+zip = "2"
+
 
 [dev-dependencies]
 test-temp-dir = { version = "0.2 "}

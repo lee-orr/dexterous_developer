@@ -39,10 +39,11 @@ async fn main() -> anyhow::Result<()> {
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
     let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
     let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
-
+    let zig_path : Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
+    
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
-        let output = tokio::process::Command::new("zig")
+        let output = tokio::process::Command::new(&zig_path)
             .arg("cc")
             .arg("-target")
             .arg(target)
@@ -77,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
     match incremental_run_params {
         IncrementalRunParams::InitialRun => {
             basic_link(
+                zig_path,
                 args,
                 output_file,
                 lib_directories,
@@ -91,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
             id,
         } => {
             patch_link(
+                zig_path,
                 args,
                 timestamp,
                 previous_versions,
@@ -106,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn basic_link(
+    zig_path: Utf8PathBuf,
     args: Vec<String>,
     output_file: String,
     lib_directories: Vec<Utf8PathBuf>,
@@ -129,7 +133,7 @@ async fn basic_link(
         dirs.push(dir.to_string());
     }
 
-    let output = tokio::process::Command::new("zig")
+    let output = tokio::process::Command::new(&zig_path)
         .arg("cc")
         .arg("-target")
         .arg(&target)
@@ -150,6 +154,7 @@ async fn basic_link(
 }
 
 async fn patch_link(
+    zig_path: Utf8PathBuf,
     args: Vec<String>,
     timestamp: SystemTime,
     previous_versions: Vec<String>,
@@ -201,7 +206,7 @@ async fn patch_link(
         std::process::exit(0);
     }
 
-    let mut cc = tokio::process::Command::new("zig");
+    let mut cc = tokio::process::Command::new(&zig_path);
 
     let mut args = vec!["cc".to_string(), "-target".to_string(), target.clone()];
 
