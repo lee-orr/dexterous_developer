@@ -2,6 +2,8 @@
 //!
 //! Heavily derived from Jon Kelley's work - <https://github.com/jkelleyrtp/ipbp/blob/main/packages/patch-linker/src/main.rs>
 
+use camino::Utf8PathBuf;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut args = std::env::args()
@@ -13,12 +15,13 @@ async fn main() -> anyhow::Result<()> {
         .collect::<Vec<_>>();
 
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
+    let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
-    args.insert(0, target);
-    args.insert(0, "-target".to_string());
     args.insert(0, "cc".to_string());
+    args.push("-target".to_string());
+    args.push(target);
 
-    let output = tokio::process::Command::new("zig")
+    let output = tokio::process::Command::new(zig_path)
         .args(&args)
         .spawn()?
         .wait_with_output()
