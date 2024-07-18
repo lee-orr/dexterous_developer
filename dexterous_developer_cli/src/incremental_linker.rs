@@ -39,8 +39,8 @@ async fn main() -> anyhow::Result<()> {
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
     let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
     let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
-    let zig_path : Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
-    
+    let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
+
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
         let output = tokio::process::Command::new(&zig_path)

@@ -26,10 +26,13 @@ use tokio::{
 };
 use tracing::{debug, error, info, trace};
 
-use crate::{types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-    HashedFileRecord,
-}, zig_downloader::zig_path};
+use crate::{
+    types::{
+        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
+        HashedFileRecord,
+    },
+    zig_downloader::zig_path,
+};
 
 pub struct IncrementalBuilder {
     target: Target,
@@ -57,7 +60,7 @@ async fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     info!("Incremental Build {id} Started");
-    let zig  = zig_path().await?;
+    let zig = zig_path().await?;
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
         bail!("Couldn't get linker path");

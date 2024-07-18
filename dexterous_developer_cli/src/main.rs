@@ -9,7 +9,7 @@ use dexterous_developer_builder::{
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
-use tracing::{info, trace, warn};
+use tracing::{info, trace};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Parser, Debug)]
