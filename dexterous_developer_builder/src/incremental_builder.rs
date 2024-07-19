@@ -214,14 +214,26 @@ async fn build(
         lib_directories.push(dir.join("usr").join("lib"));
     }
 
+    let mut rust_c_args = format!("-Cprefer-dynamic -Clinker={linker}");
+
+
+    if target == Target::Windows {
+        cargo
+            .env("RANLIB", format!("{zig} ranlib"))
+            .env("RC", format!("{zig} rc"))
+            .env("AR", format!("{zig} ar"))
+            .env("OBJCOPY", format!("{zig} objcopy"));
+        rust_c_args = format!("{rust_c_args}  -Cdlltool={dlltool}");
+    }
+
     cargo
         .env_remove("LD_DEBUG")
         .env("ZIG_PATH", &zig)
         .env("CC", &cc)
-        .env("RANLIB", format!("{zig} ranlib"))
-        .env("RC", format!("{zig} rc"))
-        .env("AR", format!("{zig} ar"))
-        .env("OBJCOPY", format!("{zig} objcopy"))
+        // .env("RANLIB", format!("{zig} ranlib"))
+        // .env("RC", format!("{zig} rc"))
+        // .env("AR", format!("{zig} ar"))
+        // .env("OBJCOPY", format!("{zig} objcopy"))
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
@@ -245,7 +257,7 @@ async fn build(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
-        .env("RUSTFLAGS", format!("-Cprefer-dynamic -Cdlltool={dlltool} -Clinker={linker}"))
+        .env("RUSTFLAGS", rust_c_args)
         .env("CARGO_TARGET_DIR", target_dir)
         .arg("rustc");
 
