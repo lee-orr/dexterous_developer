@@ -39,7 +39,7 @@ which = "6"
 debounced = "0.1"
 tokio-stream = "0.1"
 directories = "5"
-reqwest = "0.12"
+reqwest = { version = "0.12", default-features = false, features = [ "charset", "http2", "macos-system-configuration", "rustls-tls" ] }
 semver = "1"
 tar = "0.4"
 xz2 = "0.1"

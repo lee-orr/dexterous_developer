@@ -230,10 +230,6 @@ async fn build(
         .env_remove("LD_DEBUG")
         .env("ZIG_PATH", &zig)
         .env("CC", &cc)
-        // .env("RANLIB", format!("{zig} ranlib"))
-        // .env("RC", format!("{zig} rc"))
-        // .env("AR", format!("{zig} ar"))
-        // .env("OBJCOPY", format!("{zig} objcopy"))
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
