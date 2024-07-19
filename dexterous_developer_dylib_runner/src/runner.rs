@@ -74,6 +74,7 @@ pub fn run_app<
         let mut id = None;
         #[allow(unused_assignments)]
         let mut path = None;
+        #[allow(unused_assignments)]
         let mut builder_type = None;
         loop {
             if library.is_some() || id.is_some() {
