@@ -71,6 +71,13 @@ async fn build(
         bail!("Couldn't get cc path");
     };
     let cc = cc.canonicalize_utf8()?;
+    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
+    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
+        bail!("Couldn't get dlltool path");
+    };
+    let dlltool = dlltool.canonicalize_utf8()?;
+
+    info!("CC {cc} LINKER {linker} ZIG {zig}");
 
     let (artifact_name, artifact_file_name) = {
         let mut cmd = Command::new("cargo");
@@ -139,6 +146,8 @@ async fn build(
         }
     };
 
+    info!("Artifact Name: {artifact_name} File: {artifact_file_name}");
+
     let incremental_run_settings = if id == 1 {
         IncrementalRunParams::InitialRun
     } else {
@@ -174,12 +183,22 @@ async fn build(
         }
     };
 
+    info!("Incremental settings - {incremental_run_settings:?}");
+
     let target_dir =
-        Utf8PathBuf::from(format!("./target/hot-reload/{target}")).canonicalize_utf8()?;
+        Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
+    
+    if !target_dir.exists() {
+        tokio::fs::create_dir_all(&target_dir).await?;
+    }
+
+    let target_dir = target_dir.canonicalize_utf8()?;
     let default_out = target_dir.join(format!("{target}")).join("debug");
     let deps = default_out.join("deps");
     let examples = default_out.join("examples");
     let artifact_path = default_out.join(&artifact_file_name);
+    
+    info!("Paths ready - {artifact_path}");
 
     let mut cargo = Command::new("cargo");
     if let Some(working_dir) = working_dir {
@@ -199,6 +218,10 @@ async fn build(
         .env_remove("LD_DEBUG")
         .env("ZIG_PATH", &zig)
         .env("CC", cc)
+        .env("RANLIB", format!("{zig} ranlib"))
+        .env("RC", format!("{zig} rc"))
+        .env("AR", format!("{zig} ar"))
+        .env("OBJCOPY", format!("{zig} objcopy"))
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
@@ -222,7 +245,7 @@ async fn build(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
-        .env("RUSTFLAGS", "-Cprefer-dynamic")
+        .env("RUSTFLAGS", format!("-Cprefer-dynamic -Cdlltool={dlltool} -Clinker={linker}"))
         .env("CARGO_TARGET_DIR", target_dir)
         .arg("rustc");
 
@@ -245,17 +268,17 @@ async fn build(
         cargo.arg(features.join(",").as_str());
     }
 
+
     cargo
         .arg("--message-format=json-render-diagnostics")
         .arg("--profile")
         .arg("dev")
         .arg("--target")
-        .arg(target.to_string())
-        .arg("--")
-        .arg("-C")
-        .arg(format!("linker={linker}"));
+        .arg(target.to_string());
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
+
+    info!("Ready to start build");
 
     let mut child = cargo
         .stdout(Stdio::piped())
@@ -631,7 +654,10 @@ fn trigger_build(
                 output_tx.clone(),
                 id,
             )
-            .await?;
+            .await.map_err(|e| {
+                error!("Build Error - {id} {target} - {e}");
+                e
+            })?;
 
             loop {
                 let pending = build_pending.swap(false, std::sync::atomic::Ordering::SeqCst);
@@ -643,7 +669,10 @@ fn trigger_build(
                         output_tx.clone(),
                         id,
                     )
-                    .await?;
+                    .await.map_err(|e| {
+                        error!("Build Error - {id} {target} - {e}");
+                        e
+                    })?;
                 } else {
                     break;
                 }

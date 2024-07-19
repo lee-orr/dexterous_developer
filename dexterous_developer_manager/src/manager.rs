@@ -11,7 +11,7 @@ use tokio::{
     sync::{broadcast, mpsc},
     task::JoinHandle,
 };
-use tracing::{error, trace};
+use tracing::{error, info, trace};
 
 #[derive(Default, Clone)]
 
@@ -94,7 +94,10 @@ impl Manager {
 
                 (incoming, outgoing, output, current_state, handle)
             });
+            
         }
+        let targets = self.targets.iter().map(|r| *r.key()).collect::<Vec<_>>();
+        info!("Able to build {targets:?}");
         self
     }
 
