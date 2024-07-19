@@ -217,7 +217,7 @@ async fn build(
     cargo
         .env_remove("LD_DEBUG")
         .env("ZIG_PATH", &zig)
-        .env("CC", cc)
+        .env("CC", &cc)
         .env("RANLIB", format!("{zig} ranlib"))
         .env("RC", format!("{zig} rc"))
         .env("AR", format!("{zig} ar"))

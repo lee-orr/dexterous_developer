@@ -68,11 +68,7 @@ impl LibraryHolderInner {
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
         let library = unsafe {
-            #[cfg(target_family = "unix")]
-            {
-                use libloading::os::unix::*;
-                Library::open(Some(path.clone()), RTLD_NOW | RTLD_LOCAL).map(From::from)
-            }
+            Library::new(path.clone()).map(From::from)
         };
         match library {
             Ok(lib) => {

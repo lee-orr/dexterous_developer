@@ -9,8 +9,9 @@ members = [
     "dexterous_developer_dylib_runner",
     "dexterous_developer_cli",
     "dexterous_developer_test_utils",
-    "adapters/*/crates/*",
-    "adapters/*",
+    "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_library",
+    "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic",
+    "adapters/bevy_dexterous_developer",
     "dexterous_developer",]
 
 [workspace.package]

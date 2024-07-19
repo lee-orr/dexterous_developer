@@ -6,6 +6,7 @@ use camino::Utf8PathBuf;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    eprintln!("Called Incremental C Compiler");
     let mut args = std::env::args()
         .filter(|v| {
             !v.contains("dexterous_developer_incremental_linker")
@@ -18,6 +19,8 @@ async fn main() -> anyhow::Result<()> {
     let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
     args.insert(0, "cc".to_string());
+
+    eprintln!("Calling Zig cc - {args:?}");
     args.push("-target".to_string());
     args.push(target);
 

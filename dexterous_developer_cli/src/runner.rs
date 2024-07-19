@@ -9,7 +9,7 @@ use tracing_subscriber::{
 };
 
 use clap::Parser;
-use dexterous_developer_types::cargo_path_utils::add_to_dylib_path;
+use dexterous_developer_types::cargo_path_utils::{dylib_path, add_to_dylib_path};
 
 #[derive(Parser, Debug, Default)]
 #[command(author, version, about, long_about = None)]
@@ -79,6 +79,10 @@ fn main() {
             dexterous_developer_dylib_runner::error::DylibRunnerError::DylibPathsMissingLibraries => {
                 if args.env_vars_preset {
                     error!("Couldn't find missing libraries");
+                    error!("Library Path: {library_path}");
+                    error!("Dynamic Library Path:");
+                    let env = dylib_path();
+                    error!("{env:?}");
                     process::exit(1);
                 }
                 warn!("Couldn't find library path - adding it to the environment variables and restarting");

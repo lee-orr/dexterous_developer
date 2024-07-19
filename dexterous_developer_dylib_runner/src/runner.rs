@@ -37,6 +37,8 @@ pub fn run_reloadable_app(
         ));
     }
 
+    let library_path = library_path.canonicalize_utf8()?;
+
     let dylib_paths = dylib_path();
     if !dylib_paths.contains(&library_path.to_owned()) {
         return Err(DylibRunnerError::DylibPathsMissingLibraries);
@@ -45,7 +47,7 @@ pub fn run_reloadable_app(
     run_app(|tx, _| {
         connect_to_server(
             working_directory,
-            library_path,
+            &library_path,
             server.clone(),
             tx,
             in_workspace,
