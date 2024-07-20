@@ -4,7 +4,8 @@
 
 use std::{collections::HashSet, time::SystemTime};
 
-use camino::Utf8PathBuf;
+use anyhow::bail;
+use camino::{Utf8Path, Utf8PathBuf};
 use dexterous_developer_builder::incremental_builder::IncrementalRunParams;
 use futures_util::future::join_all;
 
@@ -22,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
 
-    let args = filter_arguments(&target, &args);
+    let mut args = filter_arguments(&target, &args);
 
     join_all(args.iter().filter_map(|v| {
         if v.starts_with("@") && v.ends_with("linker-arguments") {
@@ -32,6 +33,8 @@ async fn main() -> anyhow::Result<()> {
             None
         }
     })).await.into_iter().collect::<anyhow::Result<_>>()?;
+
+    add_missing_arguments(&target, &mut args, &zig_path).await?;
 
     let output_name = {
         let mut next_is_output = false;
@@ -305,6 +308,21 @@ fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
             }
         })
         .collect::<Vec<_>>()
+}
+
+async fn add_missing_arguments(target: &str, args: &mut Vec<String>, zig_path: &Utf8Path) -> anyhow::Result<()> {
+
+    let Some(zig_dir) = zig_path.parent() else {
+        bail!("Can't determine zig directory");
+    };
+
+    if target.contains("windows") {
+        let lib_common = zig_dir.join("libc").join("mingw").join("lib-common");
+        args.push("-L".to_string());
+        args.push(lib_common.to_string());
+    }
+
+    Ok(())
 }
 
 const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
