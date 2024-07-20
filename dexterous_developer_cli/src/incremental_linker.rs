@@ -300,6 +300,8 @@ fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
                     Some("-Wl,-search_paths_first".to_owned())
                 } else if v == "-lgcc_eh"  {
                     Some("-lc++".to_string())
+                } else if v == "-lgcc" {
+                    None
                 } else {
                     Some(v.clone())
                 }
