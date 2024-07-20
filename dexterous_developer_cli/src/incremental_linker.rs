@@ -35,8 +35,8 @@ async fn main() -> anyhow::Result<()> {
                 }
                 false
             })
-            .expect("Can't determine output file")
-            .to_owned()
+            .cloned()
+            .unwrap_or_default()
     };
 
 
