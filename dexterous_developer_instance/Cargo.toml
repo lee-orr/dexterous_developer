@@ -42,4 +42,3 @@ crossbeam = "0.8"
 uuid = { version =  "1", features = ["v4"] }
 dashmap = "6"
 rmp-serde = "1"
-# openssl = { version = "0.10", features = ["vendored"] }

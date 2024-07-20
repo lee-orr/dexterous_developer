@@ -44,6 +44,7 @@ semver = "1"
 tar = "0.4"
 xz2 = "0.1"
 zip = "2"
+dircpy = "0.3"
 
 
 [dev-dependencies]

@@ -16,14 +16,16 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     else {
         bail!("Can't determine download directory");
     };
-    let base_directory = Utf8PathBuf::from_path_buf(project_directories.data_dir().to_path_buf())
+    let base_directory = Utf8PathBuf::from_path_buf(project_directories.data_local_dir().to_path_buf())
         .map_err(|v| anyhow::anyhow!("Can't utf8 - {v:?}"))?;
     let download_directory = base_directory.join("downloader");
     let zig_directory = base_directory.join("zig");
     let zig_path = zig_directory.join("zig");
 
+    info!("Searching for Zig at {zig_path}");
+
     if zig_path.exists() {
-        info!("Zig found at {zig_path}");
+        info!("Zig found");
         return Ok(zig_path);
     }
 
@@ -31,11 +33,13 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
         tokio::fs::remove_dir_all(&download_directory).await?;
     }
     tokio::fs::create_dir_all(&download_directory).await?;
+    let download_directory =  download_directory.canonicalize_utf8()?;
 
     if zig_directory.exists() {
         tokio::fs::remove_dir_all(&zig_directory).await?;
     }
     tokio::fs::create_dir_all(&zig_directory).await?;
+    let zig_directory =  zig_directory.canonicalize_utf8()?;
 
     info!("Set Up for Zig Download");
 
@@ -79,18 +83,20 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     let content = zig_archive.bytes().await?.to_vec();
 
     if artifact.tarball.ends_with(".zip") {
-        info!("Extracting Zip");
+        info!("Extracting Zip to {download_directory}");
         let content = Cursor::new(content.as_slice());
         let mut archive = zip::ZipArchive::new(content)?;
         archive.extract(&download_directory)?;
     } else {
-        info!("Extracting Tar");
+        info!("Extracting Tar to {download_directory}");
         let mut tar = xz2::read::XzDecoder::new(content.as_slice());
         let mut buf = Vec::<u8>::new();
         tar.read_to_end(&mut buf)?;
         let mut archive = Archive::new(buf.as_slice());
         archive.unpack(&download_directory)?;
     };
+
+    info!("Extracted Tar");
 
     let Some(read_dir) = tokio::fs::read_dir(&download_directory)
         .await?
@@ -110,7 +116,11 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
         bail!("Not a directory");
     }
 
-    tokio::fs::rename(&path, &zig_directory).await?;
+    info!("Renaming {path} to {zig_directory} and removing {download_directory}");
+    let output = tokio::process::Command::new("cp").arg("-r").args([&path, &zig_directory]).output().await?;
+    if !output.status.success() {
+        bail!("Failed to copy zig directory - {:?}", output.status);
+    }
     tokio::fs::remove_dir_all(&download_directory).await?;
 
     info!("Moved from {path} to {zig_directory}");

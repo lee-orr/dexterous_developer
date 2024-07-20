@@ -117,8 +117,9 @@ async fn connect_to_target(
     ws: WebSocketUpgrade,
     state: State<ServerState>,
 ) -> Result<Response, Error> {
+    info!("Connecting to Target: {target:?}");
     let id = uuid::Uuid::new_v4();
-    trace!("Client {id} Connecting to Target: {target:?}");
+    info!("Client {id} Connecting to Target: {target:?}");
     let target: Target = target.0.parse()?;
 
     let (initial_build_state, builder_rx) = state.manager.watch_target(&target).await.map_err(|e| {

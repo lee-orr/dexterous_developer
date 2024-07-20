@@ -59,6 +59,7 @@ pub fn connect_to_server(
             .build()
             .unwrap()
             .block_on(async {
+                info!("Setting Up Multi Threaded");
                 let result = remote_connection(
                     address,
                     server,
@@ -69,6 +70,9 @@ pub fn connect_to_server(
                     in_workspace,
                 )
                 .await;
+                if let Err(e) = &result {
+                    error!("Connection error: {e}");
+                }
                 let _ = tx.send(DylibRunnerMessage::ConnectionClosed).await;
                 result
             })
@@ -86,7 +90,12 @@ pub(crate) async fn remote_connection(
 ) -> Result<(), DylibRunnerError> {
     info!("Connecting To {address}");
 
-    let (ws_stream, _) = connect_async(address.to_string()).await?;
+    let (ws_stream, _) = connect_async(address.to_string()).await.map_err(|e| {
+        error!("Failed to connect: {e}");
+        e
+    })?;
+
+    info!("Connected");
 
     let (_, mut read) = ws_stream.split();
 
