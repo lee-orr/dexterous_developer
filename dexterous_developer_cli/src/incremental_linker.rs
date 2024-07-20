@@ -40,6 +40,20 @@ async fn main() -> anyhow::Result<()> {
     };
 
 
+    let mut dirs = vec![];
+
+    for dir in lib_directories.iter().rev() {
+        dirs.push("-L".to_string());
+        dirs.push(dir.to_string());
+    }
+
+    for dir in framework_directories.iter() {
+        dirs.push("-F".to_string());
+        dirs.push(dir.to_string());
+    }
+
+    let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
         let output = tokio::process::Command::new(&zig_path)
@@ -120,24 +134,11 @@ async fn basic_link(
         tokio::fs::remove_file(&path).await?;
     }
 
-    let mut dirs = vec![];
-
-    for dir in lib_directories.iter().rev() {
-        dirs.push("-L".to_string());
-        dirs.push(dir.to_string());
-    }
-
-    for dir in framework_directories.iter() {
-        dirs.push("-F".to_string());
-        dirs.push(dir.to_string());
-    }
-
     let output = tokio::process::Command::new(&zig_path)
         .arg("cc")
         .arg("-target")
         .arg(&target)
         .arg("-fPIC")
-        .args(&dirs)
         .args(&args)
         .arg("-o")
         .arg(&path)
@@ -147,7 +148,7 @@ async fn basic_link(
         .wait_with_output()
         .await?;
     if !output.status.success() {
-        eprintln!("Failed Link Parameters - initial:\nzig cc -target {target} -fPIC {} {} -o {path} -shared -rdynamic", dirs.join(" "), args.join(" "));
+        eprintln!("Failed Link Parameters - initial:\nzig cc -target {target} -fPIC {} -o {path} -shared -rdynamic", args.join(" "));
     }
     std::process::exit(output.status.code().unwrap_or_default());
 }
@@ -229,15 +230,6 @@ async fn patch_link(
     if let Some(arch) = &arch {
         args.push("-arch".to_string());
         args.push(arch.clone());
-    }
-    for dir in lib_directories.iter().rev() {
-        args.push("-L".to_string());
-        args.push(dir.to_string());
-    }
-
-    for dir in framework_directories.iter() {
-        args.push("-F".to_string());
-        args.push(dir.to_string());
     }
 
     for name in previous_versions.iter().rev() {
