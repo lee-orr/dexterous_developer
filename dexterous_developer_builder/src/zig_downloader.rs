@@ -16,8 +16,13 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     else {
         bail!("Can't determine download directory");
     };
-    let base_directory = Utf8PathBuf::from_path_buf(project_directories.data_local_dir().to_path_buf())
+    let mut base_directory = Utf8PathBuf::from_path_buf(project_directories.data_local_dir().to_path_buf())
         .map_err(|v| anyhow::anyhow!("Can't utf8 - {v:?}"))?;
+
+    if !base_directory.exists() {
+        base_directory = base_directory.canonicalize_utf8()?;
+    }
+
     let download_directory = base_directory.join("downloader");
     let zig_directory = base_directory.join("zig");
     let zig_path = zig_directory.join("zig");
@@ -38,8 +43,6 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     if zig_directory.exists() {
         tokio::fs::remove_dir_all(&zig_directory).await?;
     }
-    tokio::fs::create_dir_all(&zig_directory).await?;
-    let zig_directory =  zig_directory.canonicalize_utf8()?;
 
     info!("Set Up for Zig Download");
 
@@ -119,7 +122,7 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     info!("Renaming {path} to {zig_directory} and removing {download_directory}");
     let output = tokio::process::Command::new("cp").arg("-r").args([&path, &zig_directory]).output().await?;
     if !output.status.success() {
-        bail!("Failed to copy zig directory - {:?}", output.status);
+        bail!("Failed to copy zig directory - {}", output.status);
     }
     tokio::fs::remove_dir_all(&download_directory).await?;
 
