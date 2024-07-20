@@ -319,7 +319,7 @@ async fn add_missing_arguments(target: &str, args: &mut Vec<String>, zig_path: &
     };
 
     if target.contains("windows") {
-        let lib_common = zig_dir.join("libc").join("mingw").join("lib-common");
+        let lib_common = zig_dir.join("lib").join("libc").join("mingw").join("lib-common");
         args.push("-L".to_string());
         args.push(lib_common.to_string());
     }
