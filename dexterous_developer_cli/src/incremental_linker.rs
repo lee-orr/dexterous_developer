@@ -320,6 +320,15 @@ async fn add_missing_arguments(target: &str, args: &mut Vec<String>, zig_path: &
 
     if target.contains("windows") {
         let lib_common = zig_dir.join("lib").join("libc").join("mingw").join("lib-common");
+
+        let synchronization_def = zig_dir.join("synchronization.def");
+        if !synchronization_def.is_file() {
+            let api_ms_win_core_synch_l1_2_0_def =
+            zig_dir.join("api-ms-win-core-synch-l1-2-0.def");
+            // Ignore error
+            tokio::fs::copy(api_ms_win_core_synch_l1_2_0_def, synchronization_def).await.ok();
+        }
+
         args.push("-L".to_string());
         args.push(lib_common.to_string());
     }
