@@ -2,7 +2,7 @@
 //!
 //! Heavily derived from Jon Kelley's work - <https://github.com/jkelleyrtp/ipbp/blob/main/packages/patch-linker/src/main.rs>
 
-use std::time::SystemTime;
+use std::{collections::HashSet, time::SystemTime};
 
 use camino::Utf8PathBuf;
 use dexterous_developer_builder::incremental_builder::IncrementalRunParams;
@@ -10,12 +10,19 @@ use futures_util::future::join_all;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = std::env::args()
-        .filter(|v| {
-            !v.contains("dexterous_developer_incremental_linker")
-                && !v.contains("incremental_c_compiler")
-        })
-        .collect::<Vec<_>>();
+    let args = std::env::args().collect::<Vec<_>>();
+
+    let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
+    let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
+    let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
+    let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
+    let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
+    let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
+    let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
+    let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
+
+
+    let args = filter_arguments(&target, &args);
 
     let output_name = {
         let mut next_is_output = false;
@@ -32,14 +39,6 @@ async fn main() -> anyhow::Result<()> {
             .to_owned()
     };
 
-    let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
-    let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
-    let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
-    let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
-    let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
-    let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
-    let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
-    let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}");
@@ -261,3 +260,49 @@ async fn patch_link(
 async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Option<String>> {
     Ok(Some(path))
 }
+
+fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
+    let windows = target.contains("windows");
+    let arm = target.contains("arm");
+    let aarch = target.contains("aarch64");
+    let mac = target.contains("macos");
+    
+    args
+        .into_iter()
+        .filter(|v| {
+            !v.contains("dexterous_developer_incremental_linker")
+                && !v.contains("incremental_c_compiler")
+        })
+        .filter_map(|v| { if UNSUPPORTED_ZIG_ARGS.iter().find(|arg| v.contains(**arg)).is_some() {
+                None
+            } else if v == "-lgcc_s" {
+                Some("-lunwind".to_owned())
+            } else if (windows || arm) && v.contains("libcompiler_builtins-") {
+                None
+            }  else if windows {
+                if v.contains("-Bdynamic") {
+                    Some("-Wl,-search_paths_first".to_owned())
+                } else if v == "-lgcc_eh"  {
+                    Some("-lc++".to_string())
+                } else {
+                    Some(v.clone())
+                }
+            } else {
+                Some(v.clone())
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
+const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
+    "--target",
+    "-lwindows",
+    "-l:libpthread.a",
+    "--disable-auto-image-base",
+    "--dynamicbase",
+    "--large-address-aware",
+    "/list.def",
+    "--no-undefined-version",
+    "-dylib",
+    "-exported_symbols_list"
+];
