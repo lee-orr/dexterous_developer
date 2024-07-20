@@ -60,10 +60,14 @@ async fn main() -> anyhow::Result<()> {
             .arg("cc")
             .arg("-target")
             .arg(target)
-            .args(args)
+            .args(&args)
             .spawn()?
             .wait_with_output()
             .await?;
+
+        if !output.status.success() {
+            eprintln!("Failed Linking Non Main - {}", args.join(" "));
+        }
         std::process::exit(output.status.code().unwrap_or_default());
     }
 
@@ -264,10 +268,9 @@ fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
         .filter(|v| {
             !v.contains("dexterous_developer_incremental_linker")
                 && !v.contains("incremental_c_compiler")
+                && UNSUPPORTED_ZIG_ARGS.iter().find(|arg| v.contains(**arg)).is_none()
         })
-        .filter_map(|v| { if UNSUPPORTED_ZIG_ARGS.iter().find(|arg| v.contains(**arg)).is_some() {
-                None
-            } else if v == "-lgcc_s" {
+        .filter_map(|v| {if v == "-lgcc_s" {
                 Some("-lunwind".to_owned())
             } else if (windows || arm) && v.contains("libcompiler_builtins-") {
                 None
@@ -286,15 +289,14 @@ fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
-const UNSUPPORTED_ZIG_ARGS : [&'static str;11] = [
+const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
     "--target",
     "-lwindows",
     "-l:libpthread.a",
     "--disable-auto-image-base",
     "--dynamicbase",
     "--large-address-aware",
-    "/list.def",
-    "\\list.def",
+    "list.def",
     "--no-undefined-version",
     "-dylib",
     "-exported_symbols_list"
