@@ -45,7 +45,7 @@ tar = "0.4"
 xz2 = "0.1"
 zip = "2"
 dircpy = "0.3"
-
+dunce = "1"
 
 [dev-dependencies]
 test-temp-dir = { version = "0.2 "}

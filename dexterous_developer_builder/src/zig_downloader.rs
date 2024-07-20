@@ -26,7 +26,11 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
 
     let download_directory = base_directory.join("downloader");
     let zig_directory = base_directory.join("zig");
+
+    #[cfg(target_family = "unix")]
     let zig_path = zig_directory.join("zig");
+    #[cfg(target_family = "windows")]
+    let zig_path = zig_directory.join("zig.exe");
 
     info!("Searching for Zig at {zig_path}");
 
@@ -91,6 +95,7 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
         let content = Cursor::new(content.as_slice());
         let mut archive = zip::ZipArchive::new(content)?;
         archive.extract(&download_directory)?;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     } else {
         info!("Extracting Tar to {download_directory}");
         let mut tar = xz2::read::XzDecoder::new(content.as_slice());
@@ -121,16 +126,17 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     }
 
     info!("Renaming {path} to {zig_directory} and removing {download_directory}");
-    let output = tokio::process::Command::new("cp").arg("-r").args([&path, &zig_directory]).output().await?;
+    let output = tokio::process::Command::new("mv").args([path.as_str().replace("\\", "\\\\"), zig_directory.as_str().replace("\\", "\\\\")]).output().await?;
     if !output.status.success() {
-        bail!("Failed to copy zig directory - {}", output.status);
+        let err = std::str::from_utf8(&output.stderr).unwrap_or_default();
+        bail!("Failed to copy zig directory - {} - {err}", output.status);
     }
     tokio::fs::remove_dir_all(&download_directory).await?;
 
     info!("Moved from {path} to {zig_directory}");
 
     if !zig_path.exists() {
-        bail!("Can't find zig executable");
+        bail!("Can't find zig executable at {zig_path}");
     }
 
     info!("Zig downloaded to {zig_path}");

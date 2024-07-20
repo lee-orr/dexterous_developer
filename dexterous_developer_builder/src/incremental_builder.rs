@@ -193,7 +193,7 @@ async fn build(
         tokio::fs::create_dir_all(&target_dir).await?;
     }
 
-    let target_dir = target_dir.canonicalize_utf8()?;
+    let target_dir = Utf8PathBuf::from_path_buf(dunce::canonicalize(target_dir)?).map_err(|e| anyhow::anyhow!("Can't convert to utf8 {e:?}"))?;
     let default_out = target_dir.join(format!("{target}")).join("debug");
     let deps = default_out.join("deps");
     let examples = default_out.join("examples");
