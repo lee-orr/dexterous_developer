@@ -61,6 +61,7 @@ async fn build(
 ) -> Result<(), anyhow::Error> {
     info!("Incremental Build {id} Started");
     let zig = zig_path().await?;
+    info!("Found Zig Path");
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
         bail!("Couldn't get linker path");

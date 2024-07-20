@@ -20,8 +20,9 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
         .map_err(|v| anyhow::anyhow!("Can't utf8 - {v:?}"))?;
 
     if !base_directory.exists() {
-        base_directory = base_directory.canonicalize_utf8()?;
+        tokio::fs::create_dir_all(&base_directory).await?;
     }
+    base_directory = base_directory.canonicalize_utf8()?;
 
     let download_directory = base_directory.join("downloader");
     let zig_directory = base_directory.join("zig");
