@@ -286,7 +286,7 @@ fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
-const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
+const UNSUPPORTED_ZIG_ARGS : [&'static str;11] = [
     "--target",
     "-lwindows",
     "-l:libpthread.a",
@@ -294,6 +294,7 @@ const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
     "--dynamicbase",
     "--large-address-aware",
     "/list.def",
+    "\\list.def",
     "--no-undefined-version",
     "-dylib",
     "-exported_symbols_list"
