@@ -122,10 +122,11 @@ async fn connect_to_target(
     info!("Client {id} Connecting to Target: {target:?}");
     let target: Target = target.0.parse()?;
 
-    let (initial_build_state, builder_rx) = state.manager.watch_target(&target).await.map_err(|e| {
-        error!("Connection Error - {id} {target:?}: {e}");
-        e
-    })?;
+    let (initial_build_state, builder_rx) =
+        state.manager.watch_target(&target).await.map_err(|e| {
+            error!("Connection Error - {id} {target:?}: {e}");
+            e
+        })?;
     Ok(ws.on_upgrade(move |socket| {
         connected_to_target(id, socket, target, initial_build_state, builder_rx)
     }))

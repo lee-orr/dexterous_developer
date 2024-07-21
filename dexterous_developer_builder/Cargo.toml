@@ -39,7 +39,7 @@ which = "6"
 debounced = "0.1"
 tokio-stream = "0.1"
 directories = "5"
-reqwest = { version = "0.12", default-features = false, features = [ "charset", "http2", "macos-system-configuration", "rustls-tls" ] }
+reqwest = { version = "0.12", default-features = false, features = [ "blocking", "charset", "http2", "macos-system-configuration", "rustls-tls" ] }
 semver = "1"
 tar = "0.4"
 xz2 = "0.1"
@@ -47,6 +47,8 @@ zip = "2"
 dircpy = "0.3"
 dunce = "1"
 cargo-zigbuild = "0.19"
+cargo-options = "0.7"
+clap = "4"
 
 [dev-dependencies]
 test-temp-dir = { version = "0.2 "}

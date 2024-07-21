@@ -94,7 +94,6 @@ impl Manager {
 
                 (incoming, outgoing, output, current_state, handle)
             });
-            
         }
         let targets = self.targets.iter().map(|r| *r.key()).collect::<Vec<_>>();
         info!("Able to build {targets:?}");

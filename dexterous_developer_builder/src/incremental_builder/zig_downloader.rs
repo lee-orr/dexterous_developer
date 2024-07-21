@@ -10,17 +10,18 @@ use serde::{Deserialize, Serialize};
 use tar::Archive;
 use tracing::info;
 
-pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
+pub(crate) fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     let Some(project_directories) =
         directories::ProjectDirs::from("rs", "dexterous-developer", "dexterous-developer-builder")
     else {
         bail!("Can't determine download directory");
     };
-    let mut base_directory = Utf8PathBuf::from_path_buf(project_directories.data_local_dir().to_path_buf())
-        .map_err(|v| anyhow::anyhow!("Can't utf8 - {v:?}"))?;
+    let mut base_directory =
+        Utf8PathBuf::from_path_buf(project_directories.data_local_dir().to_path_buf())
+            .map_err(|v| anyhow::anyhow!("Can't utf8 - {v:?}"))?;
 
     if !base_directory.exists() {
-        tokio::fs::create_dir_all(&base_directory).await?;
+        std::fs::create_dir_all(&base_directory)?;
     }
     base_directory = base_directory.canonicalize_utf8()?;
 
@@ -40,21 +41,18 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     }
 
     if download_directory.exists() {
-        tokio::fs::remove_dir_all(&download_directory).await?;
+        std::fs::remove_dir_all(&download_directory)?;
     }
-    tokio::fs::create_dir_all(&download_directory).await?;
-    let download_directory =  download_directory.canonicalize_utf8()?;
+    std::fs::create_dir_all(&download_directory)?;
+    let download_directory = download_directory.canonicalize_utf8()?;
 
     if zig_directory.exists() {
-        tokio::fs::remove_dir_all(&zig_directory).await?;
+        std::fs::remove_dir_all(&zig_directory)?;
     }
 
     info!("Set Up for Zig Download");
 
-    let manifest = reqwest::get("https://ziglang.org/download/index.json")
-        .await?
-        .text()
-        .await?;
+    let manifest = reqwest::blocking::get("https://ziglang.org/download/index.json")?.text()?;
     let manifest: HashMap<String, HashMap<String, ZigReleaseEntry>> =
         serde_json::from_str(&manifest)?;
     info!("Got Zig Manifest");
@@ -84,18 +82,17 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
 
     info!("Downloading Zig Tarball {}", &artifact.tarball);
 
-    let zig_archive = reqwest::get(&artifact.tarball).await?;
+    let zig_archive = reqwest::blocking::get(&artifact.tarball)?;
 
     info!("Zig Downloaded");
 
-    let content = zig_archive.bytes().await?.to_vec();
+    let content = zig_archive.bytes()?.to_vec();
 
     if artifact.tarball.ends_with(".zip") {
         info!("Extracting Zip to {download_directory}");
         let content = Cursor::new(content.as_slice());
         let mut archive = zip::ZipArchive::new(content)?;
         archive.extract(&download_directory)?;
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     } else {
         info!("Extracting Tar to {download_directory}");
         let mut tar = xz2::read::XzDecoder::new(content.as_slice());
@@ -107,11 +104,7 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
 
     info!("Extracted Tar");
 
-    let Some(read_dir) = tokio::fs::read_dir(&download_directory)
-        .await?
-        .next_entry()
-        .await?
-    else {
+    let Some(Ok(read_dir)) = std::fs::read_dir(&download_directory)?.next() else {
         bail!("No entries in download");
     };
 
@@ -126,12 +119,17 @@ pub(crate) async fn zig_path() -> anyhow::Result<Utf8PathBuf> {
     }
 
     info!("Renaming {path} to {zig_directory} and removing {download_directory}");
-    let output = tokio::process::Command::new("mv").args([path.as_str().replace("\\", "\\\\"), zig_directory.as_str().replace("\\", "\\\\")]).output().await?;
+    let output = std::process::Command::new("mv")
+        .args([
+            path.as_str().replace('\\', "\\\\"),
+            zig_directory.as_str().replace('\\', "\\\\"),
+        ])
+        .output()?;
     if !output.status.success() {
         let err = std::str::from_utf8(&output.stderr).unwrap_or_default();
         bail!("Failed to copy zig directory - {} - {err}", output.status);
     }
-    tokio::fs::remove_dir_all(&download_directory).await?;
+    std::fs::remove_dir_all(&download_directory)?;
 
     info!("Moved from {path} to {zig_directory}");
 

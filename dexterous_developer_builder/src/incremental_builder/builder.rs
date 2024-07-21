@@ -7,7 +7,7 @@ use std::{
     env, fs,
     process::Stdio,
     sync::{
-        atomic::{AtomicBool, AtomicU32},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         Arc,
     },
     time::Duration,
@@ -21,17 +21,18 @@ use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuil
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
+    select,
     sync::Mutex,
     task::JoinHandle,
 };
 use tracing::{debug, error, info, trace};
 
 use crate::{
+    incremental_builder::zig_downloader::zig_path,
     types::{
         BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
         HashedFileRecord,
     },
-    zig_downloader::zig_path,
 };
 
 pub struct IncrementalBuilder {
@@ -60,25 +61,6 @@ async fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     info!("Incremental Build {id} Started");
-    let zig = zig_path().await?;
-    info!("Found Zig Path");
-    let linker = which::which("dexterous_developer_incremental_linker")?;
-    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
-        bail!("Couldn't get linker path");
-    };
-    let linker = linker.canonicalize_utf8()?;
-    let cc = which::which("dexterous_developer_incremental_c_compiler")?;
-    let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
-        bail!("Couldn't get cc path");
-    };
-    let cc = cc.canonicalize_utf8()?;
-    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
-    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
-        bail!("Couldn't get dlltool path");
-    };
-    let dlltool = dlltool.canonicalize_utf8()?;
-
-    info!("CC {cc} LINKER {linker} ZIG {zig}");
 
     let (artifact_name, artifact_file_name) = {
         let mut cmd = Command::new("cargo");
@@ -186,25 +168,20 @@ async fn build(
 
     info!("Incremental settings - {incremental_run_settings:?}");
 
-    let target_dir =
-        Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
-    
+    let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
+
     if !target_dir.exists() {
         tokio::fs::create_dir_all(&target_dir).await?;
     }
 
-    let target_dir = Utf8PathBuf::from_path_buf(dunce::canonicalize(target_dir)?).map_err(|e| anyhow::anyhow!("Can't convert to utf8 {e:?}"))?;
+    let target_dir = Utf8PathBuf::from_path_buf(dunce::canonicalize(target_dir)?)
+        .map_err(|e| anyhow::anyhow!("Can't convert to utf8 {e:?}"))?;
     let default_out = target_dir.join(format!("{target}")).join("debug");
     let deps = default_out.join("deps");
     let examples = default_out.join("examples");
     let artifact_path = default_out.join(&artifact_file_name);
-    
-    info!("Paths ready - {artifact_path}");
 
-    let mut cargo = Command::new("cargo");
-    if let Some(working_dir) = working_dir {
-        cargo.current_dir(&working_dir);
-    }
+    info!("Paths ready - {artifact_path}");
 
     let mut lib_directories = additional_library_directories.clone();
     lib_directories.push(default_out.clone());
@@ -215,22 +192,55 @@ async fn build(
         lib_directories.push(dir.join("usr").join("lib"));
     }
 
-    let mut rust_c_args = format!("-Cprefer-dynamic -Clinker={linker}");
+    let mut options = cargo_options::Rustc::default();
 
+    options.common.target_dir = Some(target_dir.into_std_path_buf());
+    options.manifest_path = manifest_path.map(|v| v.into_std_path_buf());
 
-    if target == Target::Windows {
-        cargo
-            .env("RANLIB", format!("{zig} ranlib"))
-            .env("RC", format!("{zig} rc"))
-            .env("AR", format!("{zig} ar"))
-            .env("OBJCOPY", format!("{zig} objcopy"));
-        rust_c_args = format!("{rust_c_args}  -Cdlltool={dlltool}");
+    match &package_or_example {
+        dexterous_developer_types::PackageOrExample::DefaulPackage => {}
+        dexterous_developer_types::PackageOrExample::Package(package) => {
+            options.packages = vec![package.to_owned()];
+        }
+        dexterous_developer_types::PackageOrExample::Example(example) => {
+            options.example = vec![example.to_owned()];
+        }
     }
+
+    options.common.features = features.clone();
+    options.message_format = vec!["json-render-diagnostics".to_string()];
+    options.profile = Some("dev".to_string());
+    options.target = vec![target.to_string()];
+
+    let zig = zig_path()?;
+
+    let linker = which::which("dexterous_developer_incremental_linker")?;
+    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
+        bail!("Couldn't get linker path");
+    };
+    let linker = linker.canonicalize_utf8()?;
+
+    let rustc = cargo_zigbuild::Rustc {
+        disable_zig_linker: false,
+        enable_zig_ar: true,
+        cargo: options,
+    };
+    let cargo = rustc.build_command()?;
+    let mut cargo = tokio::process::Command::from(cargo);
+
+    if let Some(working_dir) = working_dir {
+        cargo.current_dir(&working_dir);
+    }
+    let linker_env = format!(
+        "CARGO_TARGET_{}_LINKER",
+        target.as_str().to_uppercase().replace('-', "_")
+    );
 
     cargo
         .env_remove("LD_DEBUG")
-        .env("ZIG_PATH", &zig)
-        .env("CC", &cc)
+        .env_remove(&linker_env)
+        .env(&linker_env, linker)
+        .env("CARGO_ZIGBUILD_ZIG_PATH", &zig)
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
@@ -254,36 +264,7 @@ async fn build(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
-        .env("RUSTFLAGS", rust_c_args)
-        .env("CARGO_TARGET_DIR", target_dir)
-        .arg("rustc");
-
-    if let Some(manifest) = &manifest_path {
-        cargo.arg("--manifest-path").arg(manifest.canonicalize()?);
-    }
-
-    match &package_or_example {
-        dexterous_developer_types::PackageOrExample::DefaulPackage => {}
-        dexterous_developer_types::PackageOrExample::Package(package) => {
-            cargo.arg("--lib").arg("-p").arg(package.as_str());
-        }
-        dexterous_developer_types::PackageOrExample::Example(example) => {
-            cargo.arg("--example").arg(example.as_str());
-        }
-    }
-
-    if !features.is_empty() {
-        cargo.arg("--features");
-        cargo.arg(features.join(",").as_str());
-    }
-
-
-    cargo
-        .arg("--message-format=json-render-diagnostics")
-        .arg("--profile")
-        .arg("dev")
-        .arg("--target")
-        .arg(target.to_string());
+        .env("RUSTFLAGS", "-Cprefer-dynamic");
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
 
@@ -559,8 +540,21 @@ fn process_dependencies_recursive(
 }
 
 impl IncrementalBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        let (incoming, incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+    pub fn new(target: Target, settings: TargetBuildSettings) -> anyhow::Result<Self> {
+        let zig = zig_path()?;
+        std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
+
+        let cc = which::which("dexterous_developer_incremental_c_compiler")?;
+        let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
+            bail!("Couldn't get cc path");
+        };
+        let cc = cc.canonicalize_utf8()?;
+
+        info!("CC {cc} ZIG {zig}");
+
+        std::env::set_var("CARGO_BIN_EXE_cargo-zigbuild", &cc);
+
+        let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
@@ -574,32 +568,20 @@ impl IncrementalBuilder {
             let settings = settings.clone();
             let id = id.clone();
             tokio::spawn(async move {
-                let mut should_build = false;
-
                 let delay = Duration::from_secs(1);
 
-                let stream = UnboundedReceiverStream::new(incoming_rx);
+                let (build_trigger, build_trigger_rx) =
+                    tokio::sync::mpsc::unbounded_channel::<()>();
+
+                let stream = UnboundedReceiverStream::new(build_trigger_rx);
 
                 let mut debounced = debounced(stream, delay);
+                let first_build_triggered = Arc::new(AtomicBool::new(false));
 
-                while let Some(recv) = debounced.next().await {
-                    match recv {
-                        BuilderIncomingMessages::RequestBuild => {
-                            should_build = true;
-                            trigger_build(
-                                &build_active,
-                                &build_pending,
-                                &id,
-                                &outgoing_tx,
-                                target,
-                                &settings,
-                                &output_tx,
-                                &previous_versions,
-                            );
-                        }
-                        BuilderIncomingMessages::CodeChanged => {
-                            trace!("Code Changed");
-                            if should_build {
+                loop {
+                    select! {
+                        Some(()) = debounced.next() => {
+                            if first_build_triggered.load(Ordering::SeqCst) {
                                 trigger_build(
                                     &build_active,
                                     &build_pending,
@@ -610,25 +592,41 @@ impl IncrementalBuilder {
                                     &output_tx,
                                     &previous_versions,
                                 );
+                            } else {
+                                info!("Not building {target} yet");
                             }
                         }
-                        BuilderIncomingMessages::AssetChanged(asset) => {
-                            trace!("Builder Received Asset Change - {asset:?}");
-                            let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
+                        Some(recv) = incoming_rx.recv() => {
+                            match recv {
+                                BuilderIncomingMessages::RequestBuild => {
+                                    info!("Build Request");
+                                    first_build_triggered.store(true, Ordering::SeqCst);
+                                    let _ = build_trigger.send(());
+                                }
+                                BuilderIncomingMessages::CodeChanged => {
+                                    info!("Code Changed");
+                                    let _ = build_trigger.send(());
+                                }
+                                BuilderIncomingMessages::AssetChanged(asset) => {
+                                    trace!("Builder Received Asset Change - {asset:?}");
+                                    let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
+                                }
+                            }
                         }
-                    }
+                        else => { break }
+                    };
                 }
             })
         };
 
-        Self {
+        Ok(Self {
             settings,
             target,
             incoming,
             outgoing: outgoing_tx,
             output: output_tx,
             handle,
-        }
+        })
     }
 }
 
@@ -663,7 +661,8 @@ fn trigger_build(
                 output_tx.clone(),
                 id,
             )
-            .await.map_err(|e| {
+            .await
+            .map_err(|e| {
                 error!("Build Error - {id} {target} - {e}");
                 e
             })?;
@@ -678,7 +677,8 @@ fn trigger_build(
                         output_tx.clone(),
                         id,
                     )
-                    .await.map_err(|e| {
+                    .await
+                    .map_err(|e| {
                         error!("Build Error - {id} {target} - {e}");
                         e
                     })?;
@@ -797,7 +797,8 @@ mod test {
                 .unwrap()],
                 ..Default::default()
             },
-        );
+        )
+        .expect("Couldn't set up incremental builder");
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
 

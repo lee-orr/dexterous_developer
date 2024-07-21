@@ -9,7 +9,7 @@ use tracing_subscriber::{
 };
 
 use clap::Parser;
-use dexterous_developer_types::cargo_path_utils::{dylib_path, add_to_dylib_path};
+use dexterous_developer_types::cargo_path_utils::{add_to_dylib_path, dylib_path};
 
 #[derive(Parser, Debug, Default)]
 #[command(author, version, about, long_about = None)]

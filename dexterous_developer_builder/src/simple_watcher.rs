@@ -45,7 +45,7 @@ impl Watcher for SimpleWatcher {
                     let mut watcher = {
                         let directory = directory.clone();
                         notify::recommended_watcher(move |_| {
-                            trace!("Got Watch Event");
+                            info!("Got Watch Event");
                             let Some(subscribers) = code_subscribers.get(&directory) else {
                                 error!("Couldn't Get Subscribers");
                                 return;

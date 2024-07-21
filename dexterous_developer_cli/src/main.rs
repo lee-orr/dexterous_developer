@@ -37,7 +37,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(fmt::layer().pretty())
         .with(EnvFilter::from_env("RUST_LOG"))
@@ -77,12 +77,12 @@ async fn main() {
                     Arc::new(SimpleBuilder::new(target, build_settings))
                 }
                 dexterous_developer_types::BuilderTypes::Incremental => {
-                    Arc::new(IncrementalBuilder::new(target, build_settings))
+                    Arc::new(IncrementalBuilder::new(target, build_settings)?)
                 }
             };
-            build
+            Ok(build)
         })
-        .collect::<Vec<_>>();
+        .collect::<anyhow::Result<Vec<_>>>()?;
 
     trace!("Setting up Manager");
 
@@ -122,4 +122,5 @@ async fn main() {
             }
         }
     }
+    Ok(())
 }
