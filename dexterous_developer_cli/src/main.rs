@@ -4,7 +4,7 @@ use camino::Utf8PathBuf;
 
 use clap::Parser;
 use dexterous_developer_builder::{
-    incremental_builder::IncrementalBuilder, simple_builder::SimpleBuilder,
+    incremental_builder::builder::IncrementalBuilder, simple_builder::SimpleBuilder,
     simple_watcher::SimpleWatcher, types::Builder,
 };
 use dexterous_developer_manager::{server::run_server, Manager};

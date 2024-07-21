@@ -27,9 +27,6 @@ path = "src/incremental_linker.rs"
 [[bin]]
 name = "dexterous_developer_incremental_c_compiler"
 path = "src/incremental_c_compiler.rs"
-[[bin]]
-name = "dexterous_developer_incremental_dlltool"
-path = "src/incremental_dlltool.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
