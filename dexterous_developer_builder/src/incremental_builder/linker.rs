@@ -222,6 +222,7 @@ fn filter_arguments(args: &[String]) -> Vec<String> {
         .filter(|v| {
             !v.contains("dexterous_developer_incremental_linker")
                 && !v.contains("incremental_c_compiler")
+                && !v.contains("-exported_symbols_list")
         })
         .cloned()
         .collect::<Vec<_>>()
