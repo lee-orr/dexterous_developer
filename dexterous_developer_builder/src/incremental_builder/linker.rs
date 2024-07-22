@@ -22,7 +22,7 @@ pub async fn linker() -> anyhow::Result<()> {
 
     let has_target = args.iter().find(|v| v.contains("-target")).is_some();
 
-    if has_target {
+    if !has_target {
         args.push("-target".to_string());
         args.push(target.clone());
     }

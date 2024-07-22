@@ -278,7 +278,7 @@ async fn build(
         .env("CARGO_ZIGBUILD_ZIG_PATH", &zig)
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
-            target.to_string(),
+            target.zig_linker_target(),
         )
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
