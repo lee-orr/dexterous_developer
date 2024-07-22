@@ -84,7 +84,7 @@ impl Watcher for SimpleWatcher {
 
                         let mut watcher = {
                             let channel = self.channel.clone();
-
+                            let cwd = cwd.clone();
                             notify::recommended_watcher(
                                 move |file: Result<notify::Event, notify::Error>| {
                                     trace!("Got Asset Event");
@@ -138,10 +138,10 @@ impl Watcher for SimpleWatcher {
                                             })
                                             .collect::<Vec<_>>();
                                         trace!("Asset Change Records: {files:?}");
-                                        for file in files.iter() {
+                                        for file in files.into_iter() {
                                             let _ = channel.send(
                                                 BuilderIncomingMessages::AssetChanged(
-                                                    file.clone(),
+                                                    file,
                                                 ),
                                             );
                                         }
@@ -154,6 +154,12 @@ impl Watcher for SimpleWatcher {
                         watcher.watch(directory.as_std_path(), notify::RecursiveMode::Recursive)?;
 
                         trace!("Returning Watcher");
+
+                        if let Ok(initial) = gather_directory_content(directory, &cwd) {
+                            for file in initial {
+                                let _ = self.channel.send(BuilderIncomingMessages::AssetChanged(file));
+                            }
+                        }
 
                         Ok(watcher)
                     })?;

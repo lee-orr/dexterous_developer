@@ -608,6 +608,7 @@ mod test {
                     }
                     BuildOutputMessages::AssetUpdated(_) => {}
                     BuildOutputMessages::KeepAlive => {}
+                    BuildOutputMessages::FailedBuild(e) => panic!("Failed Build - {e}"),
                 }
             }
         })

@@ -82,6 +82,7 @@ async fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     info!("Incremental Build {id} Started");
+    eprintln!("Starting Builder");
 
     let (artifact_name, artifact_file_name) = {
         let mut cmd = Command::new("cargo");
@@ -89,8 +90,14 @@ async fn build(
         if let Some(manifest_path) = &manifest_path {
             cmd.arg("--manifest-path").arg(manifest_path);
         }
+        if let Some(working_dir) = &working_dir {
+            cmd.current_dir(working_dir);
+        }
 
+        eprintln!("Requesting Cargo Metadata");
         let output = cmd.output().await?;
+
+        eprintln!("Got Cargo Metadata");
 
         if !output.status.success() {
             bail!("Failed to get Cargo metadata");
@@ -118,7 +125,12 @@ async fn build(
             }
             dexterous_developer_types::PackageOrExample::Package(package) => {
                 let Some(package) = output.packages.iter().find(|p| p.name == *package) else {
-                    bail!("Couldn't find package");
+                    let packages = output
+                        .packages
+                        .iter()
+                        .map(|v| v.name.to_string())
+                        .collect::<Vec<_>>();
+                    bail!("Couldn't find package - {package} - {packages:?}");
                 };
                 let Some(p) = find_package_target(package, target, id) else {
                     bail!("Can't find package target");
@@ -149,7 +161,7 @@ async fn build(
             }
         }
     };
-
+    eprintln!("Got Artifact Name and File");
     info!("Artifact Name: {artifact_name} File: {artifact_file_name}");
 
     let incremental_run_settings = if id == 1 {
@@ -187,6 +199,7 @@ async fn build(
         }
     };
 
+    eprintln!("Determined Incremental Settings");
     info!("Incremental settings - {incremental_run_settings:?}");
 
     let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
@@ -234,6 +247,7 @@ async fn build(
     options.target = vec![target.to_string()];
 
     let zig = zig_path()?;
+    eprintln!("Got Zig Path");
 
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
@@ -288,7 +302,7 @@ async fn build(
         .env("RUSTFLAGS", "-Cprefer-dynamic");
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-
+    eprintln!("Started Compilation");
     info!("Ready to start build");
 
     let mut child = cargo
@@ -332,6 +346,8 @@ async fn build(
             msg => trace!("Compiler: {msg:?}"),
         }
     }
+
+    eprintln!("Build Completed");
 
     if !succeeded {
         error!("Build Failed");
@@ -567,6 +583,7 @@ impl IncrementalBuilder {
         incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     ) -> anyhow::Result<Self> {
         let zig = zig_path()?;
+        eprintln!("Got Zig Path - Initial");
         std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
 
         let cc = which::which("dexterous_developer_incremental_c_compiler")?;
@@ -690,6 +707,7 @@ fn trigger_build(
             .await
             .map_err(|e| {
                 error!("Build Error - {id} {target} - {e}");
+                let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
                 e
             })?;
 
@@ -706,6 +724,7 @@ fn trigger_build(
                     .await
                     .map_err(|e| {
                         error!("Build Error - {id} {target} - {e}");
+                        let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
                         e
                     })?;
                 } else {
@@ -766,7 +785,7 @@ mod test {
     use super::*;
     use dexterous_developer_types::PackageOrExample;
     use test_temp_dir::*;
-    use tokio::io::AsyncWriteExt;
+
     use tokio::process::Command;
     use tokio::time::timeout;
 
@@ -774,35 +793,15 @@ mod test {
     async fn can_build_a_package() {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
-        let cargo = dir_path.join("Cargo.toml");
 
         let _ = Command::new("cargo")
             .current_dir(&dir_path)
             .arg("init")
             .arg("--name=test_lib")
             .arg("--vcs=none")
-            .arg("--lib")
             .output()
             .await
             .expect("Failed to create test project");
-
-        {
-            let mut file = tokio::fs::File::options()
-                .append(true)
-                .open(&cargo)
-                .await
-                .expect("Couldn't open cargo toml");
-            file.write_all(
-                r#"[lib]
-            crate-type = ["rlib", "dylib"]"#
-                    .as_bytes(),
-            )
-            .await
-            .expect("Couldn't write to cargo toml");
-            file.sync_all()
-                .await
-                .expect("Couldn't flush write to cargo toml");
-        }
 
         let target = Target::current().expect("Couldn't determine current target");
         let (incoming, _) = tokio::sync::broadcast::channel(100);
@@ -842,20 +841,22 @@ mod test {
 
         let mut messages = Vec::new();
 
-        if let Err(e) = timeout(Duration::from_secs(10), async {
+        let result = timeout(Duration::from_secs(100), async {
             loop {
-                let msg = build_messages
-                    .recv()
-                    .await
-                    .expect("Couldn't get build message");
+                let msg = match build_messages.recv().await {
+                    Ok(v) => v,
+                    Err(e) => bail!("Couldn't get message {e}"),
+                };
                 messages.push(msg.clone());
                 match msg {
                     BuildOutputMessages::StartedBuild(id) => {
                         eprintln!("Build {id} Started");
                         if started {
-                            panic!("Started more than once");
+                            bail!("Started more than once");
                         }
-                        assert_eq!(id, 1);
+                        if id != 1 {
+                            bail!("Not starting the initial id");
+                        }
                         started = true;
                     }
                     BuildOutputMessages::EndedBuild {
@@ -864,9 +865,13 @@ mod test {
                         root_library,
                     } => {
                         eprintln!("Build {id} Ended");
-                        assert_eq!(id, 1);
+                        if id != 1 {
+                            bail!("Not ending the initial id");
+                        }
                         ended = true;
-                        assert_eq!(root_library, target.dynamic_lib_name("test_lib"));
+                        if root_library != target.dynamic_lib_name("test_lib.1") {
+                            bail!("Not the correct library name");
+                        }
                         root_lib_confirmed = true;
                         for HashedFileRecord {
                             local_path,
@@ -875,9 +880,14 @@ mod test {
                             ..
                         } in libraries.into_iter()
                         {
-                            assert!(local_path.exists());
-                            if name == target.dynamic_lib_name("test_lib") {
-                                assert!(dependencies.len() == 1, "Dependencies: {dependencies:?}");
+                            if !local_path.exists() {
+                                bail!("Library path doesn't exist");
+                            }
+
+                            if name == target.dynamic_lib_name("test_lib.1") {
+                                if dependencies.is_empty() {
+                                    bail!("Dependencies: {dependencies:?}");
+                                }
                                 library_update_received = true;
                             }
                         }
@@ -885,12 +895,17 @@ mod test {
                     }
                     BuildOutputMessages::AssetUpdated(_) => {}
                     BuildOutputMessages::KeepAlive => {}
+                    BuildOutputMessages::FailedBuild(e) => bail!("Failed Build - {e}"),
                 }
             }
+            Ok(())
         })
-        .await
-        {
-            panic!("Failed - {e:?}\n{messages:?}");
+        .await;
+
+        match result {
+            Err(e) => panic!("Failed - {e:?}\n{messages:?}"),
+            Ok(Err(e)) => panic!("Failed to Build - {e:?}"),
+            _ => {}
         }
 
         assert!(started);

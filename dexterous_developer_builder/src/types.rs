@@ -114,6 +114,7 @@ pub enum BuildOutputMessages {
         root_library: String,
     },
     AssetUpdated(HashedFileRecord),
+    FailedBuild(String),
     KeepAlive,
 }
 
@@ -152,6 +153,7 @@ impl CurrentBuildState {
                 let mut lock = self.root_library.lock().await;
                 let _ = lock.replace(root_library);
             }
+            BuildOutputMessages::FailedBuild(_) => {}
         }
         self
     }
