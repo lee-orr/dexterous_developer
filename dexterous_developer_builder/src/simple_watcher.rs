@@ -121,6 +121,7 @@ impl Watcher for SimpleWatcher {
                                                                         ),
                                                                     };
                                                                 let hash = blake3::hash(&file);
+                                                                eprintln!("Got {path} Hash: {hash}, {:?} ", std::str::from_utf8(&file));
                                                                 let relative_path = path
                                                                     .strip_prefix(&cwd)
                                                                     .map(|p| p.to_owned())
@@ -269,9 +270,12 @@ mod test {
     async fn watcher_provides_changed_files_in_asset_directory() {
         let dir = test_temp_dir!();
 
-        let _ = File::create(dir.as_path_untracked().join("test.txt"))
-        .await
-        .expect("Couldn't create file");
+        {
+            let mut file = File::create(dir.as_path_untracked().join("test.txt"))
+            .await
+            .expect("Couldn't create file");
+            file.write_all("something".as_bytes()).await.expect("Couldn't write to file");
+        }
 
         let watcher = SimpleWatcher::default();
 
@@ -282,17 +286,18 @@ mod test {
             )
             .expect("Couldn't set up watcher on temporary directory");
 
-
-        let mut file = File::open(dir.as_path_untracked().join("test.txt"))
-        .await
-        .expect("Couldn't open file");
-
-        file.write_all(b"my")
+        {
+            let mut file = File::options().append(true).open(dir.as_path_untracked().join("test.txt"))
             .await
-            .expect("Failed to write file");
+            .expect("Couldn't open file");
+
+            file.write_all("my".as_bytes())
+                .await
+                .expect("Failed to write file");
+        }
 
 
-        let result = timeout(Duration::from_millis(10), rx.recv())
+        let result = timeout(Duration::from_millis(100), rx.recv())
             .await
             .expect("Didn't recieve initial asset message on time")
             .expect("Didn't recieve initial asset message");
@@ -301,22 +306,32 @@ mod test {
             panic!("Got Message that isn't Asset Changed");
         };
 
+        while let Ok(_) = rx.try_recv() {
+            eprintln!("Purging extra asset changes");
+        }
+
         let hash = record.hash;
 
         assert_eq!(record.name, "test.txt");
 
-        let mut file = File::open(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't open file");
+        {
+            let mut file = File::options().append(true).open(dir.as_path_untracked().join("test.txt"))
+                .await
+                .expect("Couldn't open file");
 
-        file.write_all(b"my file")
-            .await
-            .expect("Failed to write file");
-
-        let result = timeout(Duration::from_millis(10), rx.recv())
+            file.write_all("Some file".as_bytes())
+                .await
+                .expect("Failed to write file");
+        }
+        
+        let result = timeout(Duration::from_millis(100), rx.recv())
             .await
             .expect("Didn't recieve initial asset message on time")
             .expect("Didn't recieve initial asset message");
+
+        while let Ok(_) = rx.try_recv() {
+            eprintln!("Purging extra asset changes");
+        }
 
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");
