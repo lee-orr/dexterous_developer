@@ -257,7 +257,7 @@ async fn build(
 
     let rustc = cargo_zigbuild::Rustc {
         disable_zig_linker: false,
-        enable_zig_ar: true,
+        enable_zig_ar: false,
         cargo: options,
     };
     let cargo = rustc.build_command()?;
