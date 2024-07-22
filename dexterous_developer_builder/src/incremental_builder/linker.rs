@@ -18,7 +18,14 @@ pub async fn linker() -> anyhow::Result<()> {
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
-    let args = filter_arguments(&args);
+    let mut args = filter_arguments(&args);
+
+    let has_target = args.iter().find(|v| v.contains("-target")).is_some();
+
+    if has_target {
+        args.push("-target".to_string());
+        args.push(target.clone());
+    }
 
     let output_name = {
         let mut next_is_output = false;
@@ -222,7 +229,6 @@ fn filter_arguments(args: &[String]) -> Vec<String> {
         .filter(|v| {
             !v.contains("dexterous_developer_incremental_linker")
                 && !v.contains("incremental_c_compiler")
-                && !v.contains("-exported_symbols_list")
         })
         .cloned()
         .collect::<Vec<_>>()
