@@ -52,7 +52,7 @@ pub async fn linker() -> anyhow::Result<()> {
     let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
 
     if !output_name.contains(&package_name) {
-        eprintln!("Linking Non-Main File - {output_name}");
+        eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
         let zig = Zig::Cc { args: args.clone() };
 
         if let Err(e) = zig.execute() {
