@@ -1,4 +1,4 @@
-use builder::{TestBuilder, TestBuilderComms};
+use builder::{TestBuilderInitializer, TestBuilderComms};
 use camino::Utf8PathBuf;
 use dexterous_developer_manager::server::run_test_server;
 use std::sync::Arc;
@@ -36,10 +36,9 @@ pub async fn setup_test(
     mpsc::UnboundedReceiver<OutMessage>,
     (JoinHandle<()>, JoinHandle<()>),
 ) {
-    let (builder, mut comms) = TestBuilder::new(None, None);
-    let manager = dexterous_developer_manager::Manager::default()
-        .add_builders(&[Arc::new(builder)])
-        .await;
+    let manager = dexterous_developer_manager::Manager::default();
+    let (builder, mut comms) = TestBuilderInitializer::new(None, None, manager.get_watcher_channel());
+    let manager = manager.add_builder(builder).expect("Failed to set up builder");
     let (port_tx, port_rx) = tokio::sync::oneshot::channel();
 
     let server = tokio::spawn(async move {

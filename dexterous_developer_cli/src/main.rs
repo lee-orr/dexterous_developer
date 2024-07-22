@@ -4,8 +4,8 @@ use camino::Utf8PathBuf;
 
 use clap::Parser;
 use dexterous_developer_builder::{
-    incremental_builder::builder::IncrementalBuilder, simple_builder::SimpleBuilder,
-    simple_watcher::SimpleWatcher, types::Builder,
+    incremental_builder::builder::{IncrementalBuilder, IncrementalBuilderInitializer}, simple_builder::{SimpleBuilder, SimpleBuilderInitializer},
+    simple_watcher::SimpleWatcher, types::{Builder, BuilderInitializer},
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
@@ -67,28 +67,24 @@ async fn main() -> anyhow::Result<()> {
 
     trace!("Setting up builders for {package_or_example:?}");
 
-    let builders = config
+    let builder_settings = config
         .generate_build_settings(Some(package_or_example.clone()), &features)
-        .expect("Failed determine build settings")
-        .into_iter()
-        .map(|(target, build_settings)| {
-            let build: Arc<dyn Builder> = match build_settings.builder {
-                dexterous_developer_types::BuilderTypes::Simple => {
-                    Arc::new(SimpleBuilder::new(target, build_settings))
-                }
-                dexterous_developer_types::BuilderTypes::Incremental => {
-                    Arc::new(IncrementalBuilder::new(target, build_settings)?)
-                }
-            };
-            Ok(build)
-        })
-        .collect::<anyhow::Result<Vec<_>>>()?;
+        .expect("Failed determine build settings");
 
     trace!("Setting up Manager");
 
-    let manager = Manager::new(Arc::new(SimpleWatcher::default()))
-        .add_builders(&builders)
-        .await;
+    let mut manager = Manager::new(Arc::new(SimpleWatcher::default()));
+    
+    for (target, build_settings) in builder_settings.into_iter() {
+        manager = match build_settings.builder {
+            dexterous_developer_types::BuilderTypes::Simple => {
+                manager.add_builder(SimpleBuilderInitializer::new(target, build_settings))
+            }
+            dexterous_developer_types::BuilderTypes::Incremental => {
+                manager.add_builder(IncrementalBuilderInitializer::new(target, build_settings))
+            }
+        }?;
+    }
 
     info!("Starting Server");
     if serve_only {

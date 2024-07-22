@@ -11,10 +11,15 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+pub trait BuilderInitializer: 'static + Send + Sync {
+    type Inner : Builder;
+    
+    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) ->  anyhow::Result<Self::Inner>;
+}
+
 pub trait Builder: 'static + Send + Sync {
     fn target(&self) -> Target;
     fn builder_type(&self) -> BuilderTypes;
-    fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>;
     fn outgoing_channel(
         &self,
     ) -> (
@@ -30,19 +35,12 @@ pub trait Watcher: 'static + Send + Sync {
     fn watch_code_directories(
         &self,
         directories: &[Utf8PathBuf],
-        subscriber: (
-            usize,
-            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-        ),
     ) -> Result<(), WatcherError>;
     fn watch_asset_directories(
         &self,
         directories: &[Utf8PathBuf],
-        subscriber: (
-            usize,
-            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-        ),
     ) -> Result<(), WatcherError>;
+    fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages>;
 }
 
 #[derive(Error, Debug)]
@@ -63,7 +61,7 @@ pub enum WatcherError {
 
 #[derive(Debug, Clone)]
 pub enum BuilderIncomingMessages {
-    RequestBuild,
+    RequestBuild(Target),
     CodeChanged,
     AssetChanged(HashedFileRecord),
 }

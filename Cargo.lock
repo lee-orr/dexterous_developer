@@ -2321,6 +2321,7 @@ dependencies = [
 name = "dexterous_developer_manager"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "axum",
  "blake3",
  "camino",
@@ -2344,12 +2345,12 @@ dependencies = [
 name = "dexterous_developer_test_utils"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "camino",
  "dexterous_developer_builder",
  "dexterous_developer_dylib_runner",
  "dexterous_developer_manager",
  "dexterous_developer_types",
- "test-temp-dir",
  "tokio",
 ]
 

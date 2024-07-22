@@ -2,8 +2,7 @@ use std::env::current_exe;
 
 use camino::Utf8PathBuf;
 use dexterous_developer_builder::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-    HashedFileRecord,
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, HashedFileRecord
 };
 use dexterous_developer_types::Target;
 use tokio::sync::{
@@ -13,7 +12,7 @@ use tokio::sync::{
 
 pub struct TestBuilder {
     target: Target,
-    incoming: tokio::sync::mpsc::UnboundedSender<
+    incoming: tokio::sync::broadcast::Sender<
         dexterous_developer_builder::types::BuilderIncomingMessages,
     >,
     outgoing: (
@@ -28,7 +27,7 @@ pub struct TestBuilderComms {
     pub build_id: u32,
     pub examples: Utf8PathBuf,
     pub target_directory: Utf8PathBuf,
-    pub incoming_receiver: UnboundedReceiver<BuilderIncomingMessages>,
+    pub incoming_receiver: broadcast::Sender<BuilderIncomingMessages>,
     pub outgoing_sender: broadcast::Sender<BuilderOutgoingMessages>,
     pub output_sender: broadcast::Sender<BuildOutputMessages>,
 }
@@ -59,10 +58,20 @@ impl TestBuilderComms {
     }
 }
 
-impl TestBuilder {
-    pub fn new(root_lib_name: Option<String>, target: Option<Target>) -> (Self, TestBuilderComms) {
+pub struct TestBuilderInitializer {
+    target: Target,
+    outgoing: (
+        tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuilderOutgoingMessages>,
+        tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuildOutputMessages>,
+    ),
+    root_lib_name: Option<String>,
+}
+
+
+impl TestBuilderInitializer {
+    pub fn new (root_lib_name: Option<String>, target: Option<Target>, incoming: broadcast::Sender<BuilderIncomingMessages>) -> (Self, TestBuilderComms) {
+
         let target = target.unwrap_or(Target::current().unwrap());
-        let (incoming, in_rx) = mpsc::unbounded_channel();
         let (outgoing_tx, _) = broadcast::channel(10);
         let (output_tx, _) = broadcast::channel(10);
 
@@ -73,7 +82,6 @@ impl TestBuilder {
         (
             Self {
                 target,
-                incoming,
                 outgoing: (outgoing_tx.clone(), output_tx.clone()),
                 root_lib_name,
             },
@@ -81,26 +89,27 @@ impl TestBuilder {
                 target,
                 build_id: 0,
                 examples,
-                incoming_receiver: in_rx,
+                incoming_receiver: incoming,
                 outgoing_sender: outgoing_tx,
                 output_sender: output_tx,
                 target_directory,
             },
         )
+        
+    }
+}
+
+impl BuilderInitializer for TestBuilderInitializer {
+    type Inner = TestBuilder;
+
+    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) ->  anyhow::Result<Self::Inner> {
+        Ok(TestBuilder { target: self.target, incoming: channel, outgoing: self.outgoing, root_lib_name: self.root_lib_name })
     }
 }
 
 impl Builder for TestBuilder {
     fn target(&self) -> dexterous_developer_types::Target {
         self.target
-    }
-
-    fn incoming_channel(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedSender<
-        dexterous_developer_builder::types::BuilderIncomingMessages,
-    > {
-        self.incoming.clone()
     }
 
     fn outgoing_channel(

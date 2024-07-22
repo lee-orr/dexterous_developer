@@ -17,20 +17,8 @@ pub async fn linker() -> anyhow::Result<()> {
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
-    // let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
-    // let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
-    // let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
     let args = filter_arguments(&args);
-
-    // join_all(args.iter().filter_map(|v| {
-    //     if v.starts_with("@") && v.ends_with("linker-arguments") {
-    //         let path = Utf8PathBuf::from(v.trim_start_matches("@"));
-    //         Some(adjust_added_files(&target, path))
-    //     } else {
-    //         None
-    //     }
-    // })).await.into_iter().collect::<anyhow::Result<_>>()?;
 
     let output_name = {
         let mut next_is_output = false;
@@ -53,11 +41,6 @@ pub async fn linker() -> anyhow::Result<()> {
         dirs.push("-L".to_string());
         dirs.push(dir.to_string());
     }
-
-    // for dir in framework_directories.iter() {
-    //     dirs.push("-F".to_string());
-    //     dirs.push(dir.to_string());
-    // }
 
     let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
 

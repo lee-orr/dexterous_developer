@@ -30,15 +30,36 @@ use tracing::{debug, error, info, trace};
 use crate::{
     incremental_builder::zig_downloader::zig_path,
     types::{
-        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-        HashedFileRecord,
+        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, HashedFileRecord
     },
 };
+
+pub struct IncrementalBuilderInitializer {
+    target: Target,
+    settings: TargetBuildSettings
+}
+
+impl IncrementalBuilderInitializer {
+    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
+        Self {
+            target, 
+            settings
+        }
+    }
+}
+
+impl BuilderInitializer for IncrementalBuilderInitializer {
+    type Inner = IncrementalBuilder;
+
+    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self::Inner> {
+        IncrementalBuilder::new(self.target, self.settings, channel)
+    }
+}
 
 pub struct IncrementalBuilder {
     target: Target,
     settings: TargetBuildSettings,
-    incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
+    incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -540,7 +561,7 @@ fn process_dependencies_recursive(
 }
 
 impl IncrementalBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings) -> anyhow::Result<Self> {
+    pub fn new(target: Target, settings: TargetBuildSettings, incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self> {
         let zig = zig_path()?;
         std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
 
@@ -554,7 +575,7 @@ impl IncrementalBuilder {
 
         std::env::set_var("CARGO_BIN_EXE_cargo-zigbuild", &cc);
 
-        let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
@@ -596,12 +617,14 @@ impl IncrementalBuilder {
                                 info!("Not building {target} yet");
                             }
                         }
-                        Some(recv) = incoming_rx.recv() => {
+                        Ok(recv) = incoming_rx.recv() => {
                             match recv {
-                                BuilderIncomingMessages::RequestBuild => {
-                                    info!("Build Request");
-                                    first_build_triggered.store(true, Ordering::SeqCst);
-                                    let _ = build_trigger.send(());
+                                BuilderIncomingMessages::RequestBuild(request) => {
+                                    if target == request {
+                                        info!("Build Request");
+                                        first_build_triggered.store(true, Ordering::SeqCst);
+                                        let _ = build_trigger.send(());
+                                    }
                                 }
                                 BuilderIncomingMessages::CodeChanged => {
                                     info!("Code Changed");
@@ -697,12 +720,6 @@ impl Builder for IncrementalBuilder {
         self.target
     }
 
-    fn incoming_channel(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedSender<crate::types::BuilderIncomingMessages> {
-        self.incoming.clone()
-    }
-
     fn outgoing_channel(
         &self,
     ) -> (
@@ -785,6 +802,7 @@ mod test {
         }
 
         let target = Target::current().expect("Couldn't determine current target");
+        let (incoming, _) = tokio::sync::broadcast::channel(100);
 
         let build = IncrementalBuilder::new(
             target,
@@ -797,14 +815,14 @@ mod test {
                 .unwrap()],
                 ..Default::default()
             },
+            incoming.clone(),
         )
         .expect("Couldn't set up incremental builder");
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
 
-        build
-            .incoming
-            .send(BuilderIncomingMessages::RequestBuild)
+        incoming
+            .send(BuilderIncomingMessages::RequestBuild(target))
             .expect("Failed to request build");
 
         let msg = timeout(Duration::from_secs(10), builder_messages.recv())
@@ -830,6 +848,7 @@ mod test {
                 messages.push(msg.clone());
                 match msg {
                     BuildOutputMessages::StartedBuild(id) => {
+                        eprintln!("Build {id} Started");
                         if started {
                             panic!("Started more than once");
                         }
@@ -841,6 +860,7 @@ mod test {
                         libraries,
                         root_library,
                     } => {
+                        eprintln!("Build {id} Ended");
                         assert_eq!(id, 1);
                         ended = true;
                         assert_eq!(root_library, target.dynamic_lib_name("test_lib"));
