@@ -12,9 +12,12 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 pub trait BuilderInitializer: 'static + Send + Sync {
-    type Inner : Builder;
-    
-    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) ->  anyhow::Result<Self::Inner>;
+    type Inner: Builder;
+
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner>;
 }
 
 pub trait Builder: 'static + Send + Sync {
@@ -32,14 +35,8 @@ pub trait Builder: 'static + Send + Sync {
 }
 
 pub trait Watcher: 'static + Send + Sync {
-    fn watch_code_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-    ) -> Result<(), WatcherError>;
-    fn watch_asset_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-    ) -> Result<(), WatcherError>;
+    fn watch_code_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError>;
+    fn watch_asset_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError>;
     fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages>;
 }
 

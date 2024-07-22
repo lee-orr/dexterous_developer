@@ -65,7 +65,7 @@ pub async fn linker() -> anyhow::Result<()> {
                 next_is_output = true;
                 false
             } else if next_is_output {
-                next_is_output = true;
+                next_is_output = false;
                 false
             } else {
                 true
@@ -215,15 +215,6 @@ async fn patch_link(
 
 async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Option<String>> {
     Ok(Some(path))
-}
-
-async fn adjust_added_files(filename: Utf8PathBuf) -> anyhow::Result<()> {
-    let file = tokio::fs::read_to_string(&filename).await?;
-    let args = file.split('\n').map(|v| v.to_string()).collect::<Vec<_>>();
-    let args = filter_arguments(&args);
-    tokio::fs::remove_file(&filename).await?;
-    tokio::fs::write(&filename, args.join("\n")).await?;
-    Ok(())
 }
 
 fn filter_arguments(args: &[String]) -> Vec<String> {

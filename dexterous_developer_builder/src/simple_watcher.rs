@@ -4,10 +4,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 
 use notify::{RecommendedWatcher, Watcher as NotifyWatcher};
-use tokio::sync::broadcast::{self, Sender};
-use tracing::{error, info, trace, warn};
+use tokio::sync::broadcast::{self};
+use tracing::{info, trace};
 
-use crate::types::{self, BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
+use crate::types::{BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
 
 pub struct SimpleWatcher {
     channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
@@ -63,10 +63,7 @@ impl Watcher for SimpleWatcher {
         Ok(())
     }
 
-    fn watch_asset_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-    ) -> Result<(), WatcherError> {
+    fn watch_asset_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError> {
         info!("Watching Asset Directories: {directories:?}");
         let cwd = Utf8PathBuf::try_from(env::current_dir()?)?;
         for directory in directories.iter() {
@@ -74,7 +71,7 @@ impl Watcher for SimpleWatcher {
                 trace!("{directory} already watched");
                 continue;
             }
-            
+
             trace!("Inserting a new asset subscriber");
             {
                 let cwd = cwd.clone();
@@ -148,7 +145,6 @@ impl Watcher for SimpleWatcher {
                                                 ),
                                             );
                                         }
-                                        
                                     }
                                 },
                             )?
@@ -165,7 +161,7 @@ impl Watcher for SimpleWatcher {
         }
         Ok(())
     }
-    
+
     fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages> {
         self.channel.clone()
     }
@@ -233,7 +229,7 @@ mod test {
     use tokio::fs::*;
     use tokio::io::AsyncWriteExt;
     use tokio::sync::broadcast::error::TryRecvError;
-    use tokio::sync::broadcast::*;
+
     use tokio::time::timeout;
 
     #[tokio::test]
@@ -245,9 +241,10 @@ mod test {
         let mut rx = watcher.channel.subscribe();
 
         watcher
-            .watch_code_directories(
-                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
+            .watch_code_directories(&[Utf8PathBuf::from_path_buf(
+                dir.as_path_untracked().to_path_buf(),
             )
+            .unwrap()])
             .expect("Couldn't set up watcher on temporary directory");
 
         let result = rx.try_recv().expect_err("Should be empty");
@@ -272,30 +269,34 @@ mod test {
 
         {
             let mut file = File::create(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't create file");
-            file.write_all("something".as_bytes()).await.expect("Couldn't write to file");
+                .await
+                .expect("Couldn't create file");
+            file.write_all("something".as_bytes())
+                .await
+                .expect("Couldn't write to file");
         }
 
         let watcher = SimpleWatcher::default();
 
         let mut rx = watcher.channel.subscribe();
         watcher
-            .watch_asset_directories(
-                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
+            .watch_asset_directories(&[Utf8PathBuf::from_path_buf(
+                dir.as_path_untracked().to_path_buf(),
             )
+            .unwrap()])
             .expect("Couldn't set up watcher on temporary directory");
 
         {
-            let mut file = File::options().append(true).open(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't open file");
+            let mut file = File::options()
+                .append(true)
+                .open(dir.as_path_untracked().join("test.txt"))
+                .await
+                .expect("Couldn't open file");
 
             file.write_all("my".as_bytes())
                 .await
                 .expect("Failed to write file");
         }
-
 
         let result = timeout(Duration::from_millis(100), rx.recv())
             .await
@@ -306,7 +307,7 @@ mod test {
             panic!("Got Message that isn't Asset Changed");
         };
 
-        while let Ok(_) = rx.try_recv() {
+        while rx.try_recv().is_ok() {
             eprintln!("Purging extra asset changes");
         }
 
@@ -315,7 +316,9 @@ mod test {
         assert_eq!(record.name, "test.txt");
 
         {
-            let mut file = File::options().append(true).open(dir.as_path_untracked().join("test.txt"))
+            let mut file = File::options()
+                .append(true)
+                .open(dir.as_path_untracked().join("test.txt"))
                 .await
                 .expect("Couldn't open file");
 
@@ -323,13 +326,13 @@ mod test {
                 .await
                 .expect("Failed to write file");
         }
-        
+
         let result = timeout(Duration::from_millis(100), rx.recv())
             .await
             .expect("Didn't recieve initial asset message on time")
             .expect("Didn't recieve initial asset message");
 
-        while let Ok(_) = rx.try_recv() {
+        while rx.try_recv().is_ok() {
             eprintln!("Purging extra asset changes");
         }
 

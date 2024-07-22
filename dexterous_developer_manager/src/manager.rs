@@ -1,16 +1,14 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 use dexterous_developer_builder::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, CurrentBuildState, Watcher
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, CurrentBuildState, Watcher,
 };
 use dexterous_developer_types::Target;
 use std::{collections::HashSet, sync::Arc};
 use thiserror::Error;
 use tokio::{
-    sync::{
-        broadcast::{self, channel},
-        mpsc,
-    },
+    sync::broadcast::{self},
     task::JoinHandle,
 };
 use tracing::{error, info, trace};
@@ -67,17 +65,19 @@ impl Manager {
             target_count: 0,
         }
     }
-    
+
     pub fn get_watcher_channel(&self) -> broadcast::Sender<BuilderIncomingMessages> {
         self.watcher_channel.clone()
     }
 
-    pub fn add_builder<Initializer: BuilderInitializer>(mut self, initializer: Initializer) -> anyhow::Result<Self> {
+    pub fn add_builder<Initializer: BuilderInitializer>(
+        mut self,
+        initializer: Initializer,
+    ) -> anyhow::Result<Self> {
         let builder = initializer.initialize_builder(self.watcher_channel.clone())?;
-        self.target_count += 1;
-        let id = self.target_count;
         let target = builder.target();
         self.targets.entry(target).or_insert_with(|| {
+            self.target_count += 1;
             let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name(), builder.builder_type()));
             let (outgoing, output) = builder.outgoing_channel();
 
@@ -111,7 +111,7 @@ impl Manager {
 
             (outgoing, output, current_state, handle)
         });
-        
+
         let targets = self.targets.iter().map(|r| *r.key()).collect::<Vec<_>>();
         info!("Able to build {targets:?}");
         Ok(self)
@@ -134,7 +134,9 @@ impl Manager {
 
         let response = (current_state.as_ref().clone(), output_rx.resubscribe());
 
-        let _ = self.watcher_channel.send(BuilderIncomingMessages::RequestBuild(*target));
+        let _ = self
+            .watcher_channel
+            .send(BuilderIncomingMessages::RequestBuild(*target));
         Ok(response)
     }
 
@@ -175,8 +177,11 @@ mod tests {
 
     impl BuilderInitializer for TestBuilderInitializer {
         type Inner = TestBuilder;
-    
-        fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self::Inner> {
+
+        fn initialize_builder(
+            self,
+            _: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> anyhow::Result<Self::Inner> {
             Ok(TestBuilder)
         }
     }
@@ -218,8 +223,11 @@ mod tests {
 
     impl BuilderInitializer for TestBuilderInitializer2 {
         type Inner = TestBuilder2;
-    
-        fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self::Inner> {
+
+        fn initialize_builder(
+            self,
+            _: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> anyhow::Result<Self::Inner> {
             Ok(TestBuilder2)
         }
     }
@@ -259,8 +267,10 @@ mod tests {
     #[tokio::test]
     async fn when_provided_with_builders_can_return_their_targets() {
         let manager = Manager::default()
-            .add_builder(TestBuilderInitializer).expect("Couldn't initialize builder")
-            .add_builder(TestBuilderInitializer2).expect("Couldn't Initialize Second Builder");
+            .add_builder(TestBuilderInitializer)
+            .expect("Couldn't initialize builder")
+            .add_builder(TestBuilderInitializer2)
+            .expect("Couldn't Initialize Second Builder");
 
         let targets = manager.targets();
 
@@ -272,7 +282,8 @@ mod tests {
     #[tokio::test]
     async fn requesting_a_missing_target_returns_an_error() {
         let manager = Manager::default()
-            .add_builder(TestBuilderInitializer).expect("Couldn't initialize builder");
+            .add_builder(TestBuilderInitializer)
+            .expect("Couldn't initialize builder");
 
         let err = manager
             .watch_target(&Target::IOS)
@@ -283,28 +294,28 @@ mod tests {
     }
 
     struct TestChanneledBuilderInitializer {
-        target: Target
+        target: Target,
     }
 
     impl TestChanneledBuilderInitializer {
         fn new(target: Target) -> Self {
-            Self {
-                target
-            }
+            Self { target }
         }
     }
 
     impl BuilderInitializer for TestChanneledBuilderInitializer {
         type Inner = TestChanneledBuilder;
-    
-        fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> Result<TestChanneledBuilder, anyhow::Error> {
+
+        fn initialize_builder(
+            self,
+            channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> Result<TestChanneledBuilder, anyhow::Error> {
             Ok(Self::Inner::new(self.target, channel))
         }
     }
 
     struct TestChanneledBuilder {
         target: Target,
-        incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
         outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
         output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
         #[allow(dead_code)]
@@ -312,7 +323,10 @@ mod tests {
     }
 
     impl TestChanneledBuilder {
-        fn new(target: Target, incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> Self {
+        fn new(
+            target: Target,
+            incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> Self {
             let mut incoming_rx = incoming.subscribe();
             let (outgoing_tx, _) = tokio::sync::broadcast::channel(10);
             let (output_tx, _) = tokio::sync::broadcast::channel(10);
@@ -375,7 +389,6 @@ mod tests {
 
             Self {
                 target,
-                incoming,
                 outgoing: outgoing_tx,
                 output: output_tx,
                 handle,
@@ -420,33 +433,28 @@ mod tests {
 
     impl TestWatcher {
         fn new() -> Self {
-            TestWatcher { channel: broadcast::channel(100).0 }
+            TestWatcher {
+                channel: broadcast::channel(100).0,
+            }
         }
 
         async fn update(&self) {
-            self.channel.send(BuilderIncomingMessages::CodeChanged);
+            let _ = self.channel.send(BuilderIncomingMessages::CodeChanged);
         }
     }
 
     impl Watcher for TestWatcher {
-        fn watch_code_directories(
-            &self,
-            _directories: &[Utf8PathBuf],
-        ) -> Result<(), WatcherError> {
+        fn watch_code_directories(&self, _directories: &[Utf8PathBuf]) -> Result<(), WatcherError> {
             Ok(())
         }
 
-        fn watch_asset_directories(
-            &self,
-            _directory: &[Utf8PathBuf],
-        ) -> Result<(), WatcherError> {
+        fn watch_asset_directories(&self, _directory: &[Utf8PathBuf]) -> Result<(), WatcherError> {
             Ok(())
         }
-        
+
         fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages> {
             self.channel.clone()
         }
-        
     }
 
     #[tokio::test]
@@ -458,7 +466,8 @@ mod tests {
         let channel = watcher.channel.clone();
 
         let manager = Manager::new(watcher.clone())
-            .add_builder(builder_1).expect("Failed to add builder");
+            .add_builder(builder_1)
+            .expect("Failed to add builder");
 
         let hash = {
             let (current_state, mut rx) = manager

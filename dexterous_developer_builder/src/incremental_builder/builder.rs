@@ -30,28 +30,29 @@ use tracing::{debug, error, info, trace};
 use crate::{
     incremental_builder::zig_downloader::zig_path,
     types::{
-        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, HashedFileRecord
+        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+        BuilderOutgoingMessages, HashedFileRecord,
     },
 };
 
 pub struct IncrementalBuilderInitializer {
     target: Target,
-    settings: TargetBuildSettings
+    settings: TargetBuildSettings,
 }
 
 impl IncrementalBuilderInitializer {
     pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        Self {
-            target, 
-            settings
-        }
+        Self { target, settings }
     }
 }
 
 impl BuilderInitializer for IncrementalBuilderInitializer {
     type Inner = IncrementalBuilder;
 
-    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self::Inner> {
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner> {
         IncrementalBuilder::new(self.target, self.settings, channel)
     }
 }
@@ -59,7 +60,6 @@ impl BuilderInitializer for IncrementalBuilderInitializer {
 pub struct IncrementalBuilder {
     target: Target,
     settings: TargetBuildSettings,
-    incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -228,7 +228,7 @@ async fn build(
         }
     }
 
-    options.common.features = features.clone();
+    options.common.features = features;
     options.message_format = vec!["json-render-diagnostics".to_string()];
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
@@ -561,7 +561,11 @@ fn process_dependencies_recursive(
 }
 
 impl IncrementalBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings, incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> anyhow::Result<Self> {
+    pub fn new(
+        target: Target,
+        settings: TargetBuildSettings,
+        incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self> {
         let zig = zig_path()?;
         std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
 
@@ -645,7 +649,6 @@ impl IncrementalBuilder {
         Ok(Self {
             settings,
             target,
-            incoming,
             outgoing: outgoing_tx,
             output: output_tx,
             handle,

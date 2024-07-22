@@ -2,19 +2,14 @@ use std::env::current_exe;
 
 use camino::Utf8PathBuf;
 use dexterous_developer_builder::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, HashedFileRecord
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, HashedFileRecord,
 };
 use dexterous_developer_types::Target;
-use tokio::sync::{
-    broadcast,
-    mpsc::{self, UnboundedReceiver},
-};
+use tokio::sync::broadcast;
 
 pub struct TestBuilder {
     target: Target,
-    incoming: tokio::sync::broadcast::Sender<
-        dexterous_developer_builder::types::BuilderIncomingMessages,
-    >,
     outgoing: (
         tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuilderOutgoingMessages>,
         tokio::sync::broadcast::Sender<dexterous_developer_builder::types::BuildOutputMessages>,
@@ -67,10 +62,12 @@ pub struct TestBuilderInitializer {
     root_lib_name: Option<String>,
 }
 
-
 impl TestBuilderInitializer {
-    pub fn new (root_lib_name: Option<String>, target: Option<Target>, incoming: broadcast::Sender<BuilderIncomingMessages>) -> (Self, TestBuilderComms) {
-
+    pub fn new(
+        root_lib_name: Option<String>,
+        target: Option<Target>,
+        incoming: broadcast::Sender<BuilderIncomingMessages>,
+    ) -> (Self, TestBuilderComms) {
         let target = target.unwrap_or(Target::current().unwrap());
         let (outgoing_tx, _) = broadcast::channel(10);
         let (output_tx, _) = broadcast::channel(10);
@@ -95,15 +92,21 @@ impl TestBuilderInitializer {
                 target_directory,
             },
         )
-        
     }
 }
 
 impl BuilderInitializer for TestBuilderInitializer {
     type Inner = TestBuilder;
 
-    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) ->  anyhow::Result<Self::Inner> {
-        Ok(TestBuilder { target: self.target, incoming: channel, outgoing: self.outgoing, root_lib_name: self.root_lib_name })
+    fn initialize_builder(
+        self,
+        _: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner> {
+        Ok(TestBuilder {
+            target: self.target,
+            outgoing: self.outgoing,
+            root_lib_name: self.root_lib_name,
+        })
     }
 }
 

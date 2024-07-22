@@ -17,27 +17,28 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer, BuilderOutgoingMessages, HashedFileRecord
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, HashedFileRecord,
 };
 
 pub struct SimpleBuilderInitializer {
     target: Target,
-    settings: TargetBuildSettings
+    settings: TargetBuildSettings,
 }
 
 impl SimpleBuilderInitializer {
     pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        Self {
-            target, 
-            settings
-        }
+        Self { target, settings }
     }
 }
 
 impl BuilderInitializer for SimpleBuilderInitializer {
     type Inner = SimpleBuilder;
 
-    fn initialize_builder(self, channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) ->  anyhow::Result<Self::Inner> {
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner> {
         Ok(SimpleBuilder::new(self.target, self.settings, channel))
     }
 }
@@ -45,7 +46,6 @@ impl BuilderInitializer for SimpleBuilderInitializer {
 pub struct SimpleBuilder {
     target: Target,
     settings: TargetBuildSettings,
-    incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -387,7 +387,11 @@ fn process_dependencies_recursive(
 }
 
 impl SimpleBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings, incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>) -> Self {
+    pub fn new(
+        target: Target,
+        settings: TargetBuildSettings,
+        incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> Self {
         let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
@@ -442,7 +446,6 @@ impl SimpleBuilder {
         Self {
             settings,
             target,
-            incoming,
             outgoing: outgoing_tx,
             output: output_tx,
             handle,
@@ -541,7 +544,7 @@ mod test {
                 .unwrap()],
                 ..Default::default()
             },
-            incoming.clone()
+            incoming.clone(),
         );
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
