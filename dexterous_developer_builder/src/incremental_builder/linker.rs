@@ -22,7 +22,6 @@ pub async fn linker() -> anyhow::Result<()> {
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
-    let args = adjust_arguments(&target, &args).await?;
 
     let output_name = {
         let mut next_is_output = false;
@@ -47,7 +46,10 @@ pub async fn linker() -> anyhow::Result<()> {
     }
 
     let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+    
 
+    let args = adjust_arguments(&target, &args).await?;
+    
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
         let zig = Zig::Cc { args: args.clone() };
