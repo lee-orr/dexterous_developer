@@ -5,6 +5,7 @@
 use std::time::SystemTime;
 
 use super::builder::IncrementalRunParams;
+use anyhow::{bail, Context};
 use camino::Utf8PathBuf;
 use cargo_zigbuild::Zig;
 use futures_util::future::join_all;
@@ -241,8 +242,27 @@ async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<S
 
     let mut args = if let Some(path) = &path {
         println!("READY TO READ");
-        let file = tokio::fs::read_to_string(&path).await?;
-        panic!("DONE");
+        let file = tokio::fs::read(&path).await?;
+        let file = if target.contains("msvc") {
+            if file[0..2] != [255, 254] {
+                bail!(
+                    "linker response file `{}` didn't start with a utf16 BOM",
+                    &path
+                );
+            }
+            let content_utf16: Vec<u16> = file[2..]
+                .chunks_exact(2)
+                .map(|a| u16::from_ne_bytes([a[0], a[1]]))
+                .collect();
+            String::from_utf16(&content_utf16).with_context(|| {
+                format!(
+                    "linker response file `{}` didn't contain valid utf16 content",
+                    &path
+                )
+            })?
+        } else {
+            String::from_utf8(file)?
+        };
         file.lines().map(|v| v.to_owned()).collect()
     } else {
         args.iter()
