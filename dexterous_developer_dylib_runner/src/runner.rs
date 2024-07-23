@@ -37,6 +37,8 @@ pub fn run_reloadable_app(
         ));
     }
 
+    let library_path = library_path.canonicalize_utf8()?;
+
     let dylib_paths = dylib_path();
     if !dylib_paths.contains(&library_path.to_owned()) {
         return Err(DylibRunnerError::DylibPathsMissingLibraries);
@@ -45,7 +47,7 @@ pub fn run_reloadable_app(
     run_app(|tx, _| {
         connect_to_server(
             working_directory,
-            library_path,
+            &library_path,
             server.clone(),
             tx,
             in_workspace,
@@ -66,12 +68,14 @@ pub fn run_app<
 
     let handle = connect(tx, out_rx)?;
 
-    let (initial, id, path) = {
+    let (initial, id, path, builder_type) = {
         trace!("Getting Initial Root");
         let mut library = None;
         let mut id = None;
         #[allow(unused_assignments)]
         let mut path = None;
+        #[allow(unused_assignments)]
+        let mut builder_type = None;
         loop {
             if library.is_some() || id.is_some() {
                 warn!("We have a root set already...");
@@ -86,11 +90,13 @@ pub fn run_app<
                 DylibRunnerMessage::LoadRootLib {
                     build_id,
                     local_path,
+                    builder_type: bt,
                 } => {
                     trace!("Loading Initial Root");
-                    library = Some(LibraryHolder::new(&local_path, false)?);
+                    library = Some(LibraryHolder::new(&local_path, false, bt)?);
                     path = Some(local_path);
                     id = Some(build_id);
+                    builder_type = Some(bt);
                     break;
                 }
                 DylibRunnerMessage::AssetUpdated { local_path, name } => {
@@ -105,6 +111,7 @@ pub fn run_app<
             library.ok_or(DylibRunnerError::NoInitialLibrary)?,
             id.ok_or(DylibRunnerError::NoInitialLibrary)?,
             path.ok_or(DylibRunnerError::NoInitialLibrary)?,
+            builder_type.ok_or(DylibRunnerError::NoBuilderType)?,
         )
     };
 
@@ -129,6 +136,7 @@ pub fn run_app<
         internal_update: ffi::update,
         internal_validate_setup: ffi::validate_setup,
         internal_send_output: ffi::send_output,
+        builder_type: safer_ffi::Vec::from(rmp_serde::to_vec(&builder_type)?),
     }
     .build();
 
@@ -158,6 +166,7 @@ fn update_loop(
             DylibRunnerMessage::LoadRootLib {
                 build_id,
                 local_path,
+                ..
             } => {
                 trace!("Load Root New Library {local_path}");
                 NEXT_UPDATE_VERSION.store(build_id, std::sync::atomic::Ordering::SeqCst);

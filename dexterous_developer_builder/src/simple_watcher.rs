@@ -4,60 +4,49 @@ use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 
 use notify::{RecommendedWatcher, Watcher as NotifyWatcher};
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info, trace, warn};
+use tokio::sync::broadcast::{self};
+use tracing::{info, trace};
 
-use crate::types::{self, BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
+use crate::types::{BuilderIncomingMessages, HashedFileRecord, Watcher, WatcherError};
 
-#[derive(Default)]
 pub struct SimpleWatcher {
+    channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     watchers: DashMap<Utf8PathBuf, RecommendedWatcher>,
-    code_subscribers:
-        DashMap<Utf8PathBuf, DashMap<usize, UnboundedSender<BuilderIncomingMessages>>>,
-    asset_subscribers:
-        DashMap<Utf8PathBuf, DashMap<usize, UnboundedSender<BuilderIncomingMessages>>>,
+}
+
+impl Default for SimpleWatcher {
+    fn default() -> Self {
+        Self {
+            channel: broadcast::channel(100).0,
+            watchers: Default::default(),
+        }
+    }
 }
 
 impl Watcher for SimpleWatcher {
     fn watch_code_directories(
         &self,
         directories: &[camino::Utf8PathBuf],
-        subscriber: (usize, UnboundedSender<types::BuilderIncomingMessages>),
     ) -> Result<(), WatcherError> {
         info!("Watching Directories: {directories:?}");
         for directory in directories.iter() {
-            {
-                trace!("Checking {directory:?}");
-                let subscribers = self.code_subscribers.entry(directory.clone()).or_default();
-                trace!("Got Subscribers");
-                subscribers.insert(subscriber.0, subscriber.1.clone());
+            if self.watchers.contains_key(directory) {
+                trace!("{directory} already watched");
+                continue;
             }
-            trace!("Inserting a new subscriber");
+            trace!("Setting up watcher for {directory}");
             let _ = self
                 .watchers
                 .entry(directory.clone())
                 .or_try_insert_with::<WatcherError>(|| {
                     trace!("Adding watcher entry");
-                    let code_subscribers = self.code_subscribers.clone();
-                    trace!("Getting Code Subscribers");
                     let directory = directory.clone();
 
                     let mut watcher = {
-                        let directory = directory.clone();
+                        let channel = self.channel.clone();
                         notify::recommended_watcher(move |_| {
-                            trace!("Got Watch Event");
-                            let Some(subscribers) = code_subscribers.get(&directory) else {
-                                error!("Couldn't Get Subscribers");
-                                return;
-                            };
-                            if subscribers.is_empty() {
-                                warn!("No Subscribers");
-                                return;
-                            }
-                            for subscriber in subscribers.iter() {
-                                trace!("Sending Code Changed Message to {}", subscriber.key());
-                                let _ = subscriber.send(BuilderIncomingMessages::CodeChanged);
-                            }
+                            info!("Got Watch Event");
+                            let _ = channel.send(BuilderIncomingMessages::CodeChanged);
                             trace!("Finished Sending Code Changed Messages");
                         })?
                     };
@@ -74,37 +63,15 @@ impl Watcher for SimpleWatcher {
         Ok(())
     }
 
-    fn watch_asset_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-        subscriber: (usize, UnboundedSender<types::BuilderIncomingMessages>),
-    ) -> Result<(), WatcherError> {
+    fn watch_asset_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError> {
         info!("Watching Asset Directories: {directories:?}");
         let cwd = Utf8PathBuf::try_from(env::current_dir()?)?;
         for directory in directories.iter() {
-            {
-                trace!("Checking assets at {directory:?}");
-                let subscribers = self.asset_subscribers.entry(directory.clone()).or_default();
-                trace!("Got asset Subscribers");
-                subscribers.insert(subscriber.0, subscriber.1.clone());
-
-                let files = gather_directory_content(directory.clone(), &cwd)?;
-                trace!("Publishing Current Directory Content {files:?}");
-
-                let _ = subscribers.iter().map(|subscriber| {
-                    for file in files.iter() {
-                        trace!("Sending Asset Changed Message to {}", subscriber.key());
-                        let _ =
-                            subscriber.send(BuilderIncomingMessages::AssetChanged(file.clone()));
-                    }
-                });
-                for file in files.iter() {
-                    trace!("Sending Asset Changed Message to {}", subscriber.0);
-                    let _ = subscriber
-                        .1
-                        .send(BuilderIncomingMessages::AssetChanged(file.clone()));
-                }
+            if self.watchers.contains_key(directory) {
+                trace!("{directory} already watched");
+                continue;
             }
+
             trace!("Inserting a new asset subscriber");
             {
                 let cwd = cwd.clone();
@@ -113,25 +80,14 @@ impl Watcher for SimpleWatcher {
                     .entry(directory.clone())
                     .or_try_insert_with::<WatcherError>(move || {
                         trace!("Adding watcher entry");
-                        let asset_subscribers = self.asset_subscribers.clone();
-                        trace!("Getting asset Subscribers");
                         let directory = directory.clone();
 
                         let mut watcher = {
-                            let directory = directory.clone();
-
+                            let channel = self.channel.clone();
+                            let cwd = cwd.clone();
                             notify::recommended_watcher(
                                 move |file: Result<notify::Event, notify::Error>| {
                                     trace!("Got Asset Event");
-                                    let Some(subscribers) = asset_subscribers.get(&directory)
-                                    else {
-                                        error!("Couldn't Get Asset Subscribers");
-                                        return;
-                                    };
-                                    if subscribers.is_empty() {
-                                        warn!("No Asset Subscribers");
-                                        return;
-                                    }
                                     if let Ok(file) = file {
                                         let files = file
                                             .paths
@@ -162,6 +118,7 @@ impl Watcher for SimpleWatcher {
                                                                         ),
                                                                     };
                                                                 let hash = blake3::hash(&file);
+                                                                eprintln!("Got {path} Hash: {hash}, {:?} ", std::str::from_utf8(&file));
                                                                 let relative_path = path
                                                                     .strip_prefix(&cwd)
                                                                     .map(|p| p.to_owned())
@@ -181,15 +138,12 @@ impl Watcher for SimpleWatcher {
                                             })
                                             .collect::<Vec<_>>();
                                         trace!("Asset Change Records: {files:?}");
-                                        for subscriber in subscribers.iter() {
-                                            trace!("Updating Subscriber {}", subscriber.key());
-                                            for file in files.iter() {
-                                                let _ = subscriber.send(
-                                                    BuilderIncomingMessages::AssetChanged(
-                                                        file.clone(),
-                                                    ),
-                                                );
-                                            }
+                                        for file in files.into_iter() {
+                                            let _ = channel.send(
+                                                BuilderIncomingMessages::AssetChanged(
+                                                    file,
+                                                ),
+                                            );
                                         }
                                     }
                                 },
@@ -201,11 +155,21 @@ impl Watcher for SimpleWatcher {
 
                         trace!("Returning Watcher");
 
+                        if let Ok(initial) = gather_directory_content(directory, &cwd) {
+                            for file in initial {
+                                let _ = self.channel.send(BuilderIncomingMessages::AssetChanged(file));
+                            }
+                        }
+
                         Ok(watcher)
                     })?;
             }
         }
         Ok(())
+    }
+
+    fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages> {
+        self.channel.clone()
     }
 }
 
@@ -270,8 +234,8 @@ mod test {
     use test_temp_dir::test_temp_dir;
     use tokio::fs::*;
     use tokio::io::AsyncWriteExt;
-    use tokio::sync::mpsc::error::TryRecvError;
-    use tokio::sync::mpsc::*;
+    use tokio::sync::broadcast::error::TryRecvError;
+
     use tokio::time::timeout;
 
     #[tokio::test]
@@ -280,13 +244,13 @@ mod test {
 
         let watcher = SimpleWatcher::default();
 
-        let (tx, mut rx) = unbounded_channel();
+        let mut rx = watcher.channel.subscribe();
 
         watcher
-            .watch_code_directories(
-                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
-                (0, tx),
+            .watch_code_directories(&[Utf8PathBuf::from_path_buf(
+                dir.as_path_untracked().to_path_buf(),
             )
+            .unwrap()])
             .expect("Couldn't set up watcher on temporary directory");
 
         let result = rx.try_recv().expect_err("Should be empty");
@@ -306,56 +270,41 @@ mod test {
     }
 
     #[tokio::test]
-    async fn watcher_provides_initial_files_in_asset_directory() {
-        let dir = test_temp_dir!();
-
-        let watcher = SimpleWatcher::default();
-
-        let (tx, mut rx) = unbounded_channel();
-
-        let _ = File::create(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't create file");
-
-        watcher
-            .watch_asset_directories(
-                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
-                (0, tx),
-            )
-            .expect("Couldn't set up watcher on temporary directory");
-
-        let result = timeout(Duration::from_millis(10), rx.recv())
-            .await
-            .expect("Didn't recieve initial asset message on time")
-            .expect("Didn't recieve initial asset message");
-
-        let BuilderIncomingMessages::AssetChanged(record) = result else {
-            panic!("Got Message that isn't Asset Changed");
-        };
-
-        assert_eq!(record.name, "test.txt");
-    }
-
-    #[tokio::test]
     async fn watcher_provides_changed_files_in_asset_directory() {
         let dir = test_temp_dir!();
 
+        {
+            let mut file = File::create(dir.as_path_untracked().join("test.txt"))
+                .await
+                .expect("Couldn't create file");
+            file.write_all("something".as_bytes())
+                .await
+                .expect("Couldn't write to file");
+        }
+
         let watcher = SimpleWatcher::default();
 
-        let (tx, mut rx) = unbounded_channel();
-
-        let _ = File::create(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't create file");
-
+        let mut rx = watcher.channel.subscribe();
         watcher
-            .watch_asset_directories(
-                &[Utf8PathBuf::from_path_buf(dir.as_path_untracked().to_path_buf()).unwrap()],
-                (0, tx),
+            .watch_asset_directories(&[Utf8PathBuf::from_path_buf(
+                dir.as_path_untracked().to_path_buf(),
             )
+            .unwrap()])
             .expect("Couldn't set up watcher on temporary directory");
 
-        let result = timeout(Duration::from_millis(10), rx.recv())
+        {
+            let mut file = File::options()
+                .append(true)
+                .open(dir.as_path_untracked().join("test.txt"))
+                .await
+                .expect("Couldn't open file");
+
+            file.write_all("my".as_bytes())
+                .await
+                .expect("Failed to write file");
+        }
+
+        let result = timeout(Duration::from_millis(100), rx.recv())
             .await
             .expect("Didn't recieve initial asset message on time")
             .expect("Didn't recieve initial asset message");
@@ -363,28 +312,35 @@ mod test {
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");
         };
+
+        while rx.try_recv().is_ok() {
+            eprintln!("Purging extra asset changes");
+        }
 
         let hash = record.hash;
 
         assert_eq!(record.name, "test.txt");
 
-        let mut file = File::create(dir.as_path_untracked().join("test.txt"))
-            .await
-            .expect("Couldn't create file");
+        {
+            let mut file = File::options()
+                .append(true)
+                .open(dir.as_path_untracked().join("test.txt"))
+                .await
+                .expect("Couldn't open file");
 
-        let _ = timeout(Duration::from_millis(10), rx.recv())
+            file.write_all("Some file".as_bytes())
+                .await
+                .expect("Failed to write file");
+        }
+
+        let result = timeout(Duration::from_millis(100), rx.recv())
             .await
             .expect("Didn't recieve initial asset message on time")
             .expect("Didn't recieve initial asset message");
 
-        file.write_all(b"my file")
-            .await
-            .expect("Failed to write file");
-
-        let result = timeout(Duration::from_millis(10), rx.recv())
-            .await
-            .expect("Didn't recieve initial asset message on time")
-            .expect("Didn't recieve initial asset message");
+        while rx.try_recv().is_ok() {
+            eprintln!("Purging extra asset changes");
+        }
 
         let BuilderIncomingMessages::AssetChanged(record) = result else {
             panic!("Got Message that isn't Asset Changed");

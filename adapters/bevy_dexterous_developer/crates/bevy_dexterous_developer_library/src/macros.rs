@@ -4,11 +4,14 @@ pub use paste::paste;
 mod hot {
     #[macro_export]
     macro_rules! reloadable_main {
+        (($attr: ident) $body:block) => {
+            reloadable_main!(main ($attr) $body);
+        };
         ($f:ident ($attr: ident) $body:block) => {
             fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 
             #[no_mangle]
-            pub extern "Rust" fn dexterous_developer_instance_main(_: &mut ()) {
+            pub fn dexterous_developer_instance_main(_: &mut ()) {
                 println!("Setting Up With Hot Reload Plugin");
                 reloadable_main_implementation(bevy_dexterous_developer::HotReloadPlugin);
             }
@@ -25,6 +28,9 @@ mod hot {
 mod cold {
     #[macro_export]
     macro_rules! reloadable_main {
+        (($attr: ident) $body:block) => {
+            reloadable_main!(main ($attr) $body);
+        };
         ($f:ident ($attr: ident) $body:block) => {
             fn reloadable_main_implementation($attr: impl bevy_dexterous_developer::InitialPlugins) $body
 

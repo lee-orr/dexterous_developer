@@ -117,11 +117,16 @@ async fn connect_to_target(
     ws: WebSocketUpgrade,
     state: State<ServerState>,
 ) -> Result<Response, Error> {
+    info!("Connecting to Target: {target:?}");
     let id = uuid::Uuid::new_v4();
-    trace!("Client {id} Connecting to Target: {target:?}");
+    info!("Client {id} Connecting to Target: {target:?}");
     let target: Target = target.0.parse()?;
 
-    let (initial_build_state, builder_rx) = state.manager.watch_target(&target).await?;
+    let (initial_build_state, builder_rx) =
+        state.manager.watch_target(&target).await.map_err(|e| {
+            error!("Connection Error - {id} {target:?}: {e}");
+            e
+        })?;
     Ok(ws.on_upgrade(move |socket| {
         connected_to_target(id, socket, target, initial_build_state, builder_rx)
     }))
@@ -162,6 +167,7 @@ async fn connected_to_target(
             most_recent_completed_build: initial_build_state
                 .most_recent_completed_build
                 .load(std::sync::atomic::Ordering::SeqCst),
+            builder_type: initial_build_state.builder_type,
         };
         let Ok(message) = rmp_serde::to_vec(&initial_state_message) else {
             error!("Failed to serialize initial state message for {id}");
@@ -187,6 +193,10 @@ async fn connected_to_target(
                     libraries: libraries.iter().map(|library| (library.name.clone(), library.hash, library.dependencies.clone())).collect(),
                     root_library: root_library.clone()
                 }),
+                BuildOutputMessages::FailedBuild(e) => {
+                    error!("Failed Build - {e}");
+                    None
+                }
             })
         }
         _ = tokio::time::sleep(Duration::from_secs(5)) => Ok(Some(HotReloadMessage::KeepAlive))

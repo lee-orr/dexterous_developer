@@ -9,6 +9,8 @@ pub enum DylibRunnerError {
     DylibPathsMissingLibraries,
     #[error("Couldn't determine current Target")]
     NoCurrentTarget,
+    #[error("Couldn't determine builder type")]
+    NoBuilderType,
     #[error("Couldn't parse URL {0}")]
     UrlParseError(#[from] url::ParseError),
     #[error("Couldn't set websocket scheme for {0:?} - {1} is an invalid scheme")]
@@ -21,6 +23,8 @@ pub enum DylibRunnerError {
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
     #[error("RMP Parse Error {0}")]
     RmpParseError(#[from] rmp_serde::decode::Error),
+    #[error("RMP Encoder Error {0}")]
+    RmpEncodeError(#[from] rmp_serde::encode::Error),
     #[error("Async Channel Failed {0}")]
     AsyncChannelError(#[from] async_channel::RecvError),
     #[error("Join Handle Failed")]

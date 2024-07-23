@@ -17,14 +17,35 @@ use tokio::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-    HashedFileRecord,
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, HashedFileRecord,
 };
+
+pub struct SimpleBuilderInitializer {
+    target: Target,
+    settings: TargetBuildSettings,
+}
+
+impl SimpleBuilderInitializer {
+    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
+        Self { target, settings }
+    }
+}
+
+impl BuilderInitializer for SimpleBuilderInitializer {
+    type Inner = SimpleBuilder;
+
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner> {
+        Ok(SimpleBuilder::new(self.target, self.settings, channel))
+    }
+}
 
 pub struct SimpleBuilder {
     target: Target,
     settings: TargetBuildSettings,
-    incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -52,7 +73,7 @@ async fn build(
         .env_remove("LD_DEBUG")
         .env("RUSTFLAGS", "-Cprefer-dynamic")
         .env("CARGO_TARGET_DIR", format!("./target/hot-reload/{target}"))
-        .arg("rustc")
+        .arg("build")
         .arg("--lib")
         .arg("--message-format=json-render-diagnostics")
         .arg("--profile")
@@ -366,8 +387,12 @@ fn process_dependencies_recursive(
 }
 
 impl SimpleBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+    pub fn new(
+        target: Target,
+        settings: TargetBuildSettings,
+        incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> Self {
+        let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
@@ -380,19 +405,21 @@ impl SimpleBuilder {
             tokio::spawn(async move {
                 let mut should_build = false;
 
-                while let Some(recv) = incoming_rx.recv().await {
+                while let Ok(recv) = incoming_rx.recv().await {
                     match recv {
-                        BuilderIncomingMessages::RequestBuild => {
-                            should_build = true;
-                            let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                            let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
-                            #[allow(clippy::let_underscore_future)]
-                            let _ = tokio::spawn(build(
-                                target,
-                                settings.clone(),
-                                output_tx.clone(),
-                                id,
-                            ));
+                        BuilderIncomingMessages::RequestBuild(request) => {
+                            if target == request {
+                                should_build = true;
+                                let id = id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                                let _ = outgoing_tx.send(BuilderOutgoingMessages::BuildStarted);
+                                #[allow(clippy::let_underscore_future)]
+                                let _ = tokio::spawn(build(
+                                    target,
+                                    settings.clone(),
+                                    output_tx.clone(),
+                                    id,
+                                ));
+                            }
                         }
                         BuilderIncomingMessages::CodeChanged => {
                             if should_build {
@@ -419,7 +446,6 @@ impl SimpleBuilder {
         Self {
             settings,
             target,
-            incoming,
             outgoing: outgoing_tx,
             output: output_tx,
             handle,
@@ -432,10 +458,8 @@ impl Builder for SimpleBuilder {
         self.target
     }
 
-    fn incoming_channel(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedSender<crate::types::BuilderIncomingMessages> {
-        self.incoming.clone()
+    fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
+        dexterous_developer_types::BuilderTypes::Simple
     }
 
     fn outgoing_channel(
@@ -507,6 +531,8 @@ mod test {
 
         let target = Target::current().expect("Couldn't determine current target");
 
+        let (incoming, _) = tokio::sync::broadcast::channel(100);
+
         let build = SimpleBuilder::new(
             target,
             TargetBuildSettings {
@@ -518,13 +544,13 @@ mod test {
                 .unwrap()],
                 ..Default::default()
             },
+            incoming.clone(),
         );
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
 
-        build
-            .incoming
-            .send(BuilderIncomingMessages::RequestBuild)
+        incoming
+            .send(BuilderIncomingMessages::RequestBuild(target))
             .expect("Failed to request build");
 
         let msg = timeout(Duration::from_secs(10), builder_messages.recv())
@@ -582,6 +608,7 @@ mod test {
                     }
                     BuildOutputMessages::AssetUpdated(_) => {}
                     BuildOutputMessages::KeepAlive => {}
+                    BuildOutputMessages::FailedBuild(e) => panic!("Failed Build - {e}"),
                 }
             }
         })

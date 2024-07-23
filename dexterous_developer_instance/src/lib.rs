@@ -5,13 +5,14 @@ pub mod library_holder;
 
 #[derive_ReprC]
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct HotReloadInfo {
     internal_last_update_version: extern "C" fn() -> u32,
     internal_update_ready: extern "C" fn() -> bool,
     internal_update: extern "C" fn() -> bool,
     internal_validate_setup: extern "C" fn(u32) -> u32,
     internal_send_output: extern "C" fn(safer_ffi::Vec<u8>),
+    builder_type: safer_ffi::Vec<u8>,
 }
 
 #[derive_ReprC]
@@ -33,6 +34,7 @@ pub struct CallResponse {
 pub mod internal {
     use camino::Utf8PathBuf;
     use chrono::{Local, Timelike};
+    use dexterous_developer_types::BuilderTypes;
     use once_cell::sync::OnceCell;
     use rmp_serde::encode::Error;
     use safer_ffi::ffi_export;
@@ -43,13 +45,16 @@ pub mod internal {
     use crate::{HotReloadInfo, UpdatedAsset};
 
     pub static HOT_RELOAD_INFO: OnceCell<HotReloadInfo> = OnceCell::new();
+    pub static BUILDER_TYPE: OnceCell<BuilderTypes> = OnceCell::new();
 
     #[ffi_export]
     fn dexterous_developer_instance_set_hot_reload_info(info: HotReloadInfo) {
         let value = Local::now();
         let value = value.nanosecond();
+        let builder_type: BuilderTypes = rmp_serde::from_slice(&info.builder_type).unwrap();
         let validation = (info.internal_validate_setup)(value);
         assert_eq!(value, validation, "Couldn't Validate Hot Reload Connection");
+        let _ = BUILDER_TYPE.set(builder_type);
         let _ = HOT_RELOAD_INFO.set(info);
     }
 
@@ -58,13 +63,14 @@ pub mod internal {
         use std::sync::{Arc, RwLock};
 
         use camino::Utf8PathBuf;
+        use dexterous_developer_types::BuilderTypes;
         use safer_ffi::ffi_export;
         use serde::de::DeserializeOwned;
         use tracing::error;
 
         use crate::{library_holder::LibraryHolder, UpdatedAsset};
 
-        use super::{HotReloadAccessError, HOT_RELOAD_INFO};
+        use super::{HotReloadAccessError, BUILDER_TYPE, HOT_RELOAD_INFO};
 
         static CURRENT_LIBRARY: RwLock<Vec<LibraryHolder>> = RwLock::new(vec![]);
         static UPDATE_CALLBACK: RwLock<Option<Arc<dyn Fn() + Send + Sync>>> = RwLock::new(None);
@@ -77,7 +83,8 @@ pub mod internal {
         fn load_internal_library(path: safer_ffi::String) {
             println!("Called Internal Library");
             let path = Utf8PathBuf::from(path.to_string());
-            let holder = match LibraryHolder::new(&path, false) {
+            let builder_type = BUILDER_TYPE.get_or_init(|| BuilderTypes::Simple);
+            let holder = match LibraryHolder::new(&path, false, *builder_type) {
                 Ok(holder) => holder,
                 Err(e) => {
                     eprintln!("Failed to load library {path} - {e}");
@@ -329,6 +336,7 @@ pub mod runner {
         pub internal_update: extern "C" fn() -> bool,
         pub internal_validate_setup: extern "C" fn(u32) -> u32,
         pub internal_send_output: extern "C" fn(safer_ffi::Vec<u8>),
+        pub builder_type: safer_ffi::Vec<u8>,
     }
 
     impl HotReloadInfoBuilder {
@@ -339,6 +347,7 @@ pub mod runner {
                 internal_update,
                 internal_validate_setup,
                 internal_send_output,
+                builder_type,
             } = self;
             HotReloadInfo {
                 internal_last_update_version,
@@ -346,6 +355,7 @@ pub mod runner {
                 internal_update,
                 internal_validate_setup,
                 internal_send_output,
+                builder_type,
             }
         }
     }

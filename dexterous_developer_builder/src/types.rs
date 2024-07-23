@@ -6,14 +6,23 @@ use std::sync::{
 use camino::{FromPathBufError, Utf8PathBuf};
 
 use dashmap::DashMap;
-use dexterous_developer_types::Target;
+use dexterous_developer_types::{BuilderTypes, Target};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+pub trait BuilderInitializer: 'static + Send + Sync {
+    type Inner: Builder;
+
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner>;
+}
+
 pub trait Builder: 'static + Send + Sync {
     fn target(&self) -> Target;
-    fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>;
+    fn builder_type(&self) -> BuilderTypes;
     fn outgoing_channel(
         &self,
     ) -> (
@@ -26,22 +35,9 @@ pub trait Builder: 'static + Send + Sync {
 }
 
 pub trait Watcher: 'static + Send + Sync {
-    fn watch_code_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-        subscriber: (
-            usize,
-            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-        ),
-    ) -> Result<(), WatcherError>;
-    fn watch_asset_directories(
-        &self,
-        directories: &[Utf8PathBuf],
-        subscriber: (
-            usize,
-            tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-        ),
-    ) -> Result<(), WatcherError>;
+    fn watch_code_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError>;
+    fn watch_asset_directories(&self, directories: &[Utf8PathBuf]) -> Result<(), WatcherError>;
+    fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages>;
 }
 
 #[derive(Error, Debug)]
@@ -62,7 +58,7 @@ pub enum WatcherError {
 
 #[derive(Debug, Clone)]
 pub enum BuilderIncomingMessages {
-    RequestBuild,
+    RequestBuild(Target),
     CodeChanged,
     AssetChanged(HashedFileRecord),
 }
@@ -80,6 +76,7 @@ pub struct CurrentBuildState {
     pub assets: DashMap<Utf8PathBuf, HashedFileRecord>,
     pub most_recent_completed_build: Arc<AtomicU32>,
     pub most_recent_started_build: Arc<AtomicU32>,
+    pub builder_type: BuilderTypes,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,17 +114,19 @@ pub enum BuildOutputMessages {
         root_library: String,
     },
     AssetUpdated(HashedFileRecord),
+    FailedBuild(String),
     KeepAlive,
 }
 
 impl CurrentBuildState {
-    pub fn new(root_library: Option<String>) -> Self {
+    pub fn new(root_library: Option<String>, builder_type: BuilderTypes) -> Self {
         Self {
             root_library: Arc::new(Mutex::new(root_library)),
             libraries: Default::default(),
             assets: Default::default(),
             most_recent_completed_build: Arc::new(AtomicU32::new(0)),
             most_recent_started_build: Arc::new(AtomicU32::new(0)),
+            builder_type,
         }
     }
 
@@ -154,6 +153,7 @@ impl CurrentBuildState {
                 let mut lock = self.root_library.lock().await;
                 let _ = lock.replace(root_library);
             }
+            BuildOutputMessages::FailedBuild(_) => {}
         }
         self
     }

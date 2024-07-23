@@ -34,10 +34,11 @@ pub enum PackageOrExample {
     Example(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum BuilderTypes {
-    #[default]
     Simple,
+    #[default]
+    Incremental,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -50,6 +51,8 @@ pub struct TargetBuildSettings {
     pub code_watch_folders: Vec<camino::Utf8PathBuf>,
     pub environment: HashMap<String, String>,
     pub builder: BuilderTypes,
+    pub additional_library_directories: Vec<Utf8PathBuf>,
+    pub apple_sdk_directory: Vec<Utf8PathBuf>,
 }
 
 #[repr(C)]
@@ -110,13 +113,7 @@ impl Target {
         match self {
             Target::Linux => "x86_64-unknown-linux-gnu",
             Target::LinuxArm => "aarch64-unknown-linux-gnu",
-            Target::Windows => {
-                if cfg!(windows) {
-                    "x86_64-pc-windows-msvc"
-                } else {
-                    "x86_64-pc-windows-gnu"
-                }
-            }
+            Target::Windows => "x86_64-pc-windows-gnu",
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
             Target::Android => "aarch64-linux-android",
@@ -124,7 +121,19 @@ impl Target {
         }
     }
 
-    pub fn dynamic_lib_extension(&self) -> &'static str {
+    pub const fn zig_linker_target(self) -> &'static str {
+        match self {
+            Target::Linux => "x86_64-linux-gnu",
+            Target::LinuxArm => "aarch64-linux-gnu",
+            Target::Windows => "x86_64-windows-gnu",
+            Target::Mac => "x86_64-macos",
+            Target::MacArm => "aarch64-macos",
+            Target::Android => "aarch64-android",
+            Target::IOS => "aarch64-ios",
+        }
+    }
+
+    pub const fn dynamic_lib_extension(&self) -> &'static str {
         match self {
             Target::Windows => "dll",
             Target::Mac => "dylib",
@@ -134,16 +143,20 @@ impl Target {
         }
     }
 
-    pub fn dynamic_lib_name(&self, name: &str) -> String {
-        let prefix = match self {
+    pub const fn dynamic_lib_prefix(&self) -> &'static str {
+        match self {
             Target::Windows => "",
             _ => "lib",
-        };
+        }
+    }
+
+    pub fn dynamic_lib_name(&self, name: &str) -> String {
+        let prefix = self.dynamic_lib_prefix();
         let extension = self.dynamic_lib_extension();
         format!("{prefix}{name}.{extension}")
     }
 
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         self.to_static()
     }
 }
@@ -206,6 +219,7 @@ pub enum HotReloadMessage {
         assets: Vec<(Utf8PathBuf, [u8; 32])>,
         most_recent_started_build: u32,
         most_recent_completed_build: u32,
+        builder_type: BuilderTypes,
     },
     UpdatedAssets(Utf8PathBuf, [u8; 32]),
     KeepAlive,

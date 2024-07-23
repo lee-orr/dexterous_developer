@@ -1,4 +1,5 @@
 use camino::Utf8PathBuf;
+use dexterous_developer_types::BuilderTypes;
 
 #[derive(Debug, Clone)]
 pub enum DylibRunnerMessage {
@@ -6,6 +7,7 @@ pub enum DylibRunnerMessage {
     LoadRootLib {
         build_id: u32,
         local_path: Utf8PathBuf,
+        builder_type: BuilderTypes,
     },
     AssetUpdated {
         local_path: Utf8PathBuf,
