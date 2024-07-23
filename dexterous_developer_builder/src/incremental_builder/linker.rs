@@ -38,17 +38,7 @@ pub async fn linker() -> anyhow::Result<()> {
             .unwrap_or_default()
     };
 
-    let mut dirs = vec![];
-
-    for dir in lib_directories.iter().rev() {
-        dirs.push("-L".to_string());
-        dirs.push(dir.to_string());
-    }
-
-    let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
-    
-
-    let args = adjust_arguments(&target, &args).await?;
+    let args = adjust_arguments(&target, &args, &lib_directories).await?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
@@ -223,7 +213,7 @@ async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Optio
     Ok(Some(path))
 }
 
-async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<String>> {
+async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8PathBuf]) -> anyhow::Result<Vec<String>> {
     let path =  if let Some(file) = args.first() {
         println!("READY FOR LINKER");
         if file.starts_with("@") && file.ends_with("linker-arguments") {
@@ -242,7 +232,7 @@ async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<S
         None
     };
 
-    let mut args = if let Some(path) = &path {
+    let args = if let Some(path) = &path {
         println!("READY TO READ");
         let file = tokio::fs::read(&path).await?;
         let file = if target.contains("msvc") {
@@ -277,12 +267,25 @@ async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<S
     };
 
 
+    let mut dirs = vec![];
+
+    for dir in lib_directories.iter().rev() {
+        dirs.push("-L".to_string());
+        dirs.push(dir.to_string());
+    }
+
+    let mut args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+    
+
+
     let has_target = args.iter().find(|v| v.contains("-target")).is_some();
 
     if !has_target {
         args.push("-target".to_string());
         args.push(target.to_string());
     }
+
+
 
     if let Some(path) = &path {
         tokio::fs::remove_file(&path).await?;
