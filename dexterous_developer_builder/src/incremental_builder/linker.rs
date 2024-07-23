@@ -8,13 +8,12 @@ use super::builder::IncrementalRunParams;
 use camino::Utf8PathBuf;
 use cargo_zigbuild::Zig;
 use futures_util::future::join_all;
+use tokio::io::AsyncWriteExt;
 
 pub async fn linker() -> anyhow::Result<()> {
     let mut args = std::env::args();
     args.next();
     let args = args.collect::<Vec<_>>();
-
-    panic!("ARGS: {}", args.join(" "));
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
@@ -22,14 +21,7 @@ pub async fn linker() -> anyhow::Result<()> {
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
-    let mut args = filter_arguments(&args);
-
-    let has_target = args.iter().find(|v| v.contains("-target")).is_some();
-
-    if !has_target {
-        args.push("-target".to_string());
-        args.push(target.clone());
-    }
+    let args = adjust_arguments(&target, &args).await?;
 
     let output_name = {
         let mut next_is_output = false;
@@ -228,12 +220,50 @@ async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Optio
     Ok(Some(path))
 }
 
-fn filter_arguments(args: &[String]) -> Vec<String> {
-    args.iter()
-        .filter(|v| {
-            !v.contains("dexterous_developer_incremental_linker")
-                && !v.contains("incremental_c_compiler")
-        })
-        .cloned()
-        .collect::<Vec<_>>()
+async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<String>> {
+    let path =  if let Some(file) = args.first() {
+        if args.len() == 1 && file.starts_with("@") && file.ends_with("linker-arguments") {
+            let path = file.trim_start_matches("@");
+            let path = Utf8PathBuf::from(path);
+            if path.exists() {
+                Some(path)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }  else {
+        None
+    };
+
+    let mut args = if let Some(path) = &path {
+        let file = tokio::fs::read_to_string(&path).await?;
+        file.lines().map(|v| v.to_owned()).collect()
+    } else {
+        args.iter()
+            .filter(|v| {
+                !v.contains("dexterous_developer_incremental_linker")
+                    && !v.contains("incremental_c_compiler")
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+
+    let has_target = args.iter().find(|v| v.contains("-target")).is_some();
+
+    if !has_target {
+        args.push("-target".to_string());
+        args.push(target.to_string());
+    }
+
+    if let Some(path) = &path {
+        tokio::fs::remove_file(&path).await?;
+        let mut file = tokio::fs::File::create(&path).await?;
+        file.write_all(args.join("\n").as_bytes()).await?;
+        Ok(vec![format!("@{}", Utf8PathBuf::from_path_buf(dunce::canonicalize(&path)?).map_err(|v| anyhow::anyhow!("{v:?}"))?)])
+    } else {
+        Ok(args)
+    }
 }
