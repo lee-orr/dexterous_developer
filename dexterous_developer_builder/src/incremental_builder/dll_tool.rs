@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
 use cargo_zigbuild::Zig;
 
-pub async fn zig() -> anyhow::Result<()> {
+pub async fn dll_tool() -> anyhow::Result<()> {
     let mut args = std::env::args().collect::<Vec<_>>();
     
     if let Some(first) = args.first() {
