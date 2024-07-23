@@ -290,13 +290,7 @@ async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8
     if let Some(path) = &path {
         tokio::fs::remove_file(&path).await?;
         let mut file = tokio::fs::File::create(&path).await?;
-        if target.contains("msvc") {
-           let content = args.join("\n");
-           let out = [0xFEFFu16].into_iter().chain(content.encode_utf16()).flat_map(|v| [v as u8, (v >> 8) as u8]).collect::<Vec<u8>>();
-           file.write_all(&out).await?;
-        } else {
-            file.write_all(args.join("\n").as_bytes()).await?;
-        }
+        file.write_all(args.join("\n").as_bytes()).await?;
         Ok(vec![format!("@{}", Utf8PathBuf::from_path_buf(dunce::canonicalize(&path)?).map_err(|v| anyhow::anyhow!("{v:?}"))?)])
     } else {
         Ok(args)
