@@ -10,7 +10,11 @@ use cargo_zigbuild::Zig;
 use futures_util::future::join_all;
 
 pub async fn linker() -> anyhow::Result<()> {
-    let args = std::env::args().collect::<Vec<_>>();
+    let mut args = std::env::args();
+    args.next();
+    let args = args.collect::<Vec<_>>();
+
+    panic!("ARGS: {}", args.join(" "));
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
