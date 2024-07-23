@@ -222,9 +222,11 @@ async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Optio
 
 async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<String>> {
     let path =  if let Some(file) = args.first() {
+        println!("READY FOR LINKER");
         if args.len() == 1 && file.starts_with("@") && file.ends_with("linker-arguments") {
             let path = file.trim_start_matches("@");
             let path = Utf8PathBuf::from(path);
+            println!("Have the file path");
             if path.exists() {
                 Some(path)
             } else {
@@ -238,7 +240,9 @@ async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<S
     };
 
     let mut args = if let Some(path) = &path {
+        println!("READY TO READ");
         let file = tokio::fs::read_to_string(&path).await?;
+        panic!("DONE");
         file.lines().map(|v| v.to_owned()).collect()
     } else {
         args.iter()
