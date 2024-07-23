@@ -49,7 +49,7 @@ pub async fn linker() -> anyhow::Result<()> {
     
 
     let args = adjust_arguments(&target, &args).await?;
-    
+
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
         let zig = Zig::Cc { args: args.clone() };
@@ -226,7 +226,7 @@ async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Optio
 async fn adjust_arguments(target: &str, args: &[String]) -> anyhow::Result<Vec<String>> {
     let path =  if let Some(file) = args.first() {
         println!("READY FOR LINKER");
-        if args.len() == 1 && file.starts_with("@") && file.ends_with("linker-arguments") {
+        if file.starts_with("@") && file.ends_with("linker-arguments") {
             let path = file.trim_start_matches("@");
             let path = Utf8PathBuf::from(path);
             println!("Have the file path");
