@@ -18,4 +18,4 @@ dexterous_developer_builder = { version = "0.3.0", path = "../dexterous_develope
 dexterous_developer_types = { version = "0.3.0", path = "../dexterous_developer_types" }
 camino = "1"
 tokio = { version = "1", features = ["full"]}
-test-temp-dir = { version = "0.2 "}
+anyhow = "1"

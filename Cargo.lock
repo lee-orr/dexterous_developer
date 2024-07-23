@@ -2199,8 +2199,10 @@ dependencies = [
  "blake3",
  "bollard",
  "camino",
+ "cargo-options",
  "cargo-zigbuild",
  "cargo_metadata",
+ "clap",
  "crossbeam",
  "dashmap",
  "debounce",
@@ -2319,6 +2321,7 @@ dependencies = [
 name = "dexterous_developer_manager"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "axum",
  "blake3",
  "camino",
@@ -2342,12 +2345,12 @@ dependencies = [
 name = "dexterous_developer_test_utils"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "camino",
  "dexterous_developer_builder",
  "dexterous_developer_dylib_runner",
  "dexterous_developer_manager",
  "dexterous_developer_types",
- "test-temp-dir",
  "tokio",
 ]
 
@@ -2766,6 +2769,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eac8f7d7865dcb88bd4373ab671c8cf4508703796caa2b1985a9ca867b3fcb78"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -2829,9 +2833,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d6401deb83407ab3da39eba7e33987a73c3df0c82b4bb5813ee871c19c41d48"
 dependencies = [
  "futures-core",
+ "futures-io",
  "futures-macro",
  "futures-sink",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
  "slab",
@@ -4825,6 +4831,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",

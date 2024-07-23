@@ -2,38 +2,26 @@
 //!
 //! Heavily derived from Jon Kelley's work - <https://github.com/jkelleyrtp/ipbp/blob/main/packages/patch-linker/src/main.rs>
 
-use std::{collections::HashSet, time::SystemTime};
+use std::time::SystemTime;
 
-use anyhow::bail;
-use camino::{Utf8Path, Utf8PathBuf};
 use super::builder::IncrementalRunParams;
+use anyhow::{bail, Context};
+use camino::Utf8PathBuf;
+use cargo_zigbuild::Zig;
 use futures_util::future::join_all;
+use tokio::io::AsyncWriteExt;
 
 pub async fn linker() -> anyhow::Result<()> {
-    let args = std::env::args().collect::<Vec<_>>();
+    let mut args = std::env::args();
+    args.next();
+    let args = args.collect::<Vec<_>>();
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
-    let framework_directories = std::env::var("DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES")?;
-    let framework_directories: Vec<Utf8PathBuf> = serde_json::from_str(&framework_directories)?;
-    let zig_path: Utf8PathBuf = Utf8PathBuf::from(std::env::var("ZIG_PATH")?);
 
-
-    let mut args = filter_arguments(&target, &args);
-
-    join_all(args.iter().filter_map(|v| {
-        if v.starts_with("@") && v.ends_with("linker-arguments") {
-            let path = Utf8PathBuf::from(v.trim_start_matches("@"));
-            Some(adjust_added_files(&target, path))
-        } else {
-            None
-        }
-    })).await.into_iter().collect::<anyhow::Result<_>>()?;
-
-    add_missing_arguments(&target, &mut args, &zig_path).await?;
 
     let output_name = {
         let mut next_is_output = false;
@@ -50,36 +38,17 @@ pub async fn linker() -> anyhow::Result<()> {
             .unwrap_or_default()
     };
 
-
-    let mut dirs = vec![];
-
-    for dir in lib_directories.iter().rev() {
-        dirs.push("-L".to_string());
-        dirs.push(dir.to_string());
-    }
-
-    for dir in framework_directories.iter() {
-        dirs.push("-F".to_string());
-        dirs.push(dir.to_string());
-    }
-
-    let args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+    let args = adjust_arguments(&target, &args, &lib_directories).await?;
 
     if !output_name.contains(&package_name) {
-        eprintln!("Linking Non-Main File - {output_name}");
-        let output = tokio::process::Command::new(&zig_path)
-            .arg("cc")
-            .arg("-target")
-            .arg(target)
-            .args(&args)
-            .spawn()?
-            .wait_with_output()
-            .await?;
+        eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
+        let zig = Zig::Cc { args: args.clone() };
 
-        if !output.status.success() {
-            eprintln!("Failed Linking Non Main - {}", args.join(" "));
+        if let Err(e) = zig.execute() {
+            eprintln!("Failed Linking Non Main - {e}\n{}", args.join(" "));
+            std::process::exit(1);
         }
-        std::process::exit(output.status.code().unwrap_or_default());
+        std::process::exit(0);
     }
 
     let mut next_is_output = false;
@@ -92,7 +61,7 @@ pub async fn linker() -> anyhow::Result<()> {
                 next_is_output = true;
                 false
             } else if next_is_output {
-                next_is_output = true;
+                next_is_output = false;
                 false
             } else {
                 true
@@ -104,100 +73,73 @@ pub async fn linker() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => {
-            basic_link(
-                zig_path,
-                args,
-                output_file,
-                lib_directories,
-                framework_directories,
-                target,
-            )
-            .await
-        }
+        IncrementalRunParams::InitialRun => basic_link(args, output_file).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             id,
-        } => {
-            patch_link(
-                zig_path,
-                args,
-                timestamp,
-                previous_versions,
-                lib_directories,
-                output_file,
-                framework_directories,
-                target,
-                id,
-            )
-            .await
-        }
+        } => patch_link(args, timestamp, previous_versions, output_file, target, id).await,
     }
 }
 
-async fn basic_link(
-    zig_path: Utf8PathBuf,
-    args: Vec<String>,
-    output_file: String,
-    lib_directories: Vec<Utf8PathBuf>,
-    framework_directories: Vec<Utf8PathBuf>,
-    target: String,
-) -> anyhow::Result<()> {
+async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
     }
 
-    let output = tokio::process::Command::new(&zig_path)
-        .arg("cc")
-        .arg("-target")
-        .arg(&target)
-        .arg("-fPIC")
-        .args(&args)
-        .arg("-o")
-        .arg(&path)
-        .arg("-shared")
-        .arg("-rdynamic")
-        .spawn()?
-        .wait_with_output()
-        .await?;
-    if !output.status.success() {
-        eprintln!("Failed Link Parameters - initial:\nzig cc -target {target} -fPIC {} -o {path} -shared -rdynamic", args.join(" "));
+    let args = vec![
+        args.iter().map(|v| v.as_str()).collect(),
+        vec!["-o", path.as_str(), "-shared", "-rdynamic"],
+    ]
+    .into_iter()
+    .flatten()
+    .map(|v| v.to_string())
+    .collect::<Vec<_>>();
+
+    eprintln!("Initial Build");
+
+    let zig = Zig::Cc { args: args.clone() };
+
+    if let Err(e) = zig.execute() {
+        eprintln!("Failed Linking - {e}\n{}", args.join(" "));
+        std::process::exit(1);
     }
-    std::process::exit(output.status.code().unwrap_or_default());
+    std::process::exit(0);
 }
 
 async fn patch_link(
-    zig_path: Utf8PathBuf,
     args: Vec<String>,
     timestamp: SystemTime,
     previous_versions: Vec<String>,
-    lib_directories: Vec<Utf8PathBuf>,
     output_file: String,
-    framework_directories: Vec<Utf8PathBuf>,
     target: String,
     id: u32,
 ) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
     let mut object_files: Vec<String> = vec![];
-    let mut next_is_arch = false;
     let mut arch = None;
     let mut include_args: Vec<String> = vec![];
 
-    for arg in args {
-        if next_is_arch {
-            arch = Some(arg);
-            next_is_arch = false;
-        } else if arg == "-arch" {
-            next_is_arch = true;
-        } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
-            object_files.push(arg);
+    let mut arg_iter = args.iter();
+
+    while let Some(arg) = arg_iter.next() {
+        if *arg == "-arch" {
+            arch = arg_iter.next().cloned();
+        } else if arg == "-L" {
+            if let Some(arg) = arg_iter.next() {
+                include_args.push("-L".to_string());
+                include_args.push(arg.clone());
+            }
         } else if arg.contains('=') || arg.starts_with("-l") {
-            include_args.push(arg);
-        } else if arg.contains("rustup/toolchains") {
-            include_args.push("-L".to_string());
-            include_args.push(arg);
+            include_args.push(arg.clone());
+        } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
+            object_files.push(arg.clone());
+        } else if arg == "-target" {
+            if let Some(arg) = arg_iter.next() {
+                include_args.push("-target".to_string());
+                include_args.push(arg.clone());
+            }
         }
     }
 
@@ -221,9 +163,7 @@ async fn patch_link(
         std::process::exit(0);
     }
 
-    let mut cc = tokio::process::Command::new(&zig_path);
-
-    let mut args = vec!["cc".to_string(), "-target".to_string(), target.clone()];
+    let mut args = include_args;
 
     if target.contains("mac") {
         args.push("-undefined".to_string());
@@ -257,93 +197,102 @@ async fn patch_link(
         args.push(file.clone());
     }
 
-    let output = cc.args(&args).spawn()?.wait_with_output().await?;
-    if !output.status.success() {
-        eprintln!("Failed Link Parameters {id}:\nzig {}", args.join(" "));
+    let zig = Zig::Cc { args: args.clone() };
+
+    if let Err(output) = zig.execute() {
+        eprintln!(
+            "Failed Link Parameters {id} - {output}:\n {}",
+            args.join(" ")
+        );
+        std::process::exit(1);
     }
-    std::process::exit(output.status.code().unwrap_or_default());
+    std::process::exit(0);
 }
 
 async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Option<String>> {
     Ok(Some(path))
 }
 
-async fn adjust_added_files(target: &str, filename: Utf8PathBuf) -> anyhow::Result<()> {
-    let file = tokio::fs::read_to_string(&filename).await?;
-    let args = file.split("\n").map(|v| v.to_string()).collect::<Vec<_>>();
-    let args = filter_arguments(target, &args);
-    tokio::fs::remove_file(&filename).await?;
-    tokio::fs::write(&filename, args.join("\n")).await?;
-    Ok(())
-}
-
-fn filter_arguments(target: &str, args: &[String]) -> Vec<String> {
-    let windows = target.contains("windows");
-    let arm = target.contains("arm");
-    let aarch = target.contains("aarch64");
-    let mac = target.contains("macos");
-    
-    args
-        .into_iter()
-        .filter(|v| {
-            !v.contains("dexterous_developer_incremental_linker")
-                && !v.contains("incremental_c_compiler")
-                && UNSUPPORTED_ZIG_ARGS.iter().find(|arg| v.contains(**arg)).is_none()
-        })
-        .filter_map(|v| {if v == "-lgcc_s" {
-                Some("-lunwind".to_owned())
-            } else if (windows || arm) && v.contains("libcompiler_builtins-") {
-                None
-            }  else if windows {
-                if v.contains("-Bdynamic") {
-                    Some("-Wl,-search_paths_first".to_owned())
-                } else if v == "-lgcc_eh"  {
-                    Some("-lc++".to_string())
-                } else if v == "-lgcc" {
-                    None
-                } else {
-                    Some(v.clone())
-                }
+async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8PathBuf]) -> anyhow::Result<Vec<String>> {
+    let path =  if let Some(file) = args.first() {
+        println!("READY FOR LINKER");
+        if file.starts_with("@") && file.ends_with("linker-arguments") {
+            let path = file.trim_start_matches("@");
+            let path = Utf8PathBuf::from(path);
+            println!("Have the file path");
+            if path.exists() {
+                Some(path)
             } else {
-                Some(v.clone())
+                None
             }
-        })
-        .collect::<Vec<_>>()
-}
-
-async fn add_missing_arguments(target: &str, args: &mut Vec<String>, zig_path: &Utf8Path) -> anyhow::Result<()> {
-
-    let Some(zig_dir) = zig_path.parent() else {
-        bail!("Can't determine zig directory");
+        } else {
+            None
+        }
+    }  else {
+        None
     };
 
-    if target.contains("windows") {
-        let lib_common = zig_dir.join("lib").join("libc").join("mingw").join("lib-common");
+    let args = if let Some(path) = &path {
+        println!("READY TO READ");
+        let file = tokio::fs::read(&path).await?;
+        let file = if target.contains("msvc") {
+            if file[0..2] != [255, 254] {
+                bail!(
+                    "linker response file `{}` didn't start with a utf16 BOM",
+                    &path
+                );
+            }
+            let content_utf16: Vec<u16> = file[2..]
+                .chunks_exact(2)
+                .map(|a| u16::from_ne_bytes([a[0], a[1]]))
+                .collect();
+            String::from_utf16(&content_utf16).with_context(|| {
+                format!(
+                    "linker response file `{}` didn't contain valid utf16 content",
+                    &path
+                )
+            })?
+        } else {
+            String::from_utf8(file)?
+        };
+        file.lines().map(|v| v.to_owned()).collect()
+    } else {
+        args.iter()
+            .filter(|v| {
+                !v.contains("dexterous_developer_incremental_linker")
+                    && !v.contains("incremental_c_compiler")
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
 
-        let synchronization_def = zig_dir.join("synchronization.def");
-        if !synchronization_def.is_file() {
-            let api_ms_win_core_synch_l1_2_0_def =
-            zig_dir.join("api-ms-win-core-synch-l1-2-0.def");
-            // Ignore error
-            tokio::fs::copy(api_ms_win_core_synch_l1_2_0_def, synchronization_def).await.ok();
-        }
 
-        args.push("-L".to_string());
-        args.push(lib_common.to_string());
+    let mut dirs = vec![];
+
+    for dir in lib_directories.iter().rev() {
+        dirs.push("-L".to_string());
+        dirs.push(dir.to_string());
     }
 
-    Ok(())
-}
+    let mut args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+    
 
-const UNSUPPORTED_ZIG_ARGS : [&'static str;10] = [
-    "--target",
-    "-lwindows",
-    "-l:libpthread.a",
-    "--disable-auto-image-base",
-    "--dynamicbase",
-    "--large-address-aware",
-    "list.def",
-    "--no-undefined-version",
-    "-dylib",
-    "-exported_symbols_list"
-];
+
+    let has_target = args.iter().find(|v| v.contains("-target")).is_some();
+
+    if !has_target {
+        args.push("-target".to_string());
+        args.push(target.to_string());
+    }
+
+
+
+    if let Some(path) = &path {
+        tokio::fs::remove_file(&path).await?;
+        let mut file = tokio::fs::File::create(&path).await?;
+        file.write_all(args.join("\n").as_bytes()).await?;
+        Ok(vec![format!("@{}", Utf8PathBuf::from_path_buf(dunce::canonicalize(&path)?).map_err(|v| anyhow::anyhow!("{v:?}"))?)])
+    } else {
+        Ok(args)
+    }
+}

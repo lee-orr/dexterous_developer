@@ -14,3 +14,5 @@ book
 /reload_libs
 
 /.devcontainer/.devpod-internal
+
+.intentionally-empty-file.o

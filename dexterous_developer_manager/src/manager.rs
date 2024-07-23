@@ -1,26 +1,26 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use dashmap::DashMap;
 use dexterous_developer_builder::types::{
-    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-    CurrentBuildState, Watcher,
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, CurrentBuildState, Watcher,
 };
 use dexterous_developer_types::Target;
 use std::{collections::HashSet, sync::Arc};
 use thiserror::Error;
 use tokio::{
-    sync::{broadcast, mpsc},
+    sync::broadcast::{self},
     task::JoinHandle,
 };
 use tracing::{error, info, trace};
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 
 pub struct Manager {
+    watcher_channel: broadcast::Sender<BuilderIncomingMessages>,
     targets: Arc<
         DashMap<
             Target,
             (
-                mpsc::UnboundedSender<BuilderIncomingMessages>,
                 broadcast::Receiver<BuilderOutgoingMessages>,
                 broadcast::Receiver<BuildOutputMessages>,
                 Arc<CurrentBuildState>,
@@ -32,6 +32,16 @@ pub struct Manager {
     watcher: Option<Arc<dyn Watcher>>,
 }
 
+impl Default for Manager {
+    fn default() -> Self {
+        Self {
+            watcher_channel: broadcast::channel(100).0,
+            targets: Default::default(),
+            target_count: Default::default(),
+            watcher: Default::default(),
+        }
+    }
+}
 #[derive(Error, Debug)]
 pub enum ManagerError {
     #[error("Can't build  target {0}")]
@@ -46,59 +56,65 @@ pub enum ManagerError {
 
 impl Manager {
     pub fn new(watcher: Arc<dyn Watcher>) -> Self {
+        let watcher_channel = watcher.get_channel();
+
         Manager {
+            watcher_channel,
             targets: Default::default(),
             watcher: Some(watcher),
             target_count: 0,
         }
     }
 
-    pub async fn add_builders(mut self, builders: &[Arc<dyn Builder>]) -> Self {
-        for builder in builders.iter() {
+    pub fn get_watcher_channel(&self) -> broadcast::Sender<BuilderIncomingMessages> {
+        self.watcher_channel.clone()
+    }
+
+    pub fn add_builder<Initializer: BuilderInitializer>(
+        mut self,
+        initializer: Initializer,
+    ) -> anyhow::Result<Self> {
+        let builder = initializer.initialize_builder(self.watcher_channel.clone())?;
+        let target = builder.target();
+        self.targets.entry(target).or_insert_with(|| {
             self.target_count += 1;
-            let id = self.target_count;
-            let target = builder.target();
-            self.targets.entry(target).or_insert_with(|| {
-                let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name(), builder.builder_type()));
-                let (outgoing, output) = builder.outgoing_channel();
+            let current_state = Arc::new(CurrentBuildState::new(builder.root_lib_name(), builder.builder_type()));
+            let (outgoing, output) = builder.outgoing_channel();
 
-                let handle = {
-                    let mut outgoing = outgoing.resubscribe();
-                    let mut output = output.resubscribe();
-                    let current_state = current_state.clone();
+            let handle = {
+                let mut outgoing = outgoing.resubscribe();
+                let mut output = output.resubscribe();
+                let current_state = current_state.clone();
 
-                    tokio::spawn(async move {
-                        loop {
-                            tokio::select! {
-                                Ok(msg) = outgoing.recv() => {
-                                    match msg {
-                                        BuilderOutgoingMessages::Waiting => trace!("Builder for {target:?} is waiting"),
-                                        BuilderOutgoingMessages::BuildStarted => trace!("Started building for {target:?}"),
-                                    }
+                tokio::spawn(async move {
+                    loop {
+                        tokio::select! {
+                            Ok(msg) = outgoing.recv() => {
+                                match msg {
+                                    BuilderOutgoingMessages::Waiting => trace!("Builder for {target:?} is waiting"),
+                                    BuilderOutgoingMessages::BuildStarted => trace!("Started building for {target:?}"),
                                 }
-                                Ok(msg) = output.recv() => {
-                                    current_state.update(msg).await;
-                                }
-                                else => { break }
                             }
+                            Ok(msg) = output.recv() => {
+                                current_state.update(msg).await;
+                            }
+                            else => { break }
                         }
-                    })
-                };
+                    }
+                })
+            };
 
-                let incoming = builder.incoming_channel();
+            if let Some(watcher) = &self.watcher {
+                let _ = watcher.watch_code_directories(&builder.get_code_subscriptions());
+                let _ = watcher.watch_asset_directories(&builder.get_asset_subscriptions());
+            }
 
-                if let Some(watcher) = &self.watcher {
-                    let _ = watcher.watch_code_directories(&builder.get_code_subscriptions(), (id, incoming.clone()));
-                    let _ = watcher.watch_asset_directories(&builder.get_asset_subscriptions(), (id, incoming.clone()));
-                }
+            (outgoing, output, current_state, handle)
+        });
 
-                (incoming, outgoing, output, current_state, handle)
-            });
-            
-        }
         let targets = self.targets.iter().map(|r| *r.key()).collect::<Vec<_>>();
         info!("Able to build {targets:?}");
-        self
+        Ok(self)
     }
 
     pub fn targets(&self) -> HashSet<Target> {
@@ -114,11 +130,13 @@ impl Manager {
             .get(target)
             .ok_or(ManagerError::MissingTarget(*target))?;
 
-        let (sender, _receiver, output_rx, current_state, _) = target_ref.value();
+        let (_, output_rx, current_state, _) = target_ref.value();
 
         let response = (current_state.as_ref().clone(), output_rx.resubscribe());
 
-        let _ = sender.send(BuilderIncomingMessages::RequestBuild);
+        let _ = self
+            .watcher_channel
+            .send(BuilderIncomingMessages::RequestBuild(*target));
         Ok(response)
     }
 
@@ -132,7 +150,7 @@ impl Manager {
             .get(target)
             .ok_or(ManagerError::MissingTarget(*target))?;
 
-        let current_state = &target_ref.3;
+        let current_state = &target_ref.2;
 
         let file = current_state
             .libraries
@@ -155,15 +173,24 @@ mod tests {
         Builder, BuilderIncomingMessages, BuilderOutgoingMessages, HashedFileRecord, WatcherError,
     };
 
+    struct TestBuilderInitializer;
+
+    impl BuilderInitializer for TestBuilderInitializer {
+        type Inner = TestBuilder;
+
+        fn initialize_builder(
+            self,
+            _: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> anyhow::Result<Self::Inner> {
+            Ok(TestBuilder)
+        }
+    }
+
     struct TestBuilder;
 
     impl Builder for TestBuilder {
         fn target(&self) -> Target {
             Target::Android
-        }
-
-        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
-            mpsc::unbounded_channel().0
         }
 
         fn outgoing_channel(
@@ -192,17 +219,25 @@ mod tests {
         }
     }
 
+    struct TestBuilderInitializer2;
+
+    impl BuilderInitializer for TestBuilderInitializer2 {
+        type Inner = TestBuilder2;
+
+        fn initialize_builder(
+            self,
+            _: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> anyhow::Result<Self::Inner> {
+            Ok(TestBuilder2)
+        }
+    }
+
     struct TestBuilder2;
 
     impl Builder for TestBuilder2 {
         fn target(&self) -> Target {
             Target::IOS
         }
-
-        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
-            mpsc::unbounded_channel().0
-        }
-
         fn outgoing_channel(
             &self,
         ) -> (
@@ -232,8 +267,10 @@ mod tests {
     #[tokio::test]
     async fn when_provided_with_builders_can_return_their_targets() {
         let manager = Manager::default()
-            .add_builders(&[Arc::new(TestBuilder), Arc::new(TestBuilder2)])
-            .await;
+            .add_builder(TestBuilderInitializer)
+            .expect("Couldn't initialize builder")
+            .add_builder(TestBuilderInitializer2)
+            .expect("Couldn't Initialize Second Builder");
 
         let targets = manager.targets();
 
@@ -245,8 +282,8 @@ mod tests {
     #[tokio::test]
     async fn requesting_a_missing_target_returns_an_error() {
         let manager = Manager::default()
-            .add_builders(&[Arc::new(TestBuilder)])
-            .await;
+            .add_builder(TestBuilderInitializer)
+            .expect("Couldn't initialize builder");
 
         let err = manager
             .watch_target(&Target::IOS)
@@ -256,9 +293,29 @@ mod tests {
         assert!(matches!(err, ManagerError::MissingTarget(Target::IOS)));
     }
 
+    struct TestChanneledBuilderInitializer {
+        target: Target,
+    }
+
+    impl TestChanneledBuilderInitializer {
+        fn new(target: Target) -> Self {
+            Self { target }
+        }
+    }
+
+    impl BuilderInitializer for TestChanneledBuilderInitializer {
+        type Inner = TestChanneledBuilder;
+
+        fn initialize_builder(
+            self,
+            channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> Result<TestChanneledBuilder, anyhow::Error> {
+            Ok(Self::Inner::new(self.target, channel))
+        }
+    }
+
     struct TestChanneledBuilder {
         target: Target,
-        incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
         outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
         output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
         #[allow(dead_code)]
@@ -266,8 +323,11 @@ mod tests {
     }
 
     impl TestChanneledBuilder {
-        fn new(target: Target) -> Self {
-            let (incoming, mut incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+        fn new(
+            target: Target,
+            incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+        ) -> Self {
+            let mut incoming_rx = incoming.subscribe();
             let (outgoing_tx, _) = tokio::sync::broadcast::channel(10);
             let (output_tx, _) = tokio::sync::broadcast::channel(10);
             let _my_target = target;
@@ -276,8 +336,11 @@ mod tests {
                 let outgoing_tx = outgoing_tx.clone();
                 let output_tx = output_tx.clone();
                 tokio::spawn(async move {
-                    while let Some(recv) = incoming_rx.recv().await {
-                        if let BuilderIncomingMessages::RequestBuild = recv {
+                    while let Ok(recv) = incoming_rx.recv().await {
+                        if let BuilderIncomingMessages::RequestBuild(req) = recv {
+                            if req != target {
+                                continue;
+                            }
                             if outgoing_tx
                                 .send(BuilderOutgoingMessages::BuildStarted)
                                 .is_err()
@@ -326,7 +389,6 @@ mod tests {
 
             Self {
                 target,
-                incoming,
                 outgoing: outgoing_tx,
                 output: output_tx,
                 handle,
@@ -337,10 +399,6 @@ mod tests {
     impl Builder for TestChanneledBuilder {
         fn target(&self) -> Target {
             self.target
-        }
-
-        fn incoming_channel(&self) -> tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages> {
-            self.incoming.clone()
         }
 
         fn outgoing_channel(
@@ -369,136 +427,47 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn watching_a_target_returns_a_reciever_for_the_first_matching_builder() {
-        let builder_1 = Arc::new(TestChanneledBuilder::new(Target::Android));
-        let builder_2 = Arc::new(TestChanneledBuilder::new(Target::Android));
-
-        let channel = builder_1.incoming_channel();
-
-        let manager = Manager::default()
-            .add_builders(&[builder_1, builder_2])
-            .await;
-
-        let hash = {
-            let (current_state, mut rx) = manager
-                .watch_target(&Target::Android)
-                .await
-                .expect("Failed to watch target");
-
-            assert_eq!(
-                {
-                    let lock = current_state.root_library.lock().await;
-                    lock.as_ref().unwrap().clone()
-                },
-                Utf8PathBuf::from("root_lib")
-            );
-            assert!(current_state
-                .libraries
-                .get(&Utf8PathBuf::from("root_lib_path"))
-                .is_none());
-
-            let _ = channel.send(BuilderIncomingMessages::RequestBuild);
-
-            let message = rx.recv().await.unwrap();
-            match message {
-                BuildOutputMessages::EndedBuild { libraries, .. } => {
-                    let Some(HashedFileRecord {
-                        relative_path,
-                        hash,
-                        ..
-                    }) = libraries.first()
-                    else {
-                        panic!("No Updated Libraries");
-                    };
-                    assert_eq!(relative_path.to_string(), "root_lib_path");
-                    *hash
-                }
-                _ => panic!("Message is wrong type"),
-            }
-        };
-        {
-            let (current_state, _rx) = manager
-                .watch_target(&Target::Android)
-                .await
-                .expect("Failed to watch target");
-
-            assert_eq!(
-                {
-                    let lock = current_state.root_library.lock().await;
-                    lock.as_ref().unwrap().clone()
-                },
-                Utf8PathBuf::from("root_lib")
-            );
-
-            assert_eq!(
-                current_state
-                    .libraries
-                    .get(&Utf8PathBuf::from("root_lib_path"))
-                    .unwrap()
-                    .hash,
-                hash
-            );
-        }
-    }
-
     struct TestWatcher {
-        subscribers:
-            DashMap<Utf8PathBuf, tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>>,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     }
 
     impl TestWatcher {
         fn new() -> Self {
             TestWatcher {
-                subscribers: Default::default(),
+                channel: broadcast::channel(100).0,
             }
         }
 
-        async fn update(&self, directory: Utf8PathBuf) {
-            if let Some(sub) = self.subscribers.get(&directory) {
-                let _ = sub.send(BuilderIncomingMessages::CodeChanged);
-            }
+        async fn update(&self) {
+            let _ = self.channel.send(BuilderIncomingMessages::CodeChanged);
         }
     }
 
     impl Watcher for TestWatcher {
-        fn watch_code_directories(
-            &self,
-            directories: &[Utf8PathBuf],
-            (_, subscriber): (
-                usize,
-                tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-            ),
-        ) -> Result<(), WatcherError> {
-            for directory in directories.iter() {
-                self.subscribers
-                    .insert(directory.clone(), subscriber.clone());
-            }
+        fn watch_code_directories(&self, _directories: &[Utf8PathBuf]) -> Result<(), WatcherError> {
             Ok(())
         }
 
-        fn watch_asset_directories(
-            &self,
-            _directory: &[Utf8PathBuf],
-            (_, _subscriber): (
-                usize,
-                tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
-            ),
-        ) -> Result<(), WatcherError> {
+        fn watch_asset_directories(&self, _directory: &[Utf8PathBuf]) -> Result<(), WatcherError> {
             Ok(())
+        }
+
+        fn get_channel(&self) -> tokio::sync::broadcast::Sender<BuilderIncomingMessages> {
+            self.channel.clone()
         }
     }
 
     #[tokio::test]
     async fn given_a_watcher_subscribes_builders_correctly() {
-        let builder_1 = Arc::new(TestChanneledBuilder::new(Target::Android));
+        let builder_1 = TestChanneledBuilderInitializer::new(Target::Android);
 
-        let channel = builder_1.incoming_channel();
         let watcher = Arc::new(TestWatcher::new());
 
+        let channel = watcher.channel.clone();
+
         let manager = Manager::new(watcher.clone())
-            .add_builders(&[builder_1])
-            .await;
+            .add_builder(builder_1)
+            .expect("Failed to add builder");
 
         let hash = {
             let (current_state, mut rx) = manager
@@ -518,7 +487,7 @@ mod tests {
                 .get(&Utf8PathBuf::from("root_lib_path"))
                 .is_none());
 
-            let _ = channel.send(BuilderIncomingMessages::RequestBuild);
+            let _ = channel.send(BuilderIncomingMessages::RequestBuild(Target::Android));
 
             let message = rx.recv().await.unwrap();
             match message {
@@ -562,7 +531,7 @@ mod tests {
 
             let _ = rx.recv().await;
 
-            watcher.update(Utf8PathBuf::from("watched_path")).await;
+            watcher.update().await;
 
             let message = rx.recv().await.unwrap();
             let new_hash = match message {

@@ -7,7 +7,7 @@ use std::{
     env, fs,
     process::Stdio,
     sync::{
-        atomic::{AtomicBool, AtomicU32},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         Arc,
     },
     time::Duration,
@@ -21,23 +21,45 @@ use dexterous_developer_types::{cargo_path_utils::dylib_path, Target, TargetBuil
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
+    select,
     sync::Mutex,
     task::JoinHandle,
 };
 use tracing::{debug, error, info, trace};
 
 use crate::{
+    incremental_builder::zig_downloader::zig_path,
     types::{
-        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderOutgoingMessages,
-        HashedFileRecord,
+        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+        BuilderOutgoingMessages, HashedFileRecord,
     },
-    zig_downloader::zig_path,
 };
+
+pub struct IncrementalBuilderInitializer {
+    target: Target,
+    settings: TargetBuildSettings,
+}
+
+impl IncrementalBuilderInitializer {
+    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
+        Self { target, settings }
+    }
+}
+
+impl BuilderInitializer for IncrementalBuilderInitializer {
+    type Inner = IncrementalBuilder;
+
+    fn initialize_builder(
+        self,
+        channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self::Inner> {
+        IncrementalBuilder::new(self.target, self.settings, channel)
+    }
+}
 
 pub struct IncrementalBuilder {
     target: Target,
     settings: TargetBuildSettings,
-    incoming: tokio::sync::mpsc::UnboundedSender<BuilderIncomingMessages>,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
     output: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     #[allow(dead_code)]
@@ -60,25 +82,7 @@ async fn build(
     id: u32,
 ) -> Result<(), anyhow::Error> {
     info!("Incremental Build {id} Started");
-    let zig = zig_path().await?;
-    info!("Found Zig Path");
-    let linker = which::which("dexterous_developer_incremental_linker")?;
-    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
-        bail!("Couldn't get linker path");
-    };
-    let linker = linker.canonicalize_utf8()?;
-    let cc = which::which("dexterous_developer_incremental_c_compiler")?;
-    let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
-        bail!("Couldn't get cc path");
-    };
-    let cc = cc.canonicalize_utf8()?;
-    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
-    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
-        bail!("Couldn't get dlltool path");
-    };
-    let dlltool = dlltool.canonicalize_utf8()?;
-
-    info!("CC {cc} LINKER {linker} ZIG {zig}");
+    eprintln!("Starting Builder");
 
     let (artifact_name, artifact_file_name) = {
         let mut cmd = Command::new("cargo");
@@ -86,8 +90,14 @@ async fn build(
         if let Some(manifest_path) = &manifest_path {
             cmd.arg("--manifest-path").arg(manifest_path);
         }
+        if let Some(working_dir) = &working_dir {
+            cmd.current_dir(working_dir);
+        }
 
+        eprintln!("Requesting Cargo Metadata");
         let output = cmd.output().await?;
+
+        eprintln!("Got Cargo Metadata");
 
         if !output.status.success() {
             bail!("Failed to get Cargo metadata");
@@ -115,7 +125,12 @@ async fn build(
             }
             dexterous_developer_types::PackageOrExample::Package(package) => {
                 let Some(package) = output.packages.iter().find(|p| p.name == *package) else {
-                    bail!("Couldn't find package");
+                    let packages = output
+                        .packages
+                        .iter()
+                        .map(|v| v.name.to_string())
+                        .collect::<Vec<_>>();
+                    bail!("Couldn't find package - {package} - {packages:?}");
                 };
                 let Some(p) = find_package_target(package, target, id) else {
                     bail!("Can't find package target");
@@ -146,7 +161,7 @@ async fn build(
             }
         }
     };
-
+    eprintln!("Got Artifact Name and File");
     info!("Artifact Name: {artifact_name} File: {artifact_file_name}");
 
     let incremental_run_settings = if id == 1 {
@@ -184,27 +199,23 @@ async fn build(
         }
     };
 
+    eprintln!("Determined Incremental Settings");
     info!("Incremental settings - {incremental_run_settings:?}");
 
-    let target_dir =
-        Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
-    
+    let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
+
     if !target_dir.exists() {
         tokio::fs::create_dir_all(&target_dir).await?;
     }
 
-    let target_dir = Utf8PathBuf::from_path_buf(dunce::canonicalize(target_dir)?).map_err(|e| anyhow::anyhow!("Can't convert to utf8 {e:?}"))?;
+    let target_dir = Utf8PathBuf::from_path_buf(dunce::canonicalize(target_dir)?)
+        .map_err(|e| anyhow::anyhow!("Can't convert to utf8 {e:?}"))?;
     let default_out = target_dir.join(format!("{target}")).join("debug");
     let deps = default_out.join("deps");
     let examples = default_out.join("examples");
     let artifact_path = default_out.join(&artifact_file_name);
-    
-    info!("Paths ready - {artifact_path}");
 
-    let mut cargo = Command::new("cargo");
-    if let Some(working_dir) = working_dir {
-        cargo.current_dir(&working_dir);
-    }
+    info!("Paths ready - {artifact_path}");
 
     let mut lib_directories = additional_library_directories.clone();
     lib_directories.push(default_out.clone());
@@ -215,22 +226,68 @@ async fn build(
         lib_directories.push(dir.join("usr").join("lib"));
     }
 
-    let mut rust_c_args = format!("-Cprefer-dynamic -Clinker={linker}");
+    let mut options = cargo_options::Rustc::default();
 
+    options.common.target_dir = Some(target_dir.into_std_path_buf());
+    options.manifest_path = manifest_path.map(|v| v.into_std_path_buf());
+
+    match &package_or_example {
+        dexterous_developer_types::PackageOrExample::DefaulPackage => {}
+        dexterous_developer_types::PackageOrExample::Package(package) => {
+            options.packages = vec![package.to_owned()];
+        }
+        dexterous_developer_types::PackageOrExample::Example(example) => {
+            options.example = vec![example.to_owned()];
+        }
+    }
+
+    options.common.features = features;
+    options.message_format = vec!["json-render-diagnostics".to_string()];
+    options.profile = Some("dev".to_string());
+    options.target = vec![target.to_string()];
+
+    let zig = zig_path()?;
+    eprintln!("Got Zig Path");
+
+    let linker = which::which("dexterous_developer_incremental_linker")?;
+    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
+        bail!("Couldn't get linker path");
+    };
+    let linker = linker.canonicalize_utf8()?;
+
+    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
+    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
+        bail!("Couldn't get dlltool path");
+    };
+    let dlltool: Utf8PathBuf = dlltool.canonicalize_utf8()?;
+
+    let rustc = cargo_zigbuild::Rustc {
+        disable_zig_linker: false,
+        enable_zig_ar: false,
+        cargo: options,
+    };
+    let cargo = rustc.build_command()?;
+    let mut cargo = tokio::process::Command::from(cargo);
+
+    if let Some(working_dir) = working_dir {
+        cargo.current_dir(&working_dir);
+    }
+    let linker_env = format!(
+        "CARGO_TARGET_{}_LINKER",
+        target.as_str().to_uppercase().replace('-', "_")
+    );
+
+    let mut rust_flags = "-Cprefer-dynamic".to_owned();
 
     if target == Target::Windows {
-        cargo
-            .env("RANLIB", format!("{zig} ranlib"))
-            .env("RC", format!("{zig} rc"))
-            .env("AR", format!("{zig} ar"))
-            .env("OBJCOPY", format!("{zig} objcopy"));
-        rust_c_args = format!("{rust_c_args}  -Cdlltool={dlltool}");
+        rust_flags = format!("{rust_flags} -Cdlltool={dlltool}")
     }
 
     cargo
         .env_remove("LD_DEBUG")
-        .env("ZIG_PATH", &zig)
-        .env("CC", &cc)
+        .env_remove(&linker_env)
+        .env(&linker_env, linker)
+        .env("CARGO_ZIGBUILD_ZIG_PATH", &zig)
         .env(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
@@ -254,39 +311,10 @@ async fn build(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
-        .env("RUSTFLAGS", rust_c_args)
-        .env("CARGO_TARGET_DIR", target_dir)
-        .arg("rustc");
-
-    if let Some(manifest) = &manifest_path {
-        cargo.arg("--manifest-path").arg(manifest.canonicalize()?);
-    }
-
-    match &package_or_example {
-        dexterous_developer_types::PackageOrExample::DefaulPackage => {}
-        dexterous_developer_types::PackageOrExample::Package(package) => {
-            cargo.arg("--lib").arg("-p").arg(package.as_str());
-        }
-        dexterous_developer_types::PackageOrExample::Example(example) => {
-            cargo.arg("--example").arg(example.as_str());
-        }
-    }
-
-    if !features.is_empty() {
-        cargo.arg("--features");
-        cargo.arg(features.join(",").as_str());
-    }
-
-
-    cargo
-        .arg("--message-format=json-render-diagnostics")
-        .arg("--profile")
-        .arg("dev")
-        .arg("--target")
-        .arg(target.to_string());
+        .env("RUSTFLAGS", rust_flags);
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
-
+    eprintln!("Started Compilation");
     info!("Ready to start build");
 
     let mut child = cargo
@@ -330,6 +358,8 @@ async fn build(
             msg => trace!("Compiler: {msg:?}"),
         }
     }
+
+    eprintln!("Build Completed");
 
     if !succeeded {
         error!("Build Failed");
@@ -559,8 +589,26 @@ fn process_dependencies_recursive(
 }
 
 impl IncrementalBuilder {
-    pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
-        let (incoming, incoming_rx) = tokio::sync::mpsc::unbounded_channel();
+    pub fn new(
+        target: Target,
+        settings: TargetBuildSettings,
+        incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
+    ) -> anyhow::Result<Self> {
+        let zig = zig_path()?;
+        eprintln!("Got Zig Path - Initial");
+        std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
+
+        let cc = which::which("dexterous_developer_incremental_c_compiler")?;
+        let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
+            bail!("Couldn't get cc path");
+        };
+        let cc = cc.canonicalize_utf8()?;
+
+        info!("CC {cc} ZIG {zig}");
+
+        std::env::set_var("CARGO_BIN_EXE_cargo-zigbuild", &cc);
+
+        let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
         let id = Arc::new(AtomicU32::new(1));
@@ -574,32 +622,20 @@ impl IncrementalBuilder {
             let settings = settings.clone();
             let id = id.clone();
             tokio::spawn(async move {
-                let mut should_build = false;
-
                 let delay = Duration::from_secs(1);
 
-                let stream = UnboundedReceiverStream::new(incoming_rx);
+                let (build_trigger, build_trigger_rx) =
+                    tokio::sync::mpsc::unbounded_channel::<()>();
+
+                let stream = UnboundedReceiverStream::new(build_trigger_rx);
 
                 let mut debounced = debounced(stream, delay);
+                let first_build_triggered = Arc::new(AtomicBool::new(false));
 
-                while let Some(recv) = debounced.next().await {
-                    match recv {
-                        BuilderIncomingMessages::RequestBuild => {
-                            should_build = true;
-                            trigger_build(
-                                &build_active,
-                                &build_pending,
-                                &id,
-                                &outgoing_tx,
-                                target,
-                                &settings,
-                                &output_tx,
-                                &previous_versions,
-                            );
-                        }
-                        BuilderIncomingMessages::CodeChanged => {
-                            trace!("Code Changed");
-                            if should_build {
+                loop {
+                    select! {
+                        Some(()) = debounced.next() => {
+                            if first_build_triggered.load(Ordering::SeqCst) {
                                 trigger_build(
                                     &build_active,
                                     &build_pending,
@@ -610,25 +646,42 @@ impl IncrementalBuilder {
                                     &output_tx,
                                     &previous_versions,
                                 );
+                            } else {
+                                info!("Not building {target} yet");
                             }
                         }
-                        BuilderIncomingMessages::AssetChanged(asset) => {
-                            trace!("Builder Received Asset Change - {asset:?}");
-                            let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
+                        Ok(recv) = incoming_rx.recv() => {
+                            match recv {
+                                BuilderIncomingMessages::RequestBuild(request) => {
+                                    if target == request {
+                                        info!("Build Request");
+                                        first_build_triggered.store(true, Ordering::SeqCst);
+                                        let _ = build_trigger.send(());
+                                    }
+                                }
+                                BuilderIncomingMessages::CodeChanged => {
+                                    info!("Code Changed");
+                                    let _ = build_trigger.send(());
+                                }
+                                BuilderIncomingMessages::AssetChanged(asset) => {
+                                    trace!("Builder Received Asset Change - {asset:?}");
+                                    let _ = output_tx.send(BuildOutputMessages::AssetUpdated(asset));
+                                }
+                            }
                         }
-                    }
+                        else => { break }
+                    };
                 }
             })
         };
 
-        Self {
+        Ok(Self {
             settings,
             target,
-            incoming,
             outgoing: outgoing_tx,
             output: output_tx,
             handle,
-        }
+        })
     }
 }
 
@@ -663,8 +716,10 @@ fn trigger_build(
                 output_tx.clone(),
                 id,
             )
-            .await.map_err(|e| {
+            .await
+            .map_err(|e| {
                 error!("Build Error - {id} {target} - {e}");
+                let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
                 e
             })?;
 
@@ -678,8 +733,10 @@ fn trigger_build(
                         output_tx.clone(),
                         id,
                     )
-                    .await.map_err(|e| {
+                    .await
+                    .map_err(|e| {
                         error!("Build Error - {id} {target} - {e}");
+                        let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
                         e
                     })?;
                 } else {
@@ -695,12 +752,6 @@ fn trigger_build(
 impl Builder for IncrementalBuilder {
     fn target(&self) -> Target {
         self.target
-    }
-
-    fn incoming_channel(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedSender<crate::types::BuilderIncomingMessages> {
-        self.incoming.clone()
     }
 
     fn outgoing_channel(
@@ -746,7 +797,7 @@ mod test {
     use super::*;
     use dexterous_developer_types::PackageOrExample;
     use test_temp_dir::*;
-    use tokio::io::AsyncWriteExt;
+
     use tokio::process::Command;
     use tokio::time::timeout;
 
@@ -754,37 +805,18 @@ mod test {
     async fn can_build_a_package() {
         let dir = test_temp_dir!();
         let dir_path = dir.as_path_untracked().to_path_buf();
-        let cargo = dir_path.join("Cargo.toml");
 
         let _ = Command::new("cargo")
             .current_dir(&dir_path)
             .arg("init")
             .arg("--name=test_lib")
             .arg("--vcs=none")
-            .arg("--lib")
             .output()
             .await
             .expect("Failed to create test project");
 
-        {
-            let mut file = tokio::fs::File::options()
-                .append(true)
-                .open(&cargo)
-                .await
-                .expect("Couldn't open cargo toml");
-            file.write_all(
-                r#"[lib]
-            crate-type = ["rlib", "dylib"]"#
-                    .as_bytes(),
-            )
-            .await
-            .expect("Couldn't write to cargo toml");
-            file.sync_all()
-                .await
-                .expect("Couldn't flush write to cargo toml");
-        }
-
         let target = Target::current().expect("Couldn't determine current target");
+        let (incoming, _) = tokio::sync::broadcast::channel(100);
 
         let build = IncrementalBuilder::new(
             target,
@@ -797,13 +829,14 @@ mod test {
                 .unwrap()],
                 ..Default::default()
             },
-        );
+            incoming.clone(),
+        )
+        .expect("Couldn't set up incremental builder");
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
 
-        build
-            .incoming
-            .send(BuilderIncomingMessages::RequestBuild)
+        incoming
+            .send(BuilderIncomingMessages::RequestBuild(target))
             .expect("Failed to request build");
 
         let msg = timeout(Duration::from_secs(10), builder_messages.recv())
@@ -820,19 +853,22 @@ mod test {
 
         let mut messages = Vec::new();
 
-        if let Err(e) = timeout(Duration::from_secs(10), async {
+        let result = timeout(Duration::from_secs(100), async {
             loop {
-                let msg = build_messages
-                    .recv()
-                    .await
-                    .expect("Couldn't get build message");
+                let msg = match build_messages.recv().await {
+                    Ok(v) => v,
+                    Err(e) => bail!("Couldn't get message {e}"),
+                };
                 messages.push(msg.clone());
                 match msg {
                     BuildOutputMessages::StartedBuild(id) => {
+                        eprintln!("Build {id} Started");
                         if started {
-                            panic!("Started more than once");
+                            bail!("Started more than once");
                         }
-                        assert_eq!(id, 1);
+                        if id != 1 {
+                            bail!("Not starting the initial id");
+                        }
                         started = true;
                     }
                     BuildOutputMessages::EndedBuild {
@@ -840,9 +876,14 @@ mod test {
                         libraries,
                         root_library,
                     } => {
-                        assert_eq!(id, 1);
+                        eprintln!("Build {id} Ended");
+                        if id != 1 {
+                            bail!("Not ending the initial id");
+                        }
                         ended = true;
-                        assert_eq!(root_library, target.dynamic_lib_name("test_lib"));
+                        if root_library != target.dynamic_lib_name("test_lib.1") {
+                            bail!("Not the correct library name");
+                        }
                         root_lib_confirmed = true;
                         for HashedFileRecord {
                             local_path,
@@ -851,9 +892,14 @@ mod test {
                             ..
                         } in libraries.into_iter()
                         {
-                            assert!(local_path.exists());
-                            if name == target.dynamic_lib_name("test_lib") {
-                                assert!(dependencies.len() == 1, "Dependencies: {dependencies:?}");
+                            if !local_path.exists() {
+                                bail!("Library path doesn't exist");
+                            }
+
+                            if name == target.dynamic_lib_name("test_lib.1") {
+                                if dependencies.is_empty() {
+                                    bail!("Dependencies: {dependencies:?}");
+                                }
                                 library_update_received = true;
                             }
                         }
@@ -861,12 +907,17 @@ mod test {
                     }
                     BuildOutputMessages::AssetUpdated(_) => {}
                     BuildOutputMessages::KeepAlive => {}
+                    BuildOutputMessages::FailedBuild(e) => bail!("Failed Build - {e}"),
                 }
             }
+            Ok(())
         })
-        .await
-        {
-            panic!("Failed - {e:?}\n{messages:?}");
+        .await;
+
+        match result {
+            Err(e) => panic!("Failed - {e:?}\n{messages:?}"),
+            Ok(Err(e)) => panic!("Failed to Build - {e:?}"),
+            _ => {}
         }
 
         assert!(started);

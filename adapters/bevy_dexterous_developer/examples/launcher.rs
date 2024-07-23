@@ -22,7 +22,7 @@ fn terminal_runner(mut app: App) -> AppExit {
 }
 
 fn update() {
-    println!("Heyx!");
+    println!("Hey!");
 }
 
 fn startup() {

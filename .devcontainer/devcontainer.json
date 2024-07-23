@@ -19,7 +19,8 @@
 				"rust-lang.rust-analyzer",
 				"tamasfe.even-better-toml",
 				"itsyaasir.rust-feature-toggler",
-				"vivaxy.vscode-conventional-commits"
+				"vivaxy.vscode-conventional-commits",
+				"fill-labs.dependi"
 			]
 		}
 	},
