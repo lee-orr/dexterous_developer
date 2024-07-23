@@ -255,6 +255,12 @@ async fn build(
     };
     let linker = linker.canonicalize_utf8()?;
 
+    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
+    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
+        bail!("Couldn't get dlltool path");
+    };
+    let dlltool: Utf8PathBuf = dlltool.canonicalize_utf8()?;
+
     let rustc = cargo_zigbuild::Rustc {
         disable_zig_linker: false,
         enable_zig_ar: false,
@@ -270,6 +276,12 @@ async fn build(
         "CARGO_TARGET_{}_LINKER",
         target.as_str().to_uppercase().replace('-', "_")
     );
+
+    let mut rust_flags = "-Cprefer-dynamic".to_owned();
+
+    if target == Target::Windows {
+        rust_flags = format!("{rust_flags} -Cdlltool={dlltool}")
+    }
 
     cargo
         .env_remove("LD_DEBUG")
@@ -299,7 +311,7 @@ async fn build(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
             serde_json::to_string(&incremental_run_settings)?,
         )
-        .env("RUSTFLAGS", "-Cprefer-dynamic");
+        .env("RUSTFLAGS", rust_flags);
 
     let _ = sender.send(BuildOutputMessages::StartedBuild(id));
     eprintln!("Started Compilation");

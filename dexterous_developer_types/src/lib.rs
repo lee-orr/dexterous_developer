@@ -113,7 +113,7 @@ impl Target {
         match self {
             Target::Linux => "x86_64-unknown-linux-gnu",
             Target::LinuxArm => "aarch64-unknown-linux-gnu",
-            Target::Windows => "x86_64-pc-windows-msvc",
+            Target::Windows => "x86_64-pc-windows-gnu",
             Target::Mac => "x86_64-apple-darwin",
             Target::MacArm => "aarch64-apple-darwin",
             Target::Android => "aarch64-linux-android",
@@ -125,7 +125,7 @@ impl Target {
         match self {
             Target::Linux => "x86_64-linux-gnu",
             Target::LinuxArm => "aarch64-linux-gnu",
-            Target::Windows => "x86_64-windows-msvc",
+            Target::Windows => "x86_64-windows-gnu",
             Target::Mac => "x86_64-macos",
             Target::MacArm => "aarch64-macos",
             Target::Android => "aarch64-android",
