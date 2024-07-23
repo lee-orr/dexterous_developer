@@ -15,11 +15,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit-tests:
+  tests-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-unit-tests-${{ hashFiles('**/Cargo.toml') }}
+      - name: CI job
+        run: ./test.sh
+  tests-mac:
+    runs-on: mac-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-unit-tests-${{ hashFiles('**/Cargo.toml') }}
+      - name: CI job
+        run: ./test.sh
+  tests-windows:
+    runs-on: windows-latest
+    steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
         with:

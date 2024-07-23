@@ -2,7 +2,7 @@ use cargo_zigbuild::Zig;
 
 pub async fn dll_tool() -> anyhow::Result<()> {
     let mut args = std::env::args().collect::<Vec<_>>();
-    
+
     if let Some(first) = args.first() {
         if first.contains("dlltool") {
             args.remove(0);
@@ -25,8 +25,8 @@ pub async fn dll_tool() -> anyhow::Result<()> {
                 let err = std::str::from_utf8(&r.stderr).unwrap_or("No UTF8");
                 panic!("Dlltool Failed - {err}")
             }
-        },
+        }
     }
-    
+
     Ok(())
 }

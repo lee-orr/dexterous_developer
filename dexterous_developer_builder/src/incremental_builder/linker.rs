@@ -22,7 +22,6 @@ pub async fn linker() -> anyhow::Result<()> {
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
-
     let output_name = {
         let mut next_is_output = false;
         args.iter()
@@ -213,11 +212,15 @@ async fn filter_new_paths(path: String, _timestamp: u64) -> anyhow::Result<Optio
     Ok(Some(path))
 }
 
-async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8PathBuf]) -> anyhow::Result<Vec<String>> {
-    let path =  if let Some(file) = args.first() {
+async fn adjust_arguments(
+    target: &str,
+    args: &[String],
+    lib_directories: &[Utf8PathBuf],
+) -> anyhow::Result<Vec<String>> {
+    let path = if let Some(file) = args.first() {
         println!("READY FOR LINKER");
-        if file.starts_with("@") && file.ends_with("linker-arguments") {
-            let path = file.trim_start_matches("@");
+        if file.starts_with('@') && file.ends_with("linker-arguments") {
+            let path = file.trim_start_matches('@');
             let path = Utf8PathBuf::from(path);
             println!("Have the file path");
             if path.exists() {
@@ -228,7 +231,7 @@ async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8
         } else {
             None
         }
-    }  else {
+    } else {
         None
     };
 
@@ -266,7 +269,6 @@ async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8
             .collect::<Vec<_>>()
     };
 
-
     let mut dirs = vec![];
 
     for dir in lib_directories.iter().rev() {
@@ -275,23 +277,23 @@ async fn adjust_arguments(target: &str, args: &[String], lib_directories: &[Utf8
     }
 
     let mut args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
-    
 
-
-    let has_target = args.iter().find(|v| v.contains("-target")).is_some();
+    let has_target = args.iter().any(|v| v.contains("-target"));
 
     if !has_target {
         args.push("-target".to_string());
         args.push(target.to_string());
     }
 
-
-
     if let Some(path) = &path {
         tokio::fs::remove_file(&path).await?;
         let mut file = tokio::fs::File::create(&path).await?;
         file.write_all(args.join("\n").as_bytes()).await?;
-        Ok(vec![format!("@{}", Utf8PathBuf::from_path_buf(dunce::canonicalize(&path)?).map_err(|v| anyhow::anyhow!("{v:?}"))?)])
+        Ok(vec![format!(
+            "@{}",
+            Utf8PathBuf::from_path_buf(dunce::canonicalize(path)?)
+                .map_err(|v| anyhow::anyhow!("{v:?}"))?
+        )])
     } else {
         Ok(args)
     }
