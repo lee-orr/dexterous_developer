@@ -47,8 +47,9 @@ zip = "2"
 dircpy = "0.3"
 dunce = "1"
 cargo-zigbuild = "0.19"
+cargo-xwin = "0.17"
 cargo-options = "0.7"
 clap = "4"
 
 [dev-dependencies]
-test-temp-dir = { version = "0.2 "}
+test-temp-dir = { version = "0.3 "}
