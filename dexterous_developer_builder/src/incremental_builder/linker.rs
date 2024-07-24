@@ -87,16 +87,20 @@ async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()
         tokio::fs::remove_file(&path).await?;
     }
 
-    let args = vec![
-        args.iter().map(|v| v.as_str()).collect(),
-        vec!["-o", path.as_str(), "-shared", "-rdynamic"],
-    ]
-    .into_iter()
-    .flatten()
-    .map(|v| v.to_string())
-    .collect::<Vec<_>>();
+    let mut args = args;
 
-    eprintln!("Initial Build");
+    args.push("-o".to_string());
+    args.push(path.to_string());
+
+    if !args.contains(&"-shared".to_owned()) {
+        args.push("-shared".to_owned());
+    }
+
+    if !args.contains(&"-rdynamic".to_owned()) {
+        args.push("-rdynamic".to_owned());
+    }
+
+    eprintln!("Initial Build - {}", args.join(" "));
 
     let zig = Zig::Cc { args: args.clone() };
 
@@ -171,8 +175,10 @@ async fn patch_link(
         args.push("-shared".to_string());
         args.push("-rdynamic".to_string());
     } else {
-        args.push("-shared".to_string());
-        args.push("-rdynamic".to_string());
+        if !args.contains(&"-shared".to_owned()) {
+            args.push("-shared".to_string());
+            args.push("-rdynamic".to_string());
+        }
         args.push("-fvisibility=default".to_string());
     }
 
@@ -196,6 +202,8 @@ async fn patch_link(
         args.push(file.clone());
     }
 
+    // panic!("ARGS: {}", args.join(" "));
+
     let zig = Zig::Cc { args: args.clone() };
 
     if let Err(output) = zig.execute() {
@@ -218,7 +226,6 @@ async fn adjust_arguments(
     lib_directories: &[Utf8PathBuf],
 ) -> anyhow::Result<Vec<String>> {
     let path = if let Some(file) = args.first() {
-        println!("READY FOR LINKER");
         if file.starts_with('@') && file.ends_with("linker-arguments") {
             let path = file.trim_start_matches('@');
             let path = Utf8PathBuf::from(path);
@@ -236,7 +243,6 @@ async fn adjust_arguments(
     };
 
     let args = if let Some(path) = &path {
-        println!("READY TO READ");
         let file = tokio::fs::read(&path).await?;
         let file = if target.contains("msvc") {
             if file[0..2] != [255, 254] {
@@ -260,14 +266,18 @@ async fn adjust_arguments(
         };
         file.lines().map(|v| v.to_owned()).collect()
     } else {
+        args.to_vec()
+    };
+
+    let args = 
         args.iter()
             .filter(|v| {
                 !v.contains("dexterous_developer_incremental_linker")
                     && !v.contains("incremental_c_compiler")
+                    && !(v.contains("--version-script"))
             })
             .cloned()
-            .collect::<Vec<_>>()
-    };
+            .collect::<Vec<_>>();
 
     let mut dirs = vec![];
 
