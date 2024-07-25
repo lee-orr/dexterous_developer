@@ -294,6 +294,7 @@ async fn build(
         )
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
+        .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME", &artifact_file_name)
         .env(
             "DEXTEROUS_DEVELOPER_LIB_DIRECTORES",
             serde_json::to_string(&lib_directories)?,

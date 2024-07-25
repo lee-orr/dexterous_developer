@@ -18,6 +18,7 @@ pub async fn linker() -> anyhow::Result<()> {
 
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
+    let file_name = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME")?;
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
@@ -37,10 +38,18 @@ pub async fn linker() -> anyhow::Result<()> {
             .unwrap_or_default()
     };
 
-    let args = adjust_arguments(&target, &args, &lib_directories).await?;
+    let mut args = adjust_arguments(&target, &args, &lib_directories).await?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
+
+        if output_name.ends_with(".so") {
+            eprintln!("Adjusting non-main file soname");
+            if let Some(name) = Utf8PathBuf::from(&output_name).file_name() {
+                args.push(format!("-Wl,-soname,{name}"));
+            }
+        }
+
         let zig = Zig::Cc { args: args.clone() };
 
         if let Err(e) = zig.execute() {
@@ -54,7 +63,7 @@ pub async fn linker() -> anyhow::Result<()> {
 
     let args = args
         .into_iter()
-        .filter(|v| !(v.contains("--gc-sections") || v.contains("-pie")))
+        .filter(|v| !(v.contains("--gc-sections") || v.contains("-pie") || v.contains("--version-script")))
         .filter(|v| {
             if v == "-o" {
                 next_is_output = true;
@@ -72,16 +81,16 @@ pub async fn linker() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file).await,
+        IncrementalRunParams::InitialRun => basic_link(args, output_file, file_name).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             id,
-        } => patch_link(args, timestamp, previous_versions, output_file, target, id).await,
+        } => patch_link(args, timestamp, previous_versions, output_file, file_name, target, id).await,
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()> {
+async fn basic_link(args: Vec<String>, output_file: String, file_name: String) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
@@ -91,6 +100,7 @@ async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()
 
     args.push("-o".to_string());
     args.push(path.to_string());
+    args.push(format!("-Wl,-soname,{file_name}"));
 
     if !args.contains(&"-shared".to_owned()) {
         args.push("-shared".to_owned());
@@ -100,7 +110,8 @@ async fn basic_link(args: Vec<String>, output_file: String) -> anyhow::Result<()
         args.push("-rdynamic".to_owned());
     }
 
-    eprintln!("Initial Build - {}", args.join(" "));
+    eprintln!("\nInitial Build -\n{}", args.join(" "));
+    // panic!();
 
     let zig = Zig::Cc { args: args.clone() };
 
@@ -116,6 +127,7 @@ async fn patch_link(
     timestamp: SystemTime,
     previous_versions: Vec<String>,
     output_file: String,
+    file_name: String,
     target: String,
     id: u32,
 ) -> anyhow::Result<()> {
@@ -186,6 +198,7 @@ async fn patch_link(
     args.push("-fPIC".to_string());
     args.push("-o".to_string());
     args.push(output_file.to_string());
+    args.push(format!("-Wl,-soname,{file_name}"));
 
     if let Some(arch) = &arch {
         args.push("-arch".to_string());
@@ -269,24 +282,24 @@ async fn adjust_arguments(
         args.to_vec()
     };
 
-    let args = 
-        args.iter()
+
+    let mut new_args = vec![];
+    for arg in
+        args.into_iter()
             .filter(|v| {
                 !v.contains("dexterous_developer_incremental_linker")
                     && !v.contains("incremental_c_compiler")
-                    && !(v.contains("--version-script"))
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-    let mut dirs = vec![];
-
-    for dir in lib_directories.iter().rev() {
-        dirs.push("-L".to_string());
-        dirs.push(dir.to_string());
+            }) {
+            new_args.push(arg);
+        
     }
 
-    let mut args = dirs.into_iter().chain(args.into_iter()).collect::<Vec<_>>();
+    for dir in lib_directories.iter().rev() {
+        new_args.push("-L".to_string());
+        new_args.push(dir.to_string());
+    }
+
+    let mut args = new_args;
 
     let has_target = args.iter().any(|v| v.contains("-target"));
 
