@@ -292,6 +292,7 @@ async fn build(
             "DEXTEROUS_DEVELOPER_LINKER_TARGET",
             target.zig_linker_target(),
         )
+        .env("DEXTEROUS_DEVELOPER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME", &artifact_file_name)

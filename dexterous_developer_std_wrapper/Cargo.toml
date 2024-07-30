@@ -1,0 +1,17 @@
+[package]
+name = "dexterous_developer_std_wrapper"
+edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]

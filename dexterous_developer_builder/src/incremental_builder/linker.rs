@@ -38,10 +38,27 @@ pub async fn linker() -> anyhow::Result<()> {
             .unwrap_or_default()
     };
 
-    let mut args = adjust_arguments(&target, &args, &lib_directories).await?;
+    let (mut args, std) = adjust_arguments(&target, &args, &lib_directories).await?;
 
     if !output_name.contains(&package_name) {
-        eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
+        if output_name.contains("std_wrapper") {
+            eprintln!("GETTING HOME");
+            let home = Utf8PathBuf::from(std::env::var("RUSTUP_HOME")?);
+            eprintln!("GETTING TOOLCHAIN");
+            let toolchain = std::env::var("RUSTUP_TOOLCHAIN")?;
+            eprintln!("GETTING TARGET");
+            let target = std::env::var("DEXTEROUS_DEVELOPER_TARGET")?;
+            eprintln!("GOT TARGET");
+
+            let std_path = home.join("toolchains").join(toolchain).join("lib").join("rustlib").join(target).join("lib").join(format!("lib{}.rlib", std.trim_start_matches("-l")));
+
+            args.push("-Wl,-Bstatic".to_string());
+            args.push("-Wl,-Bsymbolic".to_string());
+            args.push(format!("-reexport-l{std_path}"));
+            args.push("-Wl,-Bdynamic".to_string());
+
+            args = args.into_iter().filter(|v| !v.contains("-ldexterous_developer_std_wrapper")).collect();
+        }
 
         if output_name.ends_with(".so") {
             eprintln!("Adjusting non-main file soname");
@@ -49,6 +66,8 @@ pub async fn linker() -> anyhow::Result<()> {
                 args.push(format!("-Wl,-soname,{name}"));
             }
         }
+
+        eprintln!("Linking Non-Main File - {output_name}\n[ {} ]", args.join(" "));
 
         let zig = Zig::Cc { args: args.clone() };
 
@@ -237,7 +256,7 @@ async fn adjust_arguments(
     target: &str,
     args: &[String],
     lib_directories: &[Utf8PathBuf],
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<(Vec<String>, String)> {
     let path = if let Some(file) = args.first() {
         if file.starts_with('@') && file.ends_with("linker-arguments") {
             let path = file.trim_start_matches('@');
@@ -283,12 +302,22 @@ async fn adjust_arguments(
     };
 
 
+    let mut std = String::new();
+
     let mut new_args = vec![];
     for arg in
         args.into_iter()
             .filter(|v| {
                 !v.contains("dexterous_developer_incremental_linker")
                     && !v.contains("incremental_c_compiler")
+            })
+            .map(|v| {
+                if v.contains("-lstd") {
+                    std = v.clone();
+                    "-ldexterous_developer_std_wrapper".to_string()
+                } else {
+                    v
+                }
             }) {
             new_args.push(arg);
         
@@ -312,12 +341,12 @@ async fn adjust_arguments(
         tokio::fs::remove_file(&path).await?;
         let mut file = tokio::fs::File::create(&path).await?;
         file.write_all(args.join("\n").as_bytes()).await?;
-        Ok(vec![format!(
+        Ok((vec![format!(
             "@{}",
             Utf8PathBuf::from_path_buf(dunce::canonicalize(path)?)
                 .map_err(|v| anyhow::anyhow!("{v:?}"))?
-        )])
+        )], std))
     } else {
-        Ok(args)
+        Ok((args, std))
     }
 }

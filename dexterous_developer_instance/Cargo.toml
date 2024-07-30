@@ -20,6 +20,7 @@ runner = [
     "dep:tracing-subscriber",
 ]
 hot = [
+    "dep:dexterous_developer_std_wrapper"
 ]
 dylib = ["dep:libloading"]
 
@@ -33,6 +34,7 @@ tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filte
 dunce = "1"
 serde = { version = "1"}
 dexterous_developer_types = { version = "0.3.0", path = "../dexterous_developer_types" }
+dexterous_developer_std_wrapper = { version = "0.3.0", path = "../dexterous_developer_std_wrapper", optional = true }
 camino = "1"
 thiserror = "1"
 safer-ffi = "0.1"
@@ -42,3 +44,6 @@ crossbeam = "0.8"
 uuid = { version =  "1", features = ["v4"] }
 dashmap = "6"
 rmp-serde = "1"
+
+[build-dependencies]
+dexterous_developer_std_wrapper = { version = "0.3.0", path = "../dexterous_developer_std_wrapper", optional = true }

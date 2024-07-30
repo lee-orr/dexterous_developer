@@ -2304,6 +2304,7 @@ dependencies = [
  "chrono",
  "crossbeam",
  "dashmap",
+ "dexterous_developer_std_wrapper",
  "dexterous_developer_types",
  "dunce",
  "libloading 0.8.4",
@@ -2340,6 +2341,10 @@ dependencies = [
  "uuid",
  "walkdir",
 ]
+
+[[package]]
+name = "dexterous_developer_std_wrapper"
+version = "0.3.0"
 
 [[package]]
 name = "dexterous_developer_test_utils"
