@@ -51,4 +51,4 @@ cargo-options = "0.7"
 clap = "4"
 
 [dev-dependencies]
-test-temp-dir = { version = "0.2 "}
+test-temp-dir = { version = "0.2"}

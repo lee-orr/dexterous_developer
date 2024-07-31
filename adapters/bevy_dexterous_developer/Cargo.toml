@@ -28,7 +28,7 @@ bevy_dexterous_developer_dynamic = { version = "0.3.0", path = "crates/bevy_dext
 bevy = { version = "0.14", default-features = true, features=["dynamic_linking", "embedded_watcher"] }
 dexterous_developer_test_utils = { version = "0.3.0", path = "../../dexterous_developer_test_utils"}
 tokio = { version = "1", features = ["full"]}
-test-temp-dir = { version = "0.2 "}
+test-temp-dir = { version = "0.2"}
 tracing-test = { version = "0.2", features = ["no-env-filter"] }
 tracing = "0.1"
 serde = "1"
