@@ -261,12 +261,12 @@ async fn build(
     };
     let dlltool: Utf8PathBuf = dlltool.canonicalize_utf8()?;
 
-    let rustc = cargo_zigbuild::Rustc {
-        disable_zig_linker: false,
-        enable_zig_ar: false,
-        cargo: options,
-    };
-    let cargo = rustc.build_command()?;
+    // let rustc = cargo_zigbuild::Rustc {
+    //     disable_zig_linker: false,
+    //     enable_zig_ar: false,
+    //     cargo: options,
+    // };
+    let cargo = options.command();
     let mut cargo = tokio::process::Command::from(cargo);
 
     if let Some(working_dir) = working_dir {
@@ -280,7 +280,14 @@ async fn build(
     let mut rust_flags = "-Cprefer-dynamic".to_owned();
 
     if target == Target::Windows {
-        rust_flags = format!("{rust_flags} -Cdlltool={dlltool}")
+        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
+        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "lld-link");
+    } else if target == Target::Mac || target == Target::MacArm {
+        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
+        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "ld64.lld");
+    } else if target == Target::Linux || target == Target::LinuxArm {
+        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
+        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "ld.lld");
     }
 
     cargo

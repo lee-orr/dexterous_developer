@@ -16,6 +16,8 @@ pub async fn linker() -> anyhow::Result<()> {
     args.next();
     let args = args.collect::<Vec<_>>();
 
+    let linker_exec = "cc".to_string();
+    let flavor = std::env::var("DEXTEROUS_DEVELOPER_LINKER_FLAVOR")?;
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
     let file_name = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME")?;
@@ -39,6 +41,8 @@ pub async fn linker() -> anyhow::Result<()> {
     };
 
     let mut args = adjust_arguments(&target, &args, &lib_directories).await?;
+    // args.insert(0, flavor);
+    // args.insert(0, "-flavor".to_string());
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
@@ -49,12 +53,17 @@ pub async fn linker() -> anyhow::Result<()> {
                 args.push(format!("-Wl,-soname,{name}"));
             }
         }
-
-        let zig = Zig::Cc { args: args.clone() };
-
-        if let Err(e) = zig.execute() {
-            eprintln!("Failed Linking Non Main - {e}\n{}", args.join(" "));
-            std::process::exit(1);
+        let mut zig = tokio::process::Command::new(linker_exec);
+        zig.args(args.clone());
+    
+        let result = zig.output().await?;
+    
+        if !result.status.success() {
+            eprintln!(
+                "Failed Link Non Main - {output_name}:\n {}",
+                args.join(" ")
+            );
+            eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
         }
         std::process::exit(0);
     }
@@ -81,16 +90,16 @@ pub async fn linker() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file, file_name).await,
+        IncrementalRunParams::InitialRun => basic_link(args, output_file, file_name, linker_exec).await,
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             id,
-        } => patch_link(args, timestamp, previous_versions, output_file, file_name, target, id).await,
+        } => patch_link(args, timestamp, previous_versions, output_file, file_name, target, id, linker_exec).await,
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String, file_name: String) -> anyhow::Result<()> {
+async fn basic_link(args: Vec<String>, output_file: String, file_name: String, linker_exec: String) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
@@ -112,13 +121,19 @@ async fn basic_link(args: Vec<String>, output_file: String, file_name: String) -
 
     eprintln!("\nInitial Build -\n{}", args.join(" "));
     // panic!();
+    let mut zig = tokio::process::Command::new(linker_exec);
+    zig.args(args.clone());
 
-    let zig = Zig::Cc { args: args.clone() };
+    let result = zig.output().await?;
 
-    if let Err(e) = zig.execute() {
-        eprintln!("Failed Linking - {e}\n{}", args.join(" "));
-        std::process::exit(1);
+    if !result.status.success() {
+        eprintln!(
+            "Failed Linking Initial:\n {}",
+            args.join(" ")
+        );
+        eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
     }
+
     std::process::exit(0);
 }
 
@@ -130,6 +145,7 @@ async fn patch_link(
     file_name: String,
     target: String,
     id: u32,
+    linker_exec: String,
 ) -> anyhow::Result<()> {
     let timestamp = timestamp.duration_since(std::time::UNIX_EPOCH)?.as_secs();
     let mut object_files: Vec<String> = vec![];
@@ -217,14 +233,17 @@ async fn patch_link(
 
     // panic!("ARGS: {}", args.join(" "));
 
-    let zig = Zig::Cc { args: args.clone() };
+    let mut zig = tokio::process::Command::new(linker_exec);
+    zig.args(args.clone());
 
-    if let Err(output) = zig.execute() {
+    let result = zig.output().await?;
+
+    if !result.status.success() {
         eprintln!(
-            "Failed Link Parameters {id} - {output}:\n {}",
+            "Failed Link Parameters {id}:\n {}",
             args.join(" ")
         );
-        std::process::exit(1);
+        eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
     }
     std::process::exit(0);
 }
@@ -301,12 +320,12 @@ async fn adjust_arguments(
 
     let mut args = new_args;
 
-    let has_target = args.iter().any(|v| v.contains("-target"));
+    // let has_target = args.iter().any(|v| v.contains("-target"));
 
-    if !has_target {
-        args.push("-target".to_string());
-        args.push(target.to_string());
-    }
+    // if !has_target {
+    //     args.push("-target".to_string());
+    //     args.push(target.to_string());
+    // }
 
     if let Some(path) = &path {
         tokio::fs::remove_file(&path).await?;
