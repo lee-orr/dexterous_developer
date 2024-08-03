@@ -18,7 +18,6 @@ pub async fn linker() -> anyhow::Result<()> {
     let linker_exec = "cc".to_string();
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
-    let file_name = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME")?;
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
@@ -84,7 +83,7 @@ pub async fn linker() -> anyhow::Result<()> {
 
     match incremental_run_params {
         IncrementalRunParams::InitialRun => {
-            basic_link(args, output_file, file_name, linker_exec).await
+            basic_link(args, output_file, linker_exec).await
         }
         IncrementalRunParams::Patch {
             timestamp,
@@ -96,7 +95,6 @@ pub async fn linker() -> anyhow::Result<()> {
                 timestamp,
                 previous_versions,
                 output_file,
-                file_name,
                 target,
                 id,
                 linker_exec,
@@ -109,7 +107,6 @@ pub async fn linker() -> anyhow::Result<()> {
 async fn basic_link(
     args: Vec<String>,
     output_file: String,
-    file_name: String,
     linker_exec: String,
 ) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
@@ -121,7 +118,6 @@ async fn basic_link(
 
     args.push("-o".to_string());
     args.push(path.to_string());
-    args.push(format!("-Wl,-soname,{file_name}"));
 
     if !args.contains(&"-shared".to_owned()) {
         args.push("-shared".to_owned());
@@ -155,7 +151,6 @@ async fn patch_link(
     timestamp: SystemTime,
     previous_versions: Vec<String>,
     output_file: String,
-    file_name: String,
     target: String,
     id: u32,
     linker_exec: String,
@@ -227,7 +222,6 @@ async fn patch_link(
     args.push("-fPIC".to_string());
     args.push("-o".to_string());
     args.push(output_file.to_string());
-    args.push(format!("-Wl,-soname,{file_name}"));
 
     if let Some(arch) = &arch {
         args.push("-arch".to_string());

@@ -260,7 +260,11 @@ async fn build(
         target.as_str().to_uppercase().replace('-', "_")
     );
 
-    let rust_flags = "-Cprefer-dynamic -Clink-arg=-fuse-ld=lld".to_owned();
+    let mut rust_flags = "-Cprefer-dynamic".to_owned();
+    
+    if matches!(target, Target::Linux | Target::LinuxArm | Target::Windows) {
+    rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
+    }
 
     cargo
         .env_remove("LD_DEBUG")
@@ -269,7 +273,6 @@ async fn build(
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
-        .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME", &artifact_file_name)
         .env(
             "DEXTEROUS_DEVELOPER_LIB_DIRECTORES",
             serde_json::to_string(&lib_directories)?,
