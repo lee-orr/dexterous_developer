@@ -1,6 +1,8 @@
 {
     "recommendations": [
         "davidanson.vscode-markdownlint",
-        "itsyaasir.rust-feature-toggler"
+        "itsyaasir.rust-feature-toggler",
+        "actboy168.tasks",
+        "spmeesseman.vscode-taskexplorer"
     ]
 }
