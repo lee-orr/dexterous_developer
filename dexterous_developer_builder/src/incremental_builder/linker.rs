@@ -38,17 +38,11 @@ pub async fn linker() -> anyhow::Result<()> {
             .unwrap_or_default()
     };
 
-    let mut args = adjust_arguments(&target, &args, &lib_directories).await?;
+    let args = adjust_arguments(&target, &args, &lib_directories).await?;
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
 
-        if output_name.ends_with(".so") {
-            eprintln!("Adjusting non-main file soname");
-            if let Some(name) = Utf8PathBuf::from(&output_name).file_name() {
-                args.push(format!("-Wl,-soname,{name}"));
-            }
-        }
         let mut zig = tokio::process::Command::new(linker_exec);
         zig.args(args.clone());
 
