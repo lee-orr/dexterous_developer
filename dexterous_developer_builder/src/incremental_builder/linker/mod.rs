@@ -15,13 +15,15 @@ pub async fn linker() -> anyhow::Result<()> {
     args.next();
     let args = args.collect::<Vec<_>>();
 
-    let linker_exec = "cc".to_string();
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
     let target = std::env::var("DEXTEROUS_DEVELOPER_LINKER_TARGET")?;
     let lib_drectories = std::env::var("DEXTEROUS_DEVELOPER_LIB_DIRECTORES")?;
     let lib_directories: Vec<Utf8PathBuf> = serde_json::from_str(&lib_drectories)?;
 
+
+    let linker_exec = "cc".to_string();
+    
     let output_name = {
         let mut next_is_output = false;
         args.iter()
