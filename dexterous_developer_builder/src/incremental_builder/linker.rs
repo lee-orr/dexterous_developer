@@ -7,7 +7,6 @@ use std::time::SystemTime;
 use super::builder::IncrementalRunParams;
 use anyhow::{bail, Context};
 use camino::Utf8PathBuf;
-use cargo_zigbuild::Zig;
 use futures_util::future::join_all;
 use tokio::io::AsyncWriteExt;
 
@@ -17,7 +16,6 @@ pub async fn linker() -> anyhow::Result<()> {
     let args = args.collect::<Vec<_>>();
 
     let linker_exec = "cc".to_string();
-    let flavor = std::env::var("DEXTEROUS_DEVELOPER_LINKER_FLAVOR")?;
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
     let file_name = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME")?;
@@ -41,8 +39,6 @@ pub async fn linker() -> anyhow::Result<()> {
     };
 
     let mut args = adjust_arguments(&target, &args, &lib_directories).await?;
-    // args.insert(0, flavor);
-    // args.insert(0, "-flavor".to_string());
 
     if !output_name.contains(&package_name) {
         eprintln!("Linking Non-Main File - {output_name}\n{}", args.join(" "));
@@ -55,15 +51,16 @@ pub async fn linker() -> anyhow::Result<()> {
         }
         let mut zig = tokio::process::Command::new(linker_exec);
         zig.args(args.clone());
-    
+
         let result = zig.output().await?;
-    
+
         if !result.status.success() {
+            eprintln!("Failed Link Non Main - {output_name}:\n {}", args.join(" "));
             eprintln!(
-                "Failed Link Non Main - {output_name}:\n {}",
-                args.join(" ")
+                "PRINTOUT:\n{}",
+                std::str::from_utf8(&result.stderr).unwrap_or_default()
             );
-            eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
+            std::process::exit(1);
         }
         std::process::exit(0);
     }
@@ -72,7 +69,9 @@ pub async fn linker() -> anyhow::Result<()> {
 
     let args = args
         .into_iter()
-        .filter(|v| !(v.contains("--gc-sections") || v.contains("-pie") || v.contains("--version-script")))
+        .filter(|v| {
+            !(v.contains("--gc-sections") || v.contains("-pie") || v.contains("--version-script"))
+        })
         .filter(|v| {
             if v == "-o" {
                 next_is_output = true;
@@ -90,16 +89,35 @@ pub async fn linker() -> anyhow::Result<()> {
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
     match incremental_run_params {
-        IncrementalRunParams::InitialRun => basic_link(args, output_file, file_name, linker_exec).await,
+        IncrementalRunParams::InitialRun => {
+            basic_link(args, output_file, file_name, linker_exec).await
+        }
         IncrementalRunParams::Patch {
             timestamp,
             previous_versions,
             id,
-        } => patch_link(args, timestamp, previous_versions, output_file, file_name, target, id, linker_exec).await,
+        } => {
+            patch_link(
+                args,
+                timestamp,
+                previous_versions,
+                output_file,
+                file_name,
+                target,
+                id,
+                linker_exec,
+            )
+            .await
+        }
     }
 }
 
-async fn basic_link(args: Vec<String>, output_file: String, file_name: String, linker_exec: String) -> anyhow::Result<()> {
+async fn basic_link(
+    args: Vec<String>,
+    output_file: String,
+    file_name: String,
+    linker_exec: String,
+) -> anyhow::Result<()> {
     let path = Utf8PathBuf::from(output_file);
     if path.exists() {
         tokio::fs::remove_file(&path).await?;
@@ -127,11 +145,12 @@ async fn basic_link(args: Vec<String>, output_file: String, file_name: String, l
     let result = zig.output().await?;
 
     if !result.status.success() {
+        eprintln!("Failed Linking Initial:\n {}", args.join(" "));
         eprintln!(
-            "Failed Linking Initial:\n {}",
-            args.join(" ")
+            "PRINTOUT:\n{}",
+            std::str::from_utf8(&result.stderr).unwrap_or_default()
         );
-        eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
+        std::process::exit(1);
     }
 
     std::process::exit(0);
@@ -196,7 +215,7 @@ async fn patch_link(
 
     let mut args = include_args;
 
-    if target.contains("mac") {
+    if target.contains("apple") {
         args.push("-undefined".to_string());
         args.push("dynamic_lookup".to_string());
         args.push("-dylib".to_string());
@@ -239,11 +258,12 @@ async fn patch_link(
     let result = zig.output().await?;
 
     if !result.status.success() {
+        eprintln!("Failed Link Parameters {id}:\n {}", args.join(" "));
         eprintln!(
-            "Failed Link Parameters {id}:\n {}",
-            args.join(" ")
+            "PRINTOUT:\n{}",
+            std::str::from_utf8(&result.stderr).unwrap_or_default()
         );
-        eprintln!("PRINTOUT:\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());        std::process::exit(1);
+        std::process::exit(1);
     }
     std::process::exit(0);
 }
@@ -301,16 +321,12 @@ async fn adjust_arguments(
         args.to_vec()
     };
 
-
     let mut new_args = vec![];
-    for arg in
-        args.into_iter()
-            .filter(|v| {
-                !v.contains("dexterous_developer_incremental_linker")
-                    && !v.contains("incremental_c_compiler")
-            }) {
-            new_args.push(arg);
-        
+    for arg in args.into_iter().filter(|v| {
+        !v.contains("dexterous_developer_incremental_linker")
+            && !v.contains("incremental_c_compiler")
+    }) {
+        new_args.push(arg);
     }
 
     for dir in lib_directories.iter().rev() {
@@ -318,14 +334,7 @@ async fn adjust_arguments(
         new_args.push(dir.to_string());
     }
 
-    let mut args = new_args;
-
-    // let has_target = args.iter().any(|v| v.contains("-target"));
-
-    // if !has_target {
-    //     args.push("-target".to_string());
-    //     args.push(target.to_string());
-    // }
+    let args = new_args;
 
     if let Some(path) = &path {
         tokio::fs::remove_file(&path).await?;

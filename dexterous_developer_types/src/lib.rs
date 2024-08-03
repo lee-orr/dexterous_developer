@@ -121,18 +121,6 @@ impl Target {
         }
     }
 
-    pub const fn zig_linker_target(self) -> &'static str {
-        match self {
-            Target::Linux => "x86_64-linux-gnu",
-            Target::LinuxArm => "aarch64-linux-gnu",
-            Target::Windows => "x86_64-windows-gnu",
-            Target::Mac => "x86_64-macos",
-            Target::MacArm => "aarch64-macos",
-            Target::Android => "aarch64-android",
-            Target::IOS => "aarch64-ios",
-        }
-    }
-
     pub const fn dynamic_lib_extension(&self) -> &'static str {
         match self {
             Target::Windows => "dll",

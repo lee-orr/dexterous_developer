@@ -27,12 +27,9 @@ use tokio::{
 };
 use tracing::{debug, error, info, trace};
 
-use crate::{
-    incremental_builder::zig_downloader::zig_path,
-    types::{
-        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
-        BuilderOutgoingMessages, HashedFileRecord,
-    },
+use crate::types::{
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, HashedFileRecord,
 };
 
 pub struct IncrementalBuilderInitializer {
@@ -246,26 +243,12 @@ async fn build(
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
 
-    let zig = zig_path()?;
-    eprintln!("Got Zig Path");
-
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
         bail!("Couldn't get linker path");
     };
     let linker = linker.canonicalize_utf8()?;
 
-    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
-    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
-        bail!("Couldn't get dlltool path");
-    };
-    let dlltool: Utf8PathBuf = dlltool.canonicalize_utf8()?;
-
-    // let rustc = cargo_zigbuild::Rustc {
-    //     disable_zig_linker: false,
-    //     enable_zig_ar: false,
-    //     cargo: options,
-    // };
     let cargo = options.command();
     let mut cargo = tokio::process::Command::from(cargo);
 
@@ -277,43 +260,19 @@ async fn build(
         target.as_str().to_uppercase().replace('-', "_")
     );
 
-    let mut rust_flags = "-Cprefer-dynamic".to_owned();
-
-    if target == Target::Windows {
-        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
-        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "lld-link");
-    } else if target == Target::Mac || target == Target::MacArm {
-        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
-        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "ld64.lld");
-    } else if target == Target::Linux || target == Target::LinuxArm {
-        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
-        cargo.env("DEXTEROUS_DEVELOPER_LINKER_FLAVOR", "ld.lld");
-    }
+    let rust_flags = "-Cprefer-dynamic -Clink-arg=-fuse-ld=lld".to_owned();
 
     cargo
         .env_remove("LD_DEBUG")
         .env_remove(&linker_env)
         .env(&linker_env, linker)
-        .env("CARGO_ZIGBUILD_ZIG_PATH", &zig)
-        .env(
-            "DEXTEROUS_DEVELOPER_LINKER_TARGET",
-            target.zig_linker_target(),
-        )
+        .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME", &artifact_file_name)
         .env(
             "DEXTEROUS_DEVELOPER_LIB_DIRECTORES",
             serde_json::to_string(&lib_directories)?,
-        )
-        .env(
-            "DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES",
-            serde_json::to_string(
-                &apple_sdk_directory
-                    .iter()
-                    .map(|v| v.join("System/Library/Frameworks"))
-                    .collect::<Vec<_>>(),
-            )?,
         )
         .env(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
@@ -602,20 +561,6 @@ impl IncrementalBuilder {
         settings: TargetBuildSettings,
         incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     ) -> anyhow::Result<Self> {
-        let zig = zig_path()?;
-        eprintln!("Got Zig Path - Initial");
-        std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
-
-        let cc = which::which("dexterous_developer_incremental_c_compiler")?;
-        let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
-            bail!("Couldn't get cc path");
-        };
-        let cc = cc.canonicalize_utf8()?;
-
-        info!("CC {cc} ZIG {zig}");
-
-        std::env::set_var("CARGO_BIN_EXE_cargo-zigbuild", &cc);
-
         let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
