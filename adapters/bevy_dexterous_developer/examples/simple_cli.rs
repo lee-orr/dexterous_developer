@@ -30,7 +30,7 @@ reloadable_main!((initial_plugins) {
 });
 
 fn update() {
-    println!("Heyz!");
+    println!("Hey!");
 }
 
 fn startup() {

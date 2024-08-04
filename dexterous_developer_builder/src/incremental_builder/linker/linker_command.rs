@@ -139,20 +139,37 @@ impl LinkerCommand {
             self.arguments = args;
         } else {
             while let Some(arg) = arg_iter.next() {
-                if arg.starts_with("/LIBPATH:") {
-                        include_args.push(arg.trim_start_matches("/LIBPATH:").to_string());
-                } else if arg.contains('=') || arg.starts_with("-l") {
+                if arg.starts_with("/LIBPATH:") || arg.ends_with(".lib") || arg.starts_with("/NATVIS:")  || arg.starts_with("/DEF") {
                     include_args.push(arg.clone());
                 } else if arg.ends_with(".o") && !arg.contains("symbols.o") { 
                     object_files.push(arg.clone());
-                } else if arg == "-target" {
-                    if let Some(arg) = arg_iter.next() {
-                        include_args.push("-target".to_string());
-                        include_args.push(arg.clone());
-                    }
                 }
             }
+        
+            let mut args = include_args;
+    
+            for name in previous_versions.iter().rev() {
+                if !name.ends_with(&format!(".{id}")) {
+                    args.push(format!("{name}.dll.lib"));
+                }
+            }
+    
+            for file in &object_files {
+                args.push(file.clone());
+            }
+
+            args.push("/DLL".to_string());
+            args.push("/NXCOMPAT".to_string());
+            args.push(" /defaultlib:msvcrt".to_string());
+            args.push("/OPT:REF,ICF".to_string());
+            args.push("/FORCE".to_string());
+            args.push("/NOLOGO".to_string());
+
+            self.arguments = args;
+
+            // panic!("PATCH:\n{}", self.arguments.join("\n"))
         }
+
         self
     }
 
@@ -166,6 +183,7 @@ impl LinkerCommand {
         if let Some(output) = &self.output {
             if self.linker == Linker::Windows {
                 self.arguments.push(format!("/OUT:{output}"));
+                self.arguments.push(format!("/IMPLIB:{output}.lib"));
             } else {
                 self.arguments.push("-o".to_string());
                 self.arguments.push(output.clone());
@@ -265,6 +283,8 @@ async fn process_arguments(target: &str, args: Vec<String>) -> anyhow::Result<(V
         } else if arg.starts_with("/OUT:") {
             eprintln!("OUTPUT: {arg}");
             output = Some(arg.trim_start_matches("/OUT:").to_string());
+        } else if arg.starts_with("/IMPLIB") {
+            continue;
         } else {
             eprintln!("ARG: {arg}");
             new_args.push(arg);
