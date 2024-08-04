@@ -138,7 +138,6 @@ impl LinkerCommand {
             }
             self.arguments = args;
         } else {
-            todo!();
             while let Some(arg) = arg_iter.next() {
                 if arg.starts_with("/LIBPATH:") {
                         include_args.push(arg.trim_start_matches("/LIBPATH:").to_string());
@@ -159,7 +158,7 @@ impl LinkerCommand {
 
     pub async fn execute(mut self) -> anyhow::Result<()> {
         let linker_exec = if self.linker == Linker::Windows {
-            "rust_lld.exe"
+            "rust-lld.exe"
         } else {
             "cc"
         };
@@ -259,11 +258,15 @@ async fn process_arguments(target: &str, args: Vec<String>) -> anyhow::Result<(V
     });
     let mut output = None;
     while let Some(arg) = iterator.next() {
+        let arg = arg.trim().trim_matches('"').to_string();
         if arg == "-o" {
+            eprintln!("GNU OUT: {arg}");
             output = iterator.next();
         } else if arg.starts_with("/OUT:") {
+            eprintln!("OUTPUT: {arg}");
             output = Some(arg.trim_start_matches("/OUT:").to_string());
         } else {
+            eprintln!("ARG: {arg}");
             new_args.push(arg);
         }
     }
