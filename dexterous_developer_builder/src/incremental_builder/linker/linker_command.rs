@@ -55,6 +55,14 @@ impl LinkerCommand {
             if !args.contains(&"-rdynamic".to_owned()) {
                 args.push("-rdynamic".to_owned());
             }
+        } else {
+            // panic!("EXEC ARGS\n{}", args.join(" "));
+            args.push("/DLL".to_string());
+            args = args.into_iter().map(|v| if v.starts_with("/OPT") {
+                "/OPT:NOREF,ICF".to_string()
+            } else {
+                v
+            }).collect();
         }
 
         self.arguments = args;
@@ -161,13 +169,11 @@ impl LinkerCommand {
             args.push("/DLL".to_string());
             args.push("/NXCOMPAT".to_string());
             args.push(" /defaultlib:msvcrt".to_string());
-            args.push("/OPT:REF,ICF".to_string());
+            args.push("/OPT:NOREF,ICF".to_string());
             args.push("/FORCE".to_string());
             args.push("/NOLOGO".to_string());
 
             self.arguments = args;
-
-            // panic!("PATCH:\n{}", self.arguments.join("\n"))
         }
 
         self
@@ -197,6 +203,8 @@ impl LinkerCommand {
 
         if self.linker == Linker::Windows {
             command.arg("-flavor").arg("link");
+
+            self.arguments = self.arguments.into_iter().map(|v| format!("\"{v}\"")).collect();
         }
 
         if let Some(path) = &self.linker_arguments_file {
