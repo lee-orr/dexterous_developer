@@ -34,7 +34,6 @@ futures-util = { version = "0.3", default-features = false,  features = [
     "std",
 ] }
 serde_json = "1"
-bollard = "0.16"
 which = "6"
 debounced = "0.1"
 tokio-stream = "0.1"
@@ -51,4 +50,4 @@ cargo-options = "0.7"
 clap = "4"
 
 [dev-dependencies]
-test-temp-dir = { version = "0.2 "}
+test-temp-dir = { version = "0.2"}
