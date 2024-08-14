@@ -6,7 +6,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 pub async fn incremental_rustc() -> anyhow::Result<()> {
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
-    let rustc = Rustc::new(std::env::args(), &package_name)?;
+    let rustc = Rustc::new(std::env::args(), &package_name).await?;
 
     let _ = rustc.run().await?;
     Ok(())
@@ -16,6 +16,7 @@ pub async fn incremental_rustc() -> anyhow::Result<()> {
 struct Rustc {
     executable: String,
     operation: RustcOperation,
+    arg_file: Option<Utf8PathBuf>
 }
 
 #[derive(Debug)]
@@ -40,14 +41,28 @@ enum RustcOperation {
 }
 
 impl Rustc {
-    fn new(mut args: impl Iterator<Item = String>, package: &str) -> anyhow::Result<Self> {
+    async fn new(mut args: impl Iterator<Item = String>, package: &str) -> anyhow::Result<Self> {
         let _current_executable = args.next();
 
         let Some(executable) = args.next() else {
             bail!("No Rustc Executable In Arguments");
         };
 
-        let args: Vec<String> = args.collect();
+        let mut args: Vec<String> = args.collect();
+        let mut arg_file = None;
+        
+        if args.len() == 1 {
+            if let Some(first) = args.first() {
+                if first.starts_with("@") {
+                    let path = Utf8PathBuf::from(first.trim_start_matches("@"));
+                    
+                    if path.exists() {
+                        args = tokio::fs::read_to_string(&path).await?.lines().map(|v| v.to_owned()).collect();
+                        arg_file = Some(path);
+                    }
+                }
+            }
+        }
 
         let operation = {
             let mut is_passthrough = true;
@@ -153,11 +168,12 @@ impl Rustc {
         Ok(Self {
             executable,
             operation,
+            arg_file
         })
     }
 
     async fn run(self) -> anyhow::Result<std::process::ExitStatus> {
-        let mut command = tokio::process::Command::new(self.executable);
+        let mut command = WrappedCommand::new(self.executable);
 
         match self.operation {
             RustcOperation::MainCompilation {
@@ -214,14 +230,71 @@ impl Rustc {
                 }
             }
             RustcOperation::Passthrough(args) => {
-                command.args(args);
+                command.args(args.iter());
             },
         };
+
+        if let Some(file) = self.arg_file {
+            command.arg_file(file);
+        }
+
+        let mut command = command.command().await?;
 
         command.stdout(Stdio::inherit()).stderr(Stdio::inherit());
 
         let mut child = command.spawn()?;
 
         Ok(child.wait().await?)
+    }
+}
+
+struct WrappedCommand {
+    executable: String,
+    arguments: Vec<String>,
+    arg_file: Option<Utf8PathBuf>,
+}
+
+impl WrappedCommand {
+    fn new(executable: impl ToString) -> Self {
+        Self {
+            executable: executable.to_string(),
+            arguments: vec![],
+            arg_file: None
+        }
+    }
+
+    fn arg_file(&mut self, path: Utf8PathBuf) {
+        self.arg_file = Some(path);
+    }
+
+    pub fn arg(&mut self, arg: impl ToString) -> &mut Self {
+        let arg = arg.to_string();
+        self.arguments.push(arg);
+        self
+    }
+
+    pub fn args<S: ToString>(&mut self, args: impl Iterator<Item = S>) -> &mut Self {
+        for arg in args {
+            let arg = arg.to_string();
+            self.arguments.push(arg);
+        }
+        self
+    }
+
+    pub async fn command(self) -> anyhow::Result<tokio::process::Command> {
+        let mut cmd = tokio::process::Command::new(self.executable);
+
+        if let Some(file) = self.arg_file {
+            let content = self.arguments.join("\n");
+            if file.exists() {
+                tokio::fs::remove_file(&file).await?;
+            }
+            tokio::fs::write(&file, content.as_str().as_bytes()).await?;
+            cmd.arg(format!("@{file}"));
+        } else {
+            cmd.args(self.arguments);
+        }
+
+        Ok(cmd)
     }
 }
