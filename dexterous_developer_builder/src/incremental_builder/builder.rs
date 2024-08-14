@@ -243,6 +243,12 @@ async fn build(
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
 
+    let rustc = which::which("dexterous_developer_incremental_rustc")?;
+    let Ok(rustc) = Utf8PathBuf::from_path_buf(rustc) else {
+        bail!("Couldn't get linker path");
+    };
+    let rustc = rustc.canonicalize_utf8()?;
+
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
         bail!("Couldn't get linker path");
@@ -270,6 +276,7 @@ async fn build(
         .env_remove("LD_DEBUG")
         .env_remove(&linker_env)
         .env(&linker_env, linker)
+        .env("RUSTC_WORKSPACE_WRAPPER", rustc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
@@ -339,13 +346,11 @@ async fn build(
     let mut libraries = HashMap::<String, Utf8PathBuf>::with_capacity(20);
     libraries.insert(artifact_file_name.clone(), artifact_path.clone());
 
-    eprintln!("1");
 
     let initial_libraries = libraries
         .iter()
         .map(|(name, path)| (name.clone(), path.clone()))
         .collect::<Vec<_>>();
-    eprintln!("2");
 
     let mut path_var = match env::var_os("PATH") {
         Some(var) => env::split_paths(&var)
@@ -353,11 +358,9 @@ async fn build(
             .collect(),
         None => Vec::new(),
     };
-    eprintln!("3");
 
     let mut dylib_paths = dylib_path();
     let mut root_dirs = vec![default_out, deps, examples];
-    eprintln!("4");
 
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
@@ -373,29 +376,23 @@ async fn build(
     );
 
     {
-        eprintln!("5");
         let rustup_home = home::rustup_home()?;
         let toolchains = rustup_home.join("toolchains");
         
-        eprintln!("6");
         let mut dir = tokio::fs::read_dir(toolchains).await?;
 
         while let Ok(Some(child)) = dir.next_entry().await {
-            eprintln!("7 - {child:?}");
             if child.file_type().await?.is_dir() {
                 let path = Utf8PathBuf::from_path_buf(child.path()).unwrap_or_default();
                 path_var.push(path.join("lib"));
             }
         }
-        
-        eprintln!("8");
     }
 
     trace!("Path Var for DyLib Search: {path_var:?}");
 
     let dir_collections = path_var.iter().map(|dir| {
         
-        eprintln!("9 - {dir}");
         let dir = dir.clone();
         tokio::spawn(async {
             let Ok(mut dir) = tokio::fs::read_dir(dir).await else {
@@ -422,7 +419,6 @@ async fn build(
             files
         })
     });
-    eprintln!("10");
 
     let searchable_files = join_all(dir_collections)
         .await
@@ -434,8 +430,6 @@ async fn build(
         .flatten()
         .cloned()
         .collect::<HashMap<_, _>>();
-    
-    eprintln!("11");
 
     let mut dependencies = HashMap::new();
 
@@ -448,7 +442,6 @@ async fn build(
             library,
         )?;
     }
-    eprintln!("12");
 
     let libraries = {
         libraries
@@ -470,13 +463,11 @@ async fn build(
             })
             .collect::<anyhow::Result<Vec<_>>>()?
     };
-    eprintln!("13");
 
     {
         let mut previous = previous_versions.lock().await;
         previous.push((format!("{artifact_name}.{id}"), artifact_path.clone()));
     }
-    eprintln!("14");
 
     let _ = sender.send(BuildOutputMessages::EndedBuild {
         id,
