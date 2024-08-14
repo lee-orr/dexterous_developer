@@ -27,12 +27,9 @@ use tokio::{
 };
 use tracing::{debug, error, info, trace};
 
-use crate::{
-    incremental_builder::zig_downloader::zig_path,
-    types::{
-        BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
-        BuilderOutgoingMessages, HashedFileRecord,
-    },
+use crate::types::{
+    BuildOutputMessages, Builder, BuilderIncomingMessages, BuilderInitializer,
+    BuilderOutgoingMessages, HashedFileRecord,
 };
 
 pub struct IncrementalBuilderInitializer {
@@ -246,27 +243,13 @@ async fn build(
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
 
-    let zig = zig_path()?;
-    eprintln!("Got Zig Path");
-
     let linker = which::which("dexterous_developer_incremental_linker")?;
     let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
         bail!("Couldn't get linker path");
     };
     let linker = linker.canonicalize_utf8()?;
 
-    let dlltool = which::which("dexterous_developer_incremental_dlltool")?;
-    let Ok(dlltool) = Utf8PathBuf::from_path_buf(dlltool) else {
-        bail!("Couldn't get dlltool path");
-    };
-    let dlltool: Utf8PathBuf = dlltool.canonicalize_utf8()?;
-
-    let rustc = cargo_zigbuild::Rustc {
-        disable_zig_linker: false,
-        enable_zig_ar: false,
-        cargo: options,
-    };
-    let cargo = rustc.build_command()?;
+    let cargo = options.command();
     let mut cargo = tokio::process::Command::from(cargo);
 
     if let Some(working_dir) = working_dir {
@@ -278,35 +261,21 @@ async fn build(
     );
 
     let mut rust_flags = "-Cprefer-dynamic".to_owned();
-
-    if target == Target::Windows {
-        rust_flags = format!("{rust_flags} -Cdlltool={dlltool}")
+    
+    if matches!(target, Target::Linux | Target::LinuxArm | Target::Windows) {
+        rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
     }
 
     cargo
         .env_remove("LD_DEBUG")
         .env_remove(&linker_env)
         .env(&linker_env, linker)
-        .env("CARGO_ZIGBUILD_ZIG_PATH", &zig)
-        .env(
-            "DEXTEROUS_DEVELOPER_LINKER_TARGET",
-            target.zig_linker_target(),
-        )
+        .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
         .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE", &artifact_path)
-        .env("DEXTEROUS_DEVELOPER_OUTPUT_FILE_NAME", &artifact_file_name)
         .env(
             "DEXTEROUS_DEVELOPER_LIB_DIRECTORES",
             serde_json::to_string(&lib_directories)?,
-        )
-        .env(
-            "DEXTEROUS_DEVELOPER_FRAMEWORK_DIRECTORES",
-            serde_json::to_string(
-                &apple_sdk_directory
-                    .iter()
-                    .map(|v| v.join("System/Library/Frameworks"))
-                    .collect::<Vec<_>>(),
-            )?,
         )
         .env(
             "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
@@ -370,10 +339,13 @@ async fn build(
     let mut libraries = HashMap::<String, Utf8PathBuf>::with_capacity(20);
     libraries.insert(artifact_file_name.clone(), artifact_path.clone());
 
+    eprintln!("1");
+
     let initial_libraries = libraries
         .iter()
         .map(|(name, path)| (name.clone(), path.clone()))
         .collect::<Vec<_>>();
+    eprintln!("2");
 
     let mut path_var = match env::var_os("PATH") {
         Some(var) => env::split_paths(&var)
@@ -381,9 +353,11 @@ async fn build(
             .collect(),
         None => Vec::new(),
     };
+    eprintln!("3");
 
     let mut dylib_paths = dylib_path();
     let mut root_dirs = vec![default_out, deps, examples];
+    eprintln!("4");
 
     path_var.append(&mut dylib_paths);
     path_var.append(&mut root_dirs);
@@ -399,21 +373,29 @@ async fn build(
     );
 
     {
+        eprintln!("5");
         let rustup_home = home::rustup_home()?;
         let toolchains = rustup_home.join("toolchains");
+        
+        eprintln!("6");
         let mut dir = tokio::fs::read_dir(toolchains).await?;
 
         while let Ok(Some(child)) = dir.next_entry().await {
+            eprintln!("7 - {child:?}");
             if child.file_type().await?.is_dir() {
                 let path = Utf8PathBuf::from_path_buf(child.path()).unwrap_or_default();
                 path_var.push(path.join("lib"));
             }
         }
+        
+        eprintln!("8");
     }
 
     trace!("Path Var for DyLib Search: {path_var:?}");
 
     let dir_collections = path_var.iter().map(|dir| {
+        
+        eprintln!("9 - {dir}");
         let dir = dir.clone();
         tokio::spawn(async {
             let Ok(mut dir) = tokio::fs::read_dir(dir).await else {
@@ -440,6 +422,7 @@ async fn build(
             files
         })
     });
+    eprintln!("10");
 
     let searchable_files = join_all(dir_collections)
         .await
@@ -451,6 +434,8 @@ async fn build(
         .flatten()
         .cloned()
         .collect::<HashMap<_, _>>();
+    
+    eprintln!("11");
 
     let mut dependencies = HashMap::new();
 
@@ -463,6 +448,7 @@ async fn build(
             library,
         )?;
     }
+    eprintln!("12");
 
     let libraries = {
         libraries
@@ -484,11 +470,13 @@ async fn build(
             })
             .collect::<anyhow::Result<Vec<_>>>()?
     };
+    eprintln!("13");
 
     {
         let mut previous = previous_versions.lock().await;
         previous.push((format!("{artifact_name}.{id}"), artifact_path.clone()));
     }
+    eprintln!("14");
 
     let _ = sender.send(BuildOutputMessages::EndedBuild {
         id,
@@ -531,8 +519,10 @@ fn process_dependencies_recursive(
     current_library_name: &str,
     current_library: &Utf8Path,
 ) -> Result<(), anyhow::Error> {
+    eprintln!("Checking current library {current_library_name} {current_library}");
     let file = fs::read(current_library)?;
     let file = goblin::Object::parse(&file)?;
+    eprintln!("Parsed current library");
 
     let dependency_vec = match file {
         goblin::Object::Elf(elf) => {
@@ -569,6 +559,8 @@ fn process_dependencies_recursive(
         _ => HashSet::default(),
     };
 
+    eprintln!("Dependencies: {dependency_vec:?}");
+
     for library_name in dependency_vec.iter() {
         if library_name.is_empty() {
             continue;
@@ -595,20 +587,6 @@ impl IncrementalBuilder {
         settings: TargetBuildSettings,
         incoming: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     ) -> anyhow::Result<Self> {
-        let zig = zig_path()?;
-        eprintln!("Got Zig Path - Initial");
-        std::env::set_var("CARGO_ZIGBUILD_ZIG_PATH", &zig);
-
-        let cc = which::which("dexterous_developer_incremental_c_compiler")?;
-        let Ok(cc) = Utf8PathBuf::from_path_buf(cc) else {
-            bail!("Couldn't get cc path");
-        };
-        let cc = cc.canonicalize_utf8()?;
-
-        info!("CC {cc} ZIG {zig}");
-
-        std::env::set_var("CARGO_BIN_EXE_cargo-zigbuild", &cc);
-
         let mut incoming_rx = incoming.subscribe();
         let (outgoing_tx, _) = tokio::sync::broadcast::channel(100);
         let (output_tx, _) = tokio::sync::broadcast::channel(100);
