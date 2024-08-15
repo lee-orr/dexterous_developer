@@ -56,7 +56,7 @@ pub async fn setup_test(
     let (out_tx, mut out_rx) = mpsc::unbounded_channel();
 
     let runner = tokio::spawn(async move {
-        let runner = which::which("dexterous_developer_incremental_rustc").unwrap();        
+        let runner = which::which("dexterous_developer_incremental_runner").unwrap();        
 
         let mut command = Command::new(runner);
         command
