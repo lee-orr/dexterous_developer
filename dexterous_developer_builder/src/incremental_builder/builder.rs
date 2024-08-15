@@ -274,8 +274,8 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
-        .env_remove(&linker_env)
-        .env(&linker_env, linker)
+        // .env_remove(&linker_env)
+        // .env(&linker_env, linker)
         .env("RUSTC_WORKSPACE_WRAPPER", rustc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)

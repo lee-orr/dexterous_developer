@@ -4,9 +4,16 @@ use anyhow::{anyhow, bail};
 use camino::Utf8PathBuf;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+use super::builder::IncrementalRunParams;
+
 pub async fn incremental_rustc() -> anyhow::Result<()> {
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
-    let rustc = Rustc::new(std::env::args(), &package_name).await?;
+    let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
+    let incremental_run_params: IncrementalRunParams =
+        serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
+
+    let rustc = Rustc::new(std::env::args(), &package_name, &
+    &output_file, &incremental_run_params).await?;
 
     let _ = rustc.run().await?;
     Ok(())
@@ -33,6 +40,7 @@ enum RustcOperation {
         cfg: Vec<String>,
         check_cfg: Vec<String>,
         out_dir: Utf8PathBuf,
+        file_name_extras: String,
         target: String,
         search_paths: Vec<String>,
         library_links: Vec<String>,
@@ -41,7 +49,7 @@ enum RustcOperation {
 }
 
 impl Rustc {
-    async fn new(mut args: impl Iterator<Item = String>, package: &str) -> anyhow::Result<Self> {
+    async fn new(mut args: impl Iterator<Item = String>, package: &str, output_file: &str, run_params: &IncrementalRunParams) -> anyhow::Result<Self> {
         let _current_executable = args.next();
 
         let Some(executable) = args.next() else {
@@ -106,6 +114,9 @@ impl Rustc {
                         emit = Some(arg.trim_start_matches("--emit=").to_string());
                     } else if arg == "-C" {
                         if let Some(a) = args_iter.next().cloned() {
+                            if a.starts_with("extra-filename=") {
+                                continue;
+                            }
                             codegen_args.push(a);
                         }
                     } else if arg.starts_with("-C") && arg.split_whitespace().count() == 1 {
@@ -146,6 +157,15 @@ impl Rustc {
                     }
                 }
 
+                let output_dir = Utf8PathBuf::from(output_file).parent().ok_or(anyhow!("No Parent for Output File"))?.to_owned();
+                out_dir = Some(output_dir);
+
+                let file_name_extras = match run_params {
+                    IncrementalRunParams::InitialRun => ".1".to_string(),
+                    IncrementalRunParams::Patch { id, .. } => format!(".{id}"),
+                }; 
+                
+
                 RustcOperation::MainCompilation {
                     crate_name: crate_name.ok_or(anyhow!("Couldn't determine crate name"))?,
                     edition,
@@ -161,6 +181,7 @@ impl Rustc {
                     library_links,
                     extern_links,
                     original_args: args,
+                    file_name_extras
                 }
             }
         };
@@ -191,6 +212,7 @@ impl Rustc {
                 search_paths,
                 library_links,
                 extern_links,
+                file_name_extras,
             } => {
                 eprintln!("RUSTC\n{}", original_args.join("\n"));
                 command
@@ -207,7 +229,9 @@ impl Rustc {
                     .arg("--target")
                     .arg(target)
                     .arg("--out-dir")
-                    .arg(out_dir);
+                    .arg(out_dir)
+                    .arg("-C")
+                    .arg(format!("extra-filename={file_name_extras}"));
 
                 for c in &codegen_args {
                     command.arg("-C").arg(c);
