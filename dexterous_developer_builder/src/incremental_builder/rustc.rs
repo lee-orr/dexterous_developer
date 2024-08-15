@@ -35,7 +35,6 @@ struct Rustc {
 enum RustcOperation {
     Passthrough(Vec<String>),
     MainCompilation {
-        original_args: Vec<String>,
         crate_name: String,
         edition: u32,
         file: Utf8PathBuf,
@@ -195,7 +194,6 @@ impl Rustc {
                     search_paths,
                     library_links,
                     extern_links,
-                    original_args: args,
                     file_name_extras,
                 }
             }
@@ -213,7 +211,6 @@ impl Rustc {
 
         match self.operation {
             RustcOperation::MainCompilation {
-                original_args,
                 crate_name,
                 edition,
                 file,
@@ -228,6 +225,7 @@ impl Rustc {
                 library_links,
                 extern_links,
                 file_name_extras,
+                ..
             } => {
                 command
                     .arg("--error-format=json")
