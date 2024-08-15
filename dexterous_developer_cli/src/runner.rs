@@ -49,6 +49,9 @@ fn main() {
     let args = Args::parse();
 
     let working_directory = args.working_directory.unwrap_or_else(|| cwd.clone());
+
+    std::env::set_var("CARGO_MANIFEST_DIR", &working_directory);
+    
     let library_path = args
         .library_path
         .unwrap_or_else(|| cwd.clone().join("reload_libs"));
