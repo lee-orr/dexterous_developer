@@ -676,6 +676,7 @@ fn trigger_build(
             .map_err(|e| {
                 error!("Build Error - {id} {target} - {e}");
                 let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
+                build_active.swap(false, std::sync::atomic::Ordering::SeqCst);
                 e
             })?;
 
@@ -693,6 +694,7 @@ fn trigger_build(
                     .map_err(|e| {
                         error!("Build Error - {id} {target} - {e}");
                         let _ = output_tx.send(BuildOutputMessages::FailedBuild(e.to_string()));
+                        build_active.swap(false, std::sync::atomic::Ordering::SeqCst);
                         e
                     })?;
                 } else {
