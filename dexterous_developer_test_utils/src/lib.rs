@@ -56,21 +56,7 @@ pub async fn setup_test(
     let (out_tx, mut out_rx) = mpsc::unbounded_channel();
 
     let runner = tokio::spawn(async move {
-        let base = Utf8PathBuf::from_path_buf(current_exe().unwrap()).unwrap();
-        #[cfg(target_os = "windows")]
-        let runner: Utf8PathBuf = base
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("dexterous_developer_runner.exe");
-        #[cfg(not(target_os = "windows"))]
-        let runner: Utf8PathBuf = base
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("dexterous_developer_runner");
+        let runner = which::which("dexterous_developer_incremental_rustc").unwrap();        
 
         let mut command = Command::new(runner);
         command

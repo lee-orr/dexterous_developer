@@ -19,3 +19,4 @@ dexterous_developer_types = { version = "0.3.0", path = "../dexterous_developer_
 camino = "1"
 tokio = { version = "1", features = ["full"]}
 anyhow = "1"
+which = "6"

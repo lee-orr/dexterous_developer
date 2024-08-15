@@ -33,7 +33,7 @@ jobs:
       - name: CI job
         run: |
           cargo build --examples --features hot
-          cargo build --bin dexterous_developer_runner
+          cargo install --path ./dexterous_developer_cli
           cargo test
   tests-mac:
     runs-on: mac-latest
@@ -51,7 +51,7 @@ jobs:
       - name: CI job
         run: |
           cargo build --examples --features hot
-          cargo build --bin dexterous_developer_runner
+          cargo install --path ./dexterous_developer_cli
           cargo test
   tests-windows:
     runs-on: windows-latest
@@ -69,6 +69,6 @@ jobs:
       - name: CI job
         run: |
           cargo build --examples --features hot
-          cargo build --bin dexterous_developer_runner
+          cargo install --path ./dexterous_developer_cli
           cargo test
   
