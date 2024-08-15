@@ -4,7 +4,6 @@ features = [
 
 code_watch_folders = ["./adapters/bevy_dexterous_developer/examples"]
 
-[packages.asset_test]
 asset_folders = ["./assets"]
 
 [examples.simple_cli]
