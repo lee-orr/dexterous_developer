@@ -1,8 +1,6 @@
 use builder::{TestBuilderComms, TestBuilderInitializer};
-use camino::Utf8PathBuf;
 use dexterous_developer_manager::server::run_test_server;
 use std::{
-    env::current_exe,
     process::{ExitStatus, Stdio},
     time::Duration,
 };
@@ -56,7 +54,7 @@ pub async fn setup_test(
     let (out_tx, mut out_rx) = mpsc::unbounded_channel();
 
     let runner = tokio::spawn(async move {
-        let runner = which::which("dexterous_developer_incremental_runner").unwrap();        
+        let runner = which::which("dexterous_developer_runner").unwrap();
 
         let mut command = Command::new(runner);
         command
