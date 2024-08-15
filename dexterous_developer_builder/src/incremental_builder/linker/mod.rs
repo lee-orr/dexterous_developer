@@ -37,15 +37,17 @@ pub async fn linker() -> anyhow::Result<()> {
                 if path.exists() {
                     tokio::fs::remove_file(&path).await?;
                 }
-            },
-            IncrementalRunParams::Patch { id, timestamp: _, previous_versions } => {
+            }
+            IncrementalRunParams::Patch {
+                id,
+                timestamp: _,
+                previous_versions,
+            } => {
                 command = command.convert_to_patch(id, previous_versions);
-
-            },
+            }
         }
     }
 
-
     command.execute().await?;
-    return Ok(());
+    Ok(())
 }

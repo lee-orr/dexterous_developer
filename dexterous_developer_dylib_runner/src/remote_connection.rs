@@ -157,33 +157,31 @@ pub(crate) async fn remote_connection(
                     }
                 }
                 DownloadResult::DownloadNotFound { is_asset } => {
-                    if !is_asset {
-                        if pending_downloads.load(Ordering::SeqCst) == 0 {
-                            trace!("all downloads completed");
-                            if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
-                                if let Some(builder_type) = builder_type.as_ref().cloned() {
-                                    if let Some(local_path) = root_lib_path.as_ref().cloned() {
-                                        if local_path.exists() || ({
-                                            trace!("waiting for library to be created");
-                                            sleep(Duration::from_millis(100)).await;
-                                            local_path.exists()
-                                        }){
-                                            info!("Triggering a Reload");
-                                            last_triggered_id = last_completed_id;
-                                            let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path, builder_type }).await;
-                                            trace!("Sent Reload Trigger: {e:?}");
-                                        } else {
-                                            trace!("local root doesn't exist yet - did download actually complete?");
-                                        }
+                    if !is_asset && pending_downloads.load(Ordering::SeqCst) == 0 {
+                        trace!("all downloads completed");
+                        if last_completed_id == last_started_id && last_completed_id != last_triggered_id {
+                            if let Some(builder_type) = builder_type.as_ref().cloned() {
+                                if let Some(local_path) = root_lib_path.as_ref().cloned() {
+                                    if local_path.exists() || ({
+                                        trace!("waiting for library to be created");
+                                        sleep(Duration::from_millis(100)).await;
+                                        local_path.exists()
+                                    }){
+                                        info!("Triggering a Reload");
+                                        last_triggered_id = last_completed_id;
+                                        let e = tx.send(DylibRunnerMessage::LoadRootLib { build_id: last_triggered_id, local_path, builder_type }).await;
+                                        trace!("Sent Reload Trigger: {e:?}");
                                     } else {
-                                        trace!("no local root path exists - not triggering a reload");
+                                        trace!("local root doesn't exist yet - did download actually complete?");
                                     }
                                 } else {
-                                    trace!("no builder type found");
+                                    trace!("no local root path exists - not triggering a reload");
                                 }
                             } else {
-                                trace!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
+                                trace!("no builder type found");
                             }
+                        } else {
+                            trace!("last completed is {last_completed_id}, started is {last_started_id} and triggered is {last_triggered_id} - not triggering a reload");
                         }
                     }
                 }

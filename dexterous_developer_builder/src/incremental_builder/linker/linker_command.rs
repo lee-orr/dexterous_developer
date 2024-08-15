@@ -6,14 +6,14 @@ pub struct LinkerCommand {
     pub linker: Linker,
     pub arguments: Vec<String>,
     pub output: Option<String>,
-    pub linker_arguments_file: Option<Utf8PathBuf>,   
+    pub linker_arguments_file: Option<Utf8PathBuf>,
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Linker {
     Windows,
     Apple,
-    Linux
+    Linux,
 }
 
 impl LinkerCommand {
@@ -32,7 +32,7 @@ impl LinkerCommand {
             linker,
             arguments,
             output,
-            linker_arguments_file
+            linker_arguments_file,
         })
     }
 
@@ -45,24 +45,37 @@ impl LinkerCommand {
     }
 
     pub fn convert_executable_to_library(mut self) -> Self {
-        let mut args = self.arguments.into_iter().filter(|v| !(v.contains("--gc-sections") || v.contains("-pie") || v.contains("--version-script"))).collect::<Vec<_>>();
+        let mut args = self
+            .arguments
+            .into_iter()
+            .filter(|v| {
+                !(v.contains("--gc-sections")
+                    || v.contains("-pie")
+                    || v.contains("--version-script"))
+            })
+            .collect::<Vec<_>>();
 
         if self.linker != Linker::Windows {
             if !args.contains(&"-shared".to_owned()) {
                 args.push("-shared".to_owned());
             }
-        
+
             if !args.contains(&"-rdynamic".to_owned()) {
                 args.push("-rdynamic".to_owned());
             }
         } else {
             // panic!("EXEC ARGS\n{}", args.join(" "));
             args.push("/DLL".to_string());
-            args = args.into_iter().map(|v| if v.starts_with("/OPT") {
-                "/OPT:NOREF,ICF".to_string()
-            } else {
-                v
-            }).collect();
+            args = args
+                .into_iter()
+                .map(|v| {
+                    if v.starts_with("/OPT") {
+                        "/OPT:NOREF,ICF".to_string()
+                    } else {
+                        v
+                    }
+                })
+                .collect();
         }
 
         self.arguments = args;
@@ -100,7 +113,7 @@ impl LinkerCommand {
                     }
                 } else if arg.contains('=') || arg.starts_with("-l") {
                     include_args.push(arg.clone());
-                } else if arg.ends_with(".o") && !arg.contains("symbols.o") { 
+                } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
                     object_files.push(arg.clone());
                 } else if arg == "-target" {
                     if let Some(arg) = arg_iter.next() {
@@ -109,7 +122,6 @@ impl LinkerCommand {
                     }
                 }
             }
-
 
             let mut args = include_args;
 
@@ -146,22 +158,26 @@ impl LinkerCommand {
             }
             self.arguments = args;
         } else {
-            while let Some(arg) = arg_iter.next() {
-                if arg.starts_with("/LIBPATH:") || arg.ends_with(".lib") || arg.starts_with("/NATVIS:")  || arg.starts_with("/DEF") {
+            for arg in arg_iter {
+                if arg.starts_with("/LIBPATH:")
+                    || arg.ends_with(".lib")
+                    || arg.starts_with("/NATVIS:")
+                    || arg.starts_with("/DEF")
+                {
                     include_args.push(arg.clone());
-                } else if arg.ends_with(".o") && !arg.contains("symbols.o") { 
+                } else if arg.ends_with(".o") && !arg.contains("symbols.o") {
                     object_files.push(arg.clone());
                 }
             }
-        
+
             let mut args = include_args;
-    
+
             for name in previous_versions.iter().rev() {
                 if !name.ends_with(&format!(".{id}")) {
                     args.push(format!("{name}.dll.lib"));
                 }
             }
-    
+
             for file in &object_files {
                 args.push(file.clone());
             }
@@ -204,7 +220,11 @@ impl LinkerCommand {
         if self.linker == Linker::Windows {
             command.arg("-flavor").arg("link");
 
-            self.arguments = self.arguments.into_iter().map(|v| format!("\"{v}\"")).collect();
+            self.arguments = self
+                .arguments
+                .into_iter()
+                .map(|v| format!("\"{v}\""))
+                .collect();
         }
 
         if let Some(path) = &self.linker_arguments_file {
@@ -225,14 +245,20 @@ impl LinkerCommand {
         let result = command.output().await?;
 
         if !result.status.success() {
-            eprintln!("Failed to Link\n{}", std::str::from_utf8(&result.stderr).unwrap_or_default());
+            eprintln!(
+                "Failed to Link\n{}",
+                std::str::from_utf8(&result.stderr).unwrap_or_default()
+            );
             std::process::exit(1);
         }
         std::process::exit(0);
     }
 }
 
-async fn process_arguments(target: &str, args: Vec<String>) -> anyhow::Result<(Vec<String>, Option<String>, Option<Utf8PathBuf>)> {
+async fn process_arguments(
+    target: &str,
+    args: Vec<String>,
+) -> anyhow::Result<(Vec<String>, Option<String>, Option<Utf8PathBuf>)> {
     let path = if let Some(file) = args.first() {
         if file.starts_with('@') && file.ends_with("linker-arguments") {
             let path = file.trim_start_matches('@');

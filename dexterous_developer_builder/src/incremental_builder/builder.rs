@@ -249,33 +249,21 @@ async fn build(
     };
     let rustc = rustc.canonicalize_utf8()?;
 
-    let linker = which::which("dexterous_developer_incremental_linker")?;
-    let Ok(linker) = Utf8PathBuf::from_path_buf(linker) else {
-        bail!("Couldn't get linker path");
-    };
-    let linker = linker.canonicalize_utf8()?;
-
     let cargo = options.command();
     let mut cargo = tokio::process::Command::from(cargo);
 
     if let Some(working_dir) = working_dir {
         cargo.current_dir(&working_dir);
     }
-    let linker_env = format!(
-        "CARGO_TARGET_{}_LINKER",
-        target.as_str().to_uppercase().replace('-', "_")
-    );
 
     let mut rust_flags = "-Cprefer-dynamic".to_owned();
-    
+
     if matches!(target, Target::Linux | Target::LinuxArm | Target::Windows) {
         rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
     }
 
     cargo
         .env_remove("LD_DEBUG")
-        // .env_remove(&linker_env)
-        // .env(&linker_env, linker)
         .env("RUSTC_WORKSPACE_WRAPPER", rustc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
@@ -346,7 +334,6 @@ async fn build(
     let mut libraries = HashMap::<String, Utf8PathBuf>::with_capacity(20);
     libraries.insert(artifact_file_name.clone(), artifact_path.clone());
 
-
     let initial_libraries = libraries
         .iter()
         .map(|(name, path)| (name.clone(), path.clone()))
@@ -378,7 +365,7 @@ async fn build(
     {
         let rustup_home = home::rustup_home()?;
         let toolchains = rustup_home.join("toolchains");
-        
+
         let mut dir = tokio::fs::read_dir(toolchains).await?;
 
         while let Ok(Some(child)) = dir.next_entry().await {
@@ -392,7 +379,6 @@ async fn build(
     trace!("Path Var for DyLib Search: {path_var:?}");
 
     let dir_collections = path_var.iter().map(|dir| {
-        
         let dir = dir.clone();
         tokio::spawn(async {
             let Ok(mut dir) = tokio::fs::read_dir(dir).await else {

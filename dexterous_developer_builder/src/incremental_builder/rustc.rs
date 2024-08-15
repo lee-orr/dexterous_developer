@@ -2,7 +2,6 @@ use std::{process::Stdio, str::FromStr};
 
 use anyhow::{anyhow, bail};
 use camino::Utf8PathBuf;
-use tokio::io::{AsyncBufReadExt, BufReader};
 
 use super::builder::IncrementalRunParams;
 
@@ -12,8 +11,13 @@ pub async fn incremental_rustc() -> anyhow::Result<()> {
     let incremental_run_params: IncrementalRunParams =
         serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
 
-    let rustc = Rustc::new(std::env::args(), &package_name, &
-    &output_file, &incremental_run_params).await?;
+    let rustc = Rustc::new(
+        std::env::args(),
+        &package_name,
+        &output_file,
+        &incremental_run_params,
+    )
+    .await?;
 
     let _ = rustc.run().await?;
     Ok(())
@@ -23,10 +27,11 @@ pub async fn incremental_rustc() -> anyhow::Result<()> {
 struct Rustc {
     executable: String,
     operation: RustcOperation,
-    arg_file: Option<Utf8PathBuf>
+    arg_file: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 enum RustcOperation {
     Passthrough(Vec<String>),
     MainCompilation {
@@ -49,7 +54,12 @@ enum RustcOperation {
 }
 
 impl Rustc {
-    async fn new(mut args: impl Iterator<Item = String>, package: &str, output_file: &str, run_params: &IncrementalRunParams) -> anyhow::Result<Self> {
+    async fn new(
+        mut args: impl Iterator<Item = String>,
+        package: &str,
+        output_file: &str,
+        run_params: &IncrementalRunParams,
+    ) -> anyhow::Result<Self> {
         let _current_executable = args.next();
 
         let Some(executable) = args.next() else {
@@ -58,14 +68,18 @@ impl Rustc {
 
         let mut args: Vec<String> = args.collect();
         let mut arg_file = None;
-        
+
         if args.len() == 1 {
             if let Some(first) = args.first() {
                 if first.starts_with("@") {
                     let path = Utf8PathBuf::from(first.trim_start_matches("@"));
-                    
+
                     if path.exists() {
-                        args = tokio::fs::read_to_string(&path).await?.lines().map(|v| v.to_owned()).collect();
+                        args = tokio::fs::read_to_string(&path)
+                            .await?
+                            .lines()
+                            .map(|v| v.to_owned())
+                            .collect();
                         arg_file = Some(path);
                     }
                 }
@@ -96,7 +110,6 @@ impl Rustc {
                 let mut codegen_args = vec![];
                 let mut cfg = vec![];
                 let mut check_cfg = vec![];
-                let mut out_dir = None;
                 let mut target = None;
                 let mut search_paths = vec![];
                 let mut library_links = vec![];
@@ -148,8 +161,11 @@ impl Rustc {
                         }
                         file = Some(path)
                     } else if arg == "--out-dir" {
-                        let path = args_iter.next().map(|v| Utf8PathBuf::from_str(&v)).ok_or(anyhow!("No Out Dir"))??;
-                        out_dir = Some(path);
+                        let _ = args_iter
+                            .next()
+                            .map(|v| Utf8PathBuf::from_str(v))
+                            .ok_or(anyhow!("No Out Dir"))??;
+                        continue;
                     } else if arg == "--target" {
                         target = args_iter.next().cloned();
                     } else {
@@ -157,14 +173,15 @@ impl Rustc {
                     }
                 }
 
-                let output_dir = Utf8PathBuf::from(output_file).parent().ok_or(anyhow!("No Parent for Output File"))?.to_owned();
-                out_dir = Some(output_dir);
+                let output_dir = Utf8PathBuf::from(output_file)
+                    .parent()
+                    .ok_or(anyhow!("No Parent for Output File"))?
+                    .to_owned();
 
                 let file_name_extras = match run_params {
                     IncrementalRunParams::InitialRun => ".1".to_string(),
                     IncrementalRunParams::Patch { id, .. } => format!(".{id}"),
-                }; 
-                
+                };
 
                 RustcOperation::MainCompilation {
                     crate_name: crate_name.ok_or(anyhow!("Couldn't determine crate name"))?,
@@ -175,13 +192,13 @@ impl Rustc {
                     codegen_args,
                     cfg,
                     check_cfg,
-                    out_dir: out_dir.ok_or(anyhow!("Couldn't determine output directory"))?,
+                    out_dir: output_dir,
                     target: target.ok_or(anyhow!("Couldn't determine target"))?,
                     search_paths,
                     library_links,
                     extern_links,
                     original_args: args,
-                    file_name_extras
+                    file_name_extras,
                 }
             }
         };
@@ -189,7 +206,7 @@ impl Rustc {
         Ok(Self {
             executable,
             operation,
-            arg_file
+            arg_file,
         })
     }
 
@@ -224,7 +241,11 @@ impl Rustc {
                     .arg(edition.to_string())
                     .arg(file)
                     .arg("--crate-type")
-                    .arg(if crate_type.contains("dylib") { &crate_type } else { "dylib" })
+                    .arg(if crate_type == "dylib" || crate_type == "cdylib" {
+                        &crate_type
+                    } else {
+                        "dylib"
+                    })
                     .arg(format!("--emit={emit}"))
                     .arg("--target")
                     .arg(target)
@@ -255,7 +276,7 @@ impl Rustc {
             }
             RustcOperation::Passthrough(args) => {
                 command.args(args.iter());
-            },
+            }
         };
 
         if let Some(file) = self.arg_file {
@@ -283,7 +304,7 @@ impl WrappedCommand {
         Self {
             executable: executable.to_string(),
             arguments: vec![],
-            arg_file: None
+            arg_file: None,
         }
     }
 
@@ -313,7 +334,7 @@ impl WrappedCommand {
             if file.exists() {
                 tokio::fs::remove_file(&file).await?;
             }
-            tokio::fs::write(&file, content.as_str().as_bytes()).await?;
+            tokio::fs::write(&file, content.as_bytes()).await?;
             cmd.arg(format!("@{file}"));
         } else {
             cmd.args(self.arguments);
