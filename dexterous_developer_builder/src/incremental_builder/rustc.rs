@@ -168,8 +168,6 @@ impl Rustc {
                         continue;
                     } else if arg == "--target" {
                         target = args_iter.next().cloned();
-                    } else {
-                        eprintln!("IGNORED: {arg}");
                     }
                 }
 
@@ -231,7 +229,6 @@ impl Rustc {
                 extern_links,
                 file_name_extras,
             } => {
-                eprintln!("RUSTC\n{}", original_args.join("\n"));
                 command
                     .arg("--error-format=json")
                     .arg("--json=diagnostic-rendered-ansi,artifacts,future-incompat")
