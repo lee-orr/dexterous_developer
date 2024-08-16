@@ -22,11 +22,8 @@ name = "dexterous_developer_runner"
 path = "src/runner.rs"
 
 [[bin]]
-name = "dexterous_developer_default_linker"
-path = "src/default_linker.rs"
-[[bin]]
-name = "dexterous_developer_default_rustc"
-path = "src/default_rustc.rs"
+name = "dexterous_developer_rustc_wrapper"
+path = "src/rustc_wrapper.rs"
 
 
 [dependencies]

@@ -243,7 +243,7 @@ async fn build(
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
 
-    let rustc = which::which("dexterous_developer_default_rustc")?;
+    let rustc = which::which("dexterous_developer_rustc_wrapper")?;
     let Ok(rustc) = Utf8PathBuf::from_path_buf(rustc) else {
         bail!("Couldn't get linker path");
     };
