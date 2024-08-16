@@ -17,7 +17,7 @@ Note that you cannot use Resources, Components, Events or States registered in a
 For example:
 
 ```rust
-reloadable_main!( bevy_main(initial_plugins) {
+reloadable_main!((initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>())
         .setup_reloadable_elements::<reloadable>()

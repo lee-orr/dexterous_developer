@@ -23,6 +23,7 @@ These components are used to execute the instance, download updates to the libra
 These components are used to watch the codebase for changes, manage builds, and provide the runners with access to the associated code and assets.
 
 - **Builders** - these handle triggering the cargo builds themselves, processing the output, and collecting library dependencies.
+  - **Rustc Wrapper** - the default builder utilizes a wrapper around Rustc, to enable some capabilities such as the ability to work with binary crates.
 - **Watchers** - these handle watching the file system for changes, allowing for notifications in changes to assets (non-compiled files) and sending out the triggers for re-builds when the code itself changes.
 - **Manager** - the manager handles setting up the chosen watcher & builders for each available target, and sets up a server for the runner to connect to.
 - **The Server CLI** - this provides a pre-made way to run a build server using the default builders & watcher.

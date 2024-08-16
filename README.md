@@ -13,6 +13,7 @@ You can also find [docs for the latest pre-release](https://lee-orr.github.io/de
 ## Features
 
 - A CLI for building & running reloadable rust projects, including over the network (cross-device)
+- Works directly with Binary crates!
 - The ability to serialize/deserialize elements, allowing the evolution of schemas over time
 - Only includes any hot reload capacity in your build when you explicitly enable it - such as by using the CLI launcher
 - The capacity to create adapters for additional frameworks, allowing you to use Dexterous Developer tooling with other tools.
@@ -37,10 +38,8 @@ You can also find [docs for the latest pre-release](https://lee-orr.github.io/de
 - WASI support
 - Patching running libraries with intermediate compilation results
 - Supporting the use of inter-process communication in addition to the current dynamic-library approach
-- Simplify CLI / Launchers
-  - When running in place, avoid needing to copy/download files if running from the same dir
-  - GUI-based launchers should be added, especially for mobile
-- Supporting state in bevy
+- GUI-based launchers should be added, especially for mobile
+- Supporting ECS hooks and observers in bevy
 
 ## Installation
 
@@ -50,13 +49,6 @@ Install the CLI by running: ```cargo install dexterous_developer_cli```. This in
 - `dexterous_developer_runner` - used to run the project on another device
 
 ## Setup
-
-For dexterous_developer to function, your package currently needs to be a dynamic library. To do so, you will need to mark it as a library and add the "dylib" crate type to it in your `Cargo.toml` - ideally in addition to `rlib`. You'll need to add a separate binary for the non-hot reloaded version.
-
-```toml
-[lib]
-crate-type = ["rlib", "dylib"]
-```
 
 You'll also need to add the appropriate dexterous developer adapter to your library's dependencies, and set up the "hot" feature. For example, if you are using bevy:
 
@@ -74,10 +66,10 @@ Finally, you'll need to set up a `Dexterous.toml` file, that helps define some o
 
 ### Bevy Setup
 
-If your game is not a library yet, move all your main logic to `lib.rs` rather than `main.rs`. In your `lib.rs`, your main function should become:
+In your `main.rs`, your main function should become:
 
 ```rust
-reloadable_main!( bevy_main(initial_plugins) {
+reloadable_main!((initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>()) // You can use either DefaultPlugins or MinimnalPlugins here, and use "set" on this as you would with them
     // Here you can do what you'd normally do with app
@@ -115,23 +107,7 @@ To run the app on a different machine (with the same platform), cargo install `d
 
 ## Running or Building Without Hot Reload
 
-Once you have everything set up for development, you will likely want to be able to build production versions of the application as well. This will require creating a separate binary. To do so, you can add a `bins/launcher.rs` to your project:
-
-```rust
-fn main() {
-    PACKAGE_NAME::bevy_main();
-}
-```
-
-and in your `Cargo.toml`, you'll need to add:
-
-```toml
-[[bin]]
-name = "launcher"
-path = "bins/launcher.rs"
-```
-
-You can then run the non-hot-reloadable version of your app using `cargo run --bin launcher`. Remember to avoid including the `hot` feature, since it's designed to work only inside a reloadable library!.
+To build or run the non-hot-reloadable version of your app, just remember to avoid including the `hot` feature, since it's designed to work only inside a reloadable library!.
 
 ## Inspiration
 

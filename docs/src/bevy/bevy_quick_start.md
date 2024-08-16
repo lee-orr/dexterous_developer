@@ -13,12 +13,18 @@ Make sure that the version of dexterous_developer_cli matches the version you ar
 
 ## General Setup
 
-For dexterous_developer to function, your package currently needs to be a dynamic library. To do so, you will need to mark it as a library and add the "dylib" crate type to it in your `Cargo.toml` - ideally in addition to `rlib`. You'll need to add a separate binary for the non-hot reloaded version.
-
-```toml
-[lib]
-crate-type = ["rlib", "dylib"]
-```
+> **Dynamic Libraries**
+>
+> Previous versions of Dexterous Developer required you to make your crate a dynamic library. That is no longer necessary!
+>
+> You can still use an explicit dynamic library as your main crate just like before, but you can also place the `reloadable_main!` macro in `main.rs`, and not provide it with a function name - it will default to "main":
+>
+> ```rust
+> reloadable_main!((initial_plugins) {
+>   App::new()
+>   ...
+> })
+> ```
 
 You'll also need to add the appropriate dexterous developer adapter to your library's dependencies, and set up the "hot" feature. For example, if you are using bevy:
 
@@ -45,10 +51,10 @@ asset_folders = ["./assets"]
 
 ## Bevy Code
 
-Replace `main.rs` with `lib.rs`, and wrap your main function with the `reloadable_main` macro:
+In `main.rs`, wrap your main function with the `reloadable_main` macro:
 
 ```rust
-reloadable_main!( bevy_main(initial_plugins) {
+reloadable_main!((initial_plugins) {
     App::new()
         .add_plugins(initial_plugins.initialize::<DefaultPlugins>()) // You can use either DefaultPlugins or MinimnalPlugins here, and use "set" on this as you would with them
     // Here you can do what you'd normally do with app
