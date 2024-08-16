@@ -43,7 +43,7 @@ You can also find [docs for the latest pre-release](https://lee-orr.github.io/de
 
 ## Installation
 
-Install the CLI by running: ```cargo install dexterous_developer_cli```. This installs 2 command line utilities:
+Install the CLI by running: ```cargo install dexterous_developer_cli@0.4.0-alpha.0```. This installs 2 command line utilities:
 
 - `dexterous_developer_cli` - used to build the project, potentially running it at the same time
 - `dexterous_developer_runner` - used to run the project on another device
