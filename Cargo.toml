@@ -12,7 +12,7 @@ members = [
     "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_library",
     "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic",
     "adapters/bevy_dexterous_developer",
-    "dexterous_developer",]
+]
 
 [workspace.package]
 version = "0.4.0-alpha.0"
