@@ -4,8 +4,7 @@ use camino::Utf8PathBuf;
 
 use clap::Parser;
 use dexterous_developer_builder::{
-    incremental_builder::builder::IncrementalBuilderInitializer,
-    simple_builder::SimpleBuilderInitializer, simple_watcher::SimpleWatcher,
+    incremental_builder::builder::IncrementalBuilderInitializer, simple_watcher::SimpleWatcher,
 };
 use dexterous_developer_manager::{server::run_server, Manager};
 use dexterous_developer_types::{config::DexterousConfig, PackageOrExample, Target};
@@ -77,9 +76,6 @@ async fn main() -> anyhow::Result<()> {
 
     for (target, build_settings) in builder_settings.into_iter() {
         manager = match build_settings.builder {
-            dexterous_developer_types::BuilderTypes::Simple => {
-                manager.add_builder(SimpleBuilderInitializer::new(target, build_settings))
-            }
             dexterous_developer_types::BuilderTypes::Incremental => {
                 manager.add_builder(IncrementalBuilderInitializer::new(target, build_settings))
             }

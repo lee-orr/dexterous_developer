@@ -36,7 +36,6 @@ pub enum PackageOrExample {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum BuilderTypes {
-    Simple,
     #[default]
     Incremental,
 }

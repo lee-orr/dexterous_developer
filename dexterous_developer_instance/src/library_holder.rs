@@ -30,7 +30,6 @@ impl LibraryHolderInner {
         let path = path.to_owned();
 
         let incremental_library = match builder_type {
-            BuilderTypes::Simple => false,
             BuilderTypes::Incremental => true,
         };
 
