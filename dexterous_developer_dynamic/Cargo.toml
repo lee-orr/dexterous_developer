@@ -21,4 +21,4 @@ crate-type = ["dylib"]
 
 
 [dependencies]
-dexterous_developer_instance = { version = "0.3.0", path = "../dexterous_developer_instance", default-features = false }
+dexterous_developer_instance = { version = "0.4.0-alpha.0", path = "../dexterous_developer_instance", default-features = false }

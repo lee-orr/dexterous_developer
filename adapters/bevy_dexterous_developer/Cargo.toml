@@ -21,8 +21,8 @@ hot = [
 ]
 
 [dependencies]
-bevy_dexterous_developer_library = { version = "0.3.0", path = "crates/bevy_dexterous_developer_library" }
-bevy_dexterous_developer_dynamic = { version = "0.3.0", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
+bevy_dexterous_developer_library = { version = "0.4.0-alpha.0", path = "crates/bevy_dexterous_developer_library" }
+bevy_dexterous_developer_dynamic = { version = "0.4.0-alpha.0", path = "crates/bevy_dexterous_developer_dynamic", optional = true }
 
 [dev-dependencies]
 bevy = { version = "0.14", default-features = true, features=["dynamic_linking", "embedded_watcher"] }

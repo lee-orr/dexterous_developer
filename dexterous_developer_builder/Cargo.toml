@@ -19,7 +19,7 @@ anyhow = { version = "1" }
 notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
 debounce = { version = "0.2" }
 tracing = { version = "0.1" }
-dexterous_developer_types = { version = "0.3.0", path = "../dexterous_developer_types" }
+dexterous_developer_types = { version = "0.4.0-alpha.0", path = "../dexterous_developer_types" }
 cargo_metadata = { version = "0.18" }
 tokio = { version = "1", features = ["full"]}
 dashmap = { version = "6", features = ["serde"] }
