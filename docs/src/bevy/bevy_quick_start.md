@@ -35,7 +35,7 @@ hot = ["dexterous_developer/hot"]
 
 [dependencies]
 bevy = "0.14"
-dexterous_developer = { version = "0.3.0-pre.2", features = ["bevy"] }
+dexterous_developer = { version = "0.4.0-pre.0", features = ["bevy"] }
 serde = "1" # If you want the serialization capacities
 ```
 
