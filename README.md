@@ -54,11 +54,11 @@ You'll also need to add the appropriate dexterous developer adapter to your libr
 
 ```toml
 [features]
-hot = ["dexterous_developer/hot"]
+hot = ["bevy_dexterous_developer/hot"]
 
 [dependencies]
 bevy = "0.14"
-dexterous_developer = { version = "0.4.0-pre.0", features = ["bevy"] }
+bevy_dexterous_developer = { version = "0.4.0-alpha.0"}
 serde = "1" # If you want the serialization capacities
 ```
 
