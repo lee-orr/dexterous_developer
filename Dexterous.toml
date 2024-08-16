@@ -10,10 +10,10 @@ asset_folders = ["./assets"]
 manifest_path = "./adapters/bevy_dexterous_developer/Cargo.toml"
 
 [targets.x86_64-pc-windows-msvc]
-builder = "Incremental"
+builder = "Default"
 
 [targets.x86_64-unknown-linux-gnu]
-builder = "Incremental"
+builder = "Default"
 
 [targets.aarch64-apple-darwin]
-builder = "Incremental"
+builder = "Default"

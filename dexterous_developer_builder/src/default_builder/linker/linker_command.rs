@@ -305,8 +305,8 @@ async fn process_arguments(
 
     let mut new_args = vec![];
     let mut iterator = args.into_iter().filter(|v| {
-        !v.contains("dexterous_developer_incremental_linker")
-            && !v.contains("incremental_c_compiler")
+        !v.contains("dexterous_developer_default_linker")
+            && !v.contains("default_c_compiler")
     });
     let mut output = None;
     while let Some(arg) = iterator.next() {

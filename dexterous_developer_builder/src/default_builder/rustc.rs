@@ -3,19 +3,19 @@ use std::{process::Stdio, str::FromStr};
 use anyhow::{anyhow, bail};
 use camino::Utf8PathBuf;
 
-use super::builder::IncrementalRunParams;
+use super::builder::DefaultRunParams;
 
-pub async fn incremental_rustc() -> anyhow::Result<()> {
+pub async fn default_rustc() -> anyhow::Result<()> {
     let package_name = std::env::var("DEXTEROUS_DEVELOPER_PACKAGE_NAME")?;
     let output_file = std::env::var("DEXTEROUS_DEVELOPER_OUTPUT_FILE")?;
-    let incremental_run_params: IncrementalRunParams =
-        serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_INCREMENTAL_RUN")?)?;
+    let default_run_params: DefaultRunParams =
+        serde_json::from_str(&std::env::var("DEXTEROUS_DEVELOPER_DEFAULT_RUN")?)?;
 
     let rustc = Rustc::new(
         std::env::args(),
         &package_name,
         &output_file,
-        &incremental_run_params,
+        &default_run_params,
     )
     .await?;
 
@@ -57,7 +57,7 @@ impl Rustc {
         mut args: impl Iterator<Item = String>,
         package: &str,
         output_file: &str,
-        run_params: &IncrementalRunParams,
+        run_params: &DefaultRunParams,
     ) -> anyhow::Result<Self> {
         let _current_executable = args.next();
 
@@ -176,8 +176,8 @@ impl Rustc {
                     .to_owned();
 
                 let file_name_extras = match run_params {
-                    IncrementalRunParams::InitialRun => ".1".to_string(),
-                    IncrementalRunParams::Patch { id, .. } => format!(".{id}"),
+                    DefaultRunParams::InitialRun => ".1".to_string(),
+                    DefaultRunParams::Patch { id, .. } => format!(".{id}"),
                 };
 
                 RustcOperation::MainCompilation {

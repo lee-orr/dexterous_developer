@@ -139,6 +139,6 @@ impl Builder for TestBuilder {
     }
 
     fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
-        dexterous_developer_types::BuilderTypes::Incremental
+        dexterous_developer_types::BuilderTypes::Default
     }
 }

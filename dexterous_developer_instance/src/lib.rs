@@ -83,7 +83,7 @@ pub mod internal {
         fn load_internal_library(path: safer_ffi::String) {
             println!("Called Internal Library");
             let path = Utf8PathBuf::from(path.to_string());
-            let builder_type = BUILDER_TYPE.get_or_init(|| BuilderTypes::Incremental);
+            let builder_type = BUILDER_TYPE.get_or_init(|| BuilderTypes::Default);
             let holder = match LibraryHolder::new(&path, false, *builder_type) {
                 Ok(holder) => holder,
                 Err(e) => {

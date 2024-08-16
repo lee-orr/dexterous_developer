@@ -32,29 +32,29 @@ use crate::types::{
     BuilderOutgoingMessages, HashedFileRecord,
 };
 
-pub struct IncrementalBuilderInitializer {
+pub struct DefaultBuilderInitializer {
     target: Target,
     settings: TargetBuildSettings,
 }
 
-impl IncrementalBuilderInitializer {
+impl DefaultBuilderInitializer {
     pub fn new(target: Target, settings: TargetBuildSettings) -> Self {
         Self { target, settings }
     }
 }
 
-impl BuilderInitializer for IncrementalBuilderInitializer {
-    type Inner = IncrementalBuilder;
+impl BuilderInitializer for DefaultBuilderInitializer {
+    type Inner = DefaultBuilder;
 
     fn initialize_builder(
         self,
         channel: tokio::sync::broadcast::Sender<BuilderIncomingMessages>,
     ) -> anyhow::Result<Self::Inner> {
-        IncrementalBuilder::new(self.target, self.settings, channel)
+        DefaultBuilder::new(self.target, self.settings, channel)
     }
 }
 
-pub struct IncrementalBuilder {
+pub struct DefaultBuilder {
     target: Target,
     settings: TargetBuildSettings,
     outgoing: tokio::sync::broadcast::Sender<BuilderOutgoingMessages>,
@@ -78,7 +78,7 @@ async fn build(
     sender: tokio::sync::broadcast::Sender<BuildOutputMessages>,
     id: u32,
 ) -> Result<(), anyhow::Error> {
-    info!("Incremental Build {id} Started");
+    info!("Default Build {id} Started");
     eprintln!("Starting Builder");
 
     let (artifact_name, artifact_file_name) = {
@@ -161,8 +161,8 @@ async fn build(
     eprintln!("Got Artifact Name and File");
     info!("Artifact Name: {artifact_name} File: {artifact_file_name}");
 
-    let incremental_run_settings = if id == 1 {
-        IncrementalRunParams::InitialRun
+    let default_run_settings = if id == 1 {
+        DefaultRunParams::InitialRun
     } else {
         let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}/{target}/debug"))
             .canonicalize_utf8()?;
@@ -177,7 +177,7 @@ async fn build(
         if !examples.exists() {
             std::fs::create_dir_all(&examples)?;
         }
-        IncrementalRunParams::Patch {
+        DefaultRunParams::Patch {
             id,
             timestamp: std::time::SystemTime::now(),
             previous_versions: {
@@ -196,8 +196,8 @@ async fn build(
         }
     };
 
-    eprintln!("Determined Incremental Settings");
-    info!("Incremental settings - {incremental_run_settings:?}");
+    eprintln!("Determined Default Settings");
+    info!("Default settings - {default_run_settings:?}");
 
     let target_dir = Utf8PathBuf::from(format!("./target/hot-reload/{target}"));
 
@@ -243,7 +243,7 @@ async fn build(
     options.profile = Some("dev".to_string());
     options.target = vec![target.to_string()];
 
-    let rustc = which::which("dexterous_developer_incremental_rustc")?;
+    let rustc = which::which("dexterous_developer_default_rustc")?;
     let Ok(rustc) = Utf8PathBuf::from_path_buf(rustc) else {
         bail!("Couldn't get linker path");
     };
@@ -273,8 +273,8 @@ async fn build(
             serde_json::to_string(&lib_directories)?,
         )
         .env(
-            "DEXTEROUS_DEVELOPER_INCREMENTAL_RUN",
-            serde_json::to_string(&incremental_run_settings)?,
+            "DEXTEROUS_DEVELOPER_DEFAULT_RUN",
+            serde_json::to_string(&default_run_settings)?,
         )
         .env("RUSTFLAGS", rust_flags);
 
@@ -558,7 +558,7 @@ fn process_dependencies_recursive(
     Ok(())
 }
 
-impl IncrementalBuilder {
+impl DefaultBuilder {
     pub fn new(
         target: Target,
         settings: TargetBuildSettings,
@@ -707,7 +707,7 @@ fn trigger_build(
     }
 }
 
-impl Builder for IncrementalBuilder {
+impl Builder for DefaultBuilder {
     fn target(&self) -> Target {
         self.target
     }
@@ -734,12 +734,12 @@ impl Builder for IncrementalBuilder {
     }
 
     fn builder_type(&self) -> dexterous_developer_types::BuilderTypes {
-        dexterous_developer_types::BuilderTypes::Incremental
+        dexterous_developer_types::BuilderTypes::Default
     }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum IncrementalRunParams {
+pub enum DefaultRunParams {
     InitialRun,
     Patch {
         id: u32,
@@ -776,7 +776,7 @@ mod test {
         let target = Target::current().expect("Couldn't determine current target");
         let (incoming, _) = tokio::sync::broadcast::channel(100);
 
-        let build = IncrementalBuilder::new(
+        let build = DefaultBuilder::new(
             target,
             TargetBuildSettings {
                 package_or_example: PackageOrExample::Package("test_lib".to_string()),
@@ -789,7 +789,7 @@ mod test {
             },
             incoming.clone(),
         )
-        .expect("Couldn't set up incremental builder");
+        .expect("Couldn't set up default builder");
 
         let (mut builder_messages, mut build_messages) = build.outgoing_channel();
 

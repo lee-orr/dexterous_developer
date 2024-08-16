@@ -29,12 +29,12 @@ impl LibraryHolderInner {
         trace!("Loading {path:?}");
         let path = path.to_owned();
 
-        let incremental_library = match builder_type {
-            BuilderTypes::Incremental => true,
+        let default_library = match builder_type {
+            BuilderTypes::Default => true,
         };
 
         let uuid = uuid::Uuid::new_v4();
-        let path = if incremental_library || use_original {
+        let path = if default_library || use_original {
             println!("Using Original");
             path
         } else {
