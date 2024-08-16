@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## `dexterous_developer` - [0.4.0-alpha.0](https://github.com/lee-orr/dexterous_developer/compare/dexterous_developer-v0.3.0..v0.4.0-aplha.0)
+
+- Replace "Simple Builder" with new "Default Builder" that supports building binary crates
+- Fix "Failed to find dll" errors causing dexterous_developer to fail on windows (#64)
+- Keep all versions of reloaded crate in memory to avoid issues with pointing to elements in an unloaded library
+- Fix bug where occasionally the watcher wouldn't trigger a rebuild
+- Fix bug where build errors could prevent future build attempts
+- add more options to Dexterous.toml
+
 ## `dexterous_developer` - [0.3.0](https://github.com/me/my-proj/compare/dexterous_developer-v0.2.0...dexterous_developer-v0.3.0) - 2024-07-04
 
 ### Other
