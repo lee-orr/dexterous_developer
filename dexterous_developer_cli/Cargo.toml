@@ -50,7 +50,7 @@ async-tempfile = "0.6"
 anyhow = "1"
 which = "6"
 
-dexterous_developer_types = { version = "0.4.0-alpha.0", path = "../dexterous_developer_types", features = ["config"] }
-dexterous_developer_builder = { version = "0.4.0-alpha.0", path = "../dexterous_developer_builder"}
-dexterous_developer_manager = { version = "0.4.0-alpha.0", path = "../dexterous_developer_manager"}
-dexterous_developer_dylib_runner = { version = "0.4.0-alpha.0", path = "../dexterous_developer_dylib_runner"}
+dexterous_developer_types = { version = "0.4.0-alpha.1", path = "../dexterous_developer_types", features = ["config"] }
+dexterous_developer_builder = { version = "0.4.0-alpha.1", path = "../dexterous_developer_builder"}
+dexterous_developer_manager = { version = "0.4.0-alpha.1", path = "../dexterous_developer_manager"}
+dexterous_developer_dylib_runner = { version = "0.4.0-alpha.1", path = "../dexterous_developer_dylib_runner"}

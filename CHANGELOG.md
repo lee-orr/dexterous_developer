@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove unused dexterous_developer crate
 
 
-## `dexterous_developer` - [0.4.0-alpha.0](https://github.com/lee-orr/dexterous_developer/compare/dexterous_developer-v0.3.0..v0.4.0-aplha.0)
+## `dexterous_developer` - [0.4.0-alpha.1](https://github.com/lee-orr/dexterous_developer/compare/dexterous_developer-v0.3.0..v0.4.0-aplha.0)
 
 - Replace "Simple Builder" with new "Default Builder" that supports building binary crates
 - Fix "Failed to find dll" errors causing dexterous_developer to fail on windows (#64)
