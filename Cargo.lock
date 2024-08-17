@@ -679,7 +679,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_dexterous_developer"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "bevy",
  "bevy_dexterous_developer_dynamic",
@@ -694,7 +694,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_dexterous_developer_dynamic"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "bevy",
  "bevy_dexterous_developer_library",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_dexterous_developer_library"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "bevy",
@@ -2175,7 +2175,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_builder"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "blake3",
@@ -2213,7 +2213,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_cli"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "async-tempfile",
@@ -2240,7 +2240,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_dylib_runner"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "async-channel",
  "blake3",
@@ -2271,14 +2271,14 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_dynamic"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "dexterous_developer_instance",
 ]
 
 [[package]]
 name = "dexterous_developer_instance"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "camino",
@@ -2301,7 +2301,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_manager"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "axum",
@@ -2325,7 +2325,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_test_utils"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "anyhow",
  "camino",
@@ -2339,7 +2339,7 @@ dependencies = [
 
 [[package]]
 name = "dexterous_developer_types"
-version = "0.4.0-alpha.2"
+version = "0.4.0-alpha.3"
 dependencies = [
  "camino",
  "serde",
