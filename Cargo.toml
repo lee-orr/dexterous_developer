@@ -12,6 +12,7 @@ members = [
     "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_library",
     "adapters/bevy_dexterous_developer/crates/bevy_dexterous_developer_dynamic",
     "adapters/bevy_dexterous_developer",
+    "adapters/bevy_examples",
 ]
 
 [workspace.package]

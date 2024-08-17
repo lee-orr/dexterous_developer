@@ -2,7 +2,7 @@ features = [
     "hot"
 ]
 
-code_watch_folders = ["./adapters/bevy_dexterous_developer/examples"]
+code_watch_folders = ["./adapters/bevy_examples/examples"]
 
 asset_folders = ["./assets"]
 

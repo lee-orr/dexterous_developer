@@ -1,0 +1,150 @@
+[package]
+name = "bevy_examples"
+edition = "2021"
+readme = "../../README.md"
+exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+hot = [
+    "bevy_dexterous_developer/hot",
+]
+
+[dependencies]
+bevy_dexterous_developer= { version = "0.4.0-alpha.0", path = "../bevy_dexterous_developer" }
+bevy = { version = "0.14", default-features = true, features=["dynamic_linking"] }
+serde = "1"
+
+[[example]]
+name = "simple_cli"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "simple_system_swap"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "simple_visual"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_resource_to_value"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_resource_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_resource_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_resource_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_component_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "serde_serializable_component_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_component_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_component_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "reset_component"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "events_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "events_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_state_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_state_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_sub_state_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_sub_state_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_computed_state_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "replacable_computed_state_end"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "state_scoped_start"
+crate-type = ["dylib"]
+required-features = ["hot"]
+
+[[example]]
+name = "state_scoped_end"
+crate-type = ["dylib"]
+required-features = ["hot"]

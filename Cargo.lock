@@ -790,6 +790,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_examples"
+version = "0.4.0-alpha.0"
+dependencies = [
+ "bevy",
+ "bevy_dexterous_developer",
+ "serde",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2171,14 +2180,6 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 2.0.72",
-]
-
-[[package]]
-name = "dexterous_developer"
-version = "0.4.0-alpha.0"
-dependencies = [
- "bevy_dexterous_developer",
- "dexterous_developer_instance",
 ]
 
 [[package]]
