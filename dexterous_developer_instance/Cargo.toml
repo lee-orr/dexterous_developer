@@ -33,7 +33,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", optional = true, features = ["env-filter", "fmt"]}
 dunce = "1"
 serde = { version = "1"}
-dexterous_developer_types = { version = "0.4.0-alpha.0", path = "../dexterous_developer_types" }
+dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types" }
 camino = "1"
 thiserror = "1"
 safer-ffi = "0.1"
