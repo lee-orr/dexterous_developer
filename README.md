@@ -91,7 +91,7 @@ impl Plugin for MyPlugin {
 reloadable_scope!(reloadable(app) {
     app
         .add_systems(Update, this_system_will_reload);
-})
+});
 ```
 
 The [Simple Visual](./adapters/bevy_dexterous_developer/examples/simple_visual.rs) example shows the basic use of the library, and the [book](https://lee-orr.github.io/dexterous_developer/) has more info as well.
