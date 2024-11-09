@@ -43,4 +43,3 @@ crossbeam = "0.8"
 uuid = { version =  "1", features = ["v4"] }
 dashmap = "6"
 rmp-serde = "1"
-prefer-dynamic = "0.1"
