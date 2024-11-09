@@ -32,7 +32,7 @@ rmp-serde = { version = "1"  }
 blake3 = "1"
 walkdir = "2"
 tower-http = { version = "0.5.0", features = ["fs", "trace"] }
-tower = "0.4"
+tower = { version = "0.4", features = ["util"] }
 dashmap = "6"
 uuid = { version = "1.8", features = ["serde", "v4"] }
 camino = "1"
