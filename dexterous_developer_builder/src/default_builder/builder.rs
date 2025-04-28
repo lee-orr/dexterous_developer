@@ -419,6 +419,8 @@ async fn build(
 
     let mut dependencies = HashMap::new();
 
+    eprintln!("Searchable Files: {:?}", &searchable_files);
+
     for (name, library) in initial_libraries.iter() {
         process_dependencies_recursive(
             &searchable_files,
@@ -426,7 +428,7 @@ async fn build(
             &mut dependencies,
             name,
             library,
-        )?;
+        ).await?;
     }
 
     let libraries = {
@@ -489,7 +491,7 @@ fn find_package_target(
     Some((artifact_name, artifact_file_name))
 }
 
-fn process_dependencies_recursive(
+async fn process_dependencies_recursive(
     searchable_files: &HashMap<String, Utf8PathBuf>,
     libraries: &mut HashMap<String, Utf8PathBuf>,
     dependencies: &mut HashMap<String, Vec<String>>,
