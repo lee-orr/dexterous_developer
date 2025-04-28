@@ -264,8 +264,12 @@ async fn build(
     }
     if craneflift {
         rust_flags = format!("{rust_flags} -Zcodegen-backend");
-        cargo.env("RUSTUP_TOOLCHAIN", "nightly");
-        cargo.env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift");
+        cargo.env("RUSTUP_TOOLCHAIN", "nightly")
+        .env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift")
+        .env("CARGO_PROFILE_DEV_OPT_LEVEL", "1")
+        .env("CARGO_PROFILE_DEV_PACKAGE_*_CODEGEN_BACKEND", "llvm")
+        .env("CARGO_PROFILE_DEV_PACKAGE_*_OPT_LEVEL", "3");
+        
     }
 
     cargo

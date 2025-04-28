@@ -27,8 +27,8 @@ fn setup(
     commands.spawn((
         Resetabble,
         PbrBundle {
-            mesh: meshes.add(Circle::new(3.0)),
-            material: materials.add(Color::LinearRgba(LinearRgba::GREEN)),
+            mesh: meshes.add(Circle::new(4.0)),
+            material: materials.add(Color::LinearRgba(LinearRgba::RED)),
             transform: Transform::from_rotation(Quat::from_rotation_x(
                 -std::f32::consts::FRAC_PI_2,
             )),
