@@ -72,6 +72,7 @@ async fn build(
         mut manifest_path,
         additional_library_directories,
         apple_sdk_directory,
+        craneflift,
         ..
     }: TargetBuildSettings,
     previous_versions: Arc<Mutex<Vec<(String, Utf8PathBuf)>>>,
@@ -261,6 +262,11 @@ async fn build(
     if matches!(target, Target::Linux | Target::LinuxArm | Target::Windows) {
         rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
     }
+    if craneflift {
+        rust_flags = format!("{rust_flags} -Zcodegen-backend");
+        cargo.env("RUSTUP_TOOLCHAIN", "nightly");
+        cargo.env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift");
+    }
 
     cargo
         .env_remove("LD_DEBUG")
@@ -418,8 +424,6 @@ async fn build(
         .collect::<HashMap<_, _>>();
 
     let mut dependencies = HashMap::new();
-
-    eprintln!("Searchable Files: {:?}", &searchable_files);
 
     for (name, library) in initial_libraries.iter() {
         process_dependencies_recursive(

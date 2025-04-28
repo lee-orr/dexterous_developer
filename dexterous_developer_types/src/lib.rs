@@ -52,6 +52,7 @@ pub struct TargetBuildSettings {
     pub builder: BuilderTypes,
     pub additional_library_directories: Vec<Utf8PathBuf>,
     pub apple_sdk_directory: Vec<Utf8PathBuf>,
+    pub craneflift: bool,
 }
 
 #[repr(C)]

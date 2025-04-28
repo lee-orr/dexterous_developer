@@ -33,6 +33,8 @@ pub struct DexterousConfig {
     pub additional_library_directories: Vec<Utf8PathBuf>,
     #[serde(default)]
     pub apple_sdk_directory: Vec<Utf8PathBuf>,
+    #[serde(default)]
+    pub cranelift: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -51,6 +53,8 @@ pub struct ReloadTargetConfig {
     pub additional_library_directories: Vec<Utf8PathBuf>,
     #[serde(default)]
     pub apple_sdk_directory: Vec<Utf8PathBuf>,
+    #[serde(default)]
+    pub cranelift: Option<bool>,
 }
 
 impl DexterousConfig {
@@ -145,6 +149,7 @@ impl DexterousConfig {
             .chain(self.apple_sdk_directory.iter())
             .cloned()
             .collect::<Vec<_>>();
+        let global_cranelift = package_specific_config.cranelift;
 
         let mut targets = self
             .targets
@@ -159,6 +164,7 @@ impl DexterousConfig {
                     settings.manifest_path.clone(),
                     settings.additional_library_directories.clone(),
                     settings.apple_sdk_directory.clone(),
+                    settings.cranelift,
                 )
             })
             .collect::<Vec<_>>();
@@ -175,6 +181,7 @@ impl DexterousConfig {
                 None,
                 vec![],
                 vec![],
+                None,
             ))
         }
 
@@ -190,6 +197,7 @@ impl DexterousConfig {
                     manifest_path,
                     mut additional_library_directories,
                     mut apple_sdk_directory,
+                    cranelift,
                 )| {
                     for f in global_features.iter() {
                         features.push(f.to_string());
@@ -223,6 +231,7 @@ impl DexterousConfig {
                             manifest_path: manifest_path.or(global_manifest.cloned()),
                             additional_library_directories,
                             apple_sdk_directory,
+                            craneflift: match cranelift { Some(true) => true, _ => false }
                         },
                     )
                 },
@@ -285,6 +294,7 @@ mod test {
                     manifest_path: None,
                     additional_library_directories: vec![],
                     apple_sdk_directory: vec![],
+                    cranelift: None,
                 },
             )])
             .into_iter()
