@@ -149,7 +149,7 @@ impl DexterousConfig {
             .chain(self.apple_sdk_directory.iter())
             .cloned()
             .collect::<Vec<_>>();
-        let global_cranelift = package_specific_config.cranelift;
+        let global_cranelift = match package_specific_config.cranelift { Some(v) => Some(v), None => Some(self.cranelift)};
 
         let mut targets = self
             .targets
@@ -231,7 +231,7 @@ impl DexterousConfig {
                             manifest_path: manifest_path.or(global_manifest.cloned()),
                             additional_library_directories,
                             apple_sdk_directory,
-                            craneflift: match cranelift { Some(true) => true, _ => false }
+                            craneflift: match cranelift { Some(true) => true, _ => matches!(global_cranelift, Some(true)) }
                         },
                     )
                 },

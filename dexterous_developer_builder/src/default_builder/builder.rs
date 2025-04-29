@@ -250,6 +250,10 @@ async fn build(
     };
     let rustc = rustc.canonicalize_utf8()?;
 
+    if craneflift {
+        options.unstable_flags.push("codegen-backend".into())
+    }
+
     let cargo = options.command();
     let mut cargo = tokio::process::Command::from(cargo);
 
@@ -263,13 +267,13 @@ async fn build(
         rust_flags = format!("{rust_flags} -Clink-arg=-fuse-ld=lld");
     }
     if craneflift {
-        rust_flags = format!("{rust_flags} -Zcodegen-backend");
+        eprintln!("USING CRANELIFT");
+        rust_flags = format!("{rust_flags} -Zcodegen-backend=cranelift");
         cargo.env("RUSTUP_TOOLCHAIN", "nightly")
         .env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift")
         .env("CARGO_PROFILE_DEV_OPT_LEVEL", "1")
         .env("CARGO_PROFILE_DEV_PACKAGE_*_CODEGEN_BACKEND", "llvm")
         .env("CARGO_PROFILE_DEV_PACKAGE_*_OPT_LEVEL", "3");
-        
     }
 
     cargo

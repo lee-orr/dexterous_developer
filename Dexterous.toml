@@ -6,7 +6,7 @@ code_watch_folders = ["./adapters/bevy_dexterous_developer/examples"]
 
 asset_folders = ["./assets"]
 
-cranelift = false
+cranelift = true
 
 [examples.simple_cli]
 manifest_path = "./adapters/bevy_dexterous_developer/Cargo.toml"

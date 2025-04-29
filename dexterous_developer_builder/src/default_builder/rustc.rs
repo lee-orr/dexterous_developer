@@ -49,6 +49,7 @@ enum RustcOperation {
         search_paths: Vec<String>,
         library_links: Vec<String>,
         extern_links: Vec<String>,
+        unstable_flags: Vec<String>
     },
 }
 
@@ -113,6 +114,7 @@ impl Rustc {
                 let mut search_paths = vec![];
                 let mut library_links = vec![];
                 let mut extern_links = vec![];
+                let mut unstable_flags = vec![];
 
                 let mut args_iter = args.iter();
                 while let Some(arg) = args_iter.next() {
@@ -133,7 +135,9 @@ impl Rustc {
                         }
                     } else if arg.starts_with("-C") && arg.split_whitespace().count() == 1 {
                         codegen_args.push(arg.trim_start_matches("-C").to_string());
-                    } else if arg == "--cfg" {
+                    } else if arg.starts_with("-Z") {
+                        unstable_flags.push(arg.trim_start_matches("-C").to_string());
+                    }else if arg == "--cfg" {
                         if let Some(a) = args_iter.next().cloned() {
                             cfg.push(a);
                         }
@@ -195,6 +199,7 @@ impl Rustc {
                     library_links,
                     extern_links,
                     file_name_extras,
+                    unstable_flags,
                 }
             }
         };
@@ -225,6 +230,7 @@ impl Rustc {
                 library_links,
                 extern_links,
                 file_name_extras,
+                unstable_flags,
                 ..
             } => {
                 command
@@ -251,6 +257,10 @@ impl Rustc {
 
                 for c in &codegen_args {
                     command.arg("-C").arg(c);
+                }
+                
+                for c in &unstable_flags {
+                    command.arg(format!("-Z{c}"));
                 }
 
                 for c in &cfg {
