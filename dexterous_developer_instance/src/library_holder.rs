@@ -66,7 +66,7 @@ impl LibraryHolderInner {
         println!("Loading Library");
 
         // SAFETY: Here we are relying on libloading's safety processes for ensuring the Library we receive is properly set up. We expect that library to respect rust ownership semantics because we control it's compilation and know that it is built in rust as well, but the wrappers are unaware so they rely on unsafe.
-        let library = unsafe { Library::new(path.clone()).map(From::from) };
+        let library = unsafe { Library::new(path.clone()) };
         match library {
             Ok(lib) => {
                 println!("Loaded library");

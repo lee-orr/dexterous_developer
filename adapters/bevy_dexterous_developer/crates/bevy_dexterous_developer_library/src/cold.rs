@@ -16,9 +16,9 @@ impl ReloadableElementsSetup for bevy::app::App {
     }
 }
 
-impl<'a> private::ReloadableAppSealed for ReloadableAppContents<'a> {}
+impl private::ReloadableAppSealed for ReloadableAppContents<'_> {}
 
-impl<'a> ReloadableApp for ReloadableAppContents<'a> {
+impl ReloadableApp for ReloadableAppContents<'_> {
     fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
         &mut self,
         schedule: L,

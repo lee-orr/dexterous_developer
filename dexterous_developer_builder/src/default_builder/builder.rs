@@ -268,12 +268,13 @@ async fn build(
     }
     if craneflift {
         eprintln!("USING CRANELIFT");
-        rust_flags = format!("{rust_flags} -Zcodegen-backend=cranelift");
-        cargo.env("RUSTUP_TOOLCHAIN", "nightly")
-        .env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift")
-        .env("CARGO_PROFILE_DEV_OPT_LEVEL", "1")
-        .env("CARGO_PROFILE_DEV_PACKAGE_*_CODEGEN_BACKEND", "llvm")
-        .env("CARGO_PROFILE_DEV_PACKAGE_*_OPT_LEVEL", "3");
+        rust_flags = format!("{rust_flags} -Zcodegen-backend=cranelift -Copt-level=0");
+        cargo
+            .env("RUSTUP_TOOLCHAIN", "nightly")
+            .env("CARGO_PROFILE_DEV_CODEGEN_BACKEND", "cranelift")
+            .env("CARGO_PROFILE_DEV_OPT_LEVEL", "1")
+            .env("CARGO_PROFILE_DEV_PACKAGE_*_CODEGEN_BACKEND", "llvm")
+            .env("CARGO_PROFILE_DEV_PACKAGE_*_OPT_LEVEL", "3");
     }
 
     cargo
@@ -423,10 +424,7 @@ async fn build(
     let searchable_files = join_all(dir_collections)
         .await
         .iter()
-        .filter_map(|result| match result {
-            Ok(v) => Some(v),
-            Err(_) => None,
-        })
+        .filter_map(|result| result.as_ref().ok())
         .flatten()
         .cloned()
         .collect::<HashMap<_, _>>();
@@ -440,7 +438,8 @@ async fn build(
             &mut dependencies,
             name,
             library,
-        ).await?;
+        )
+        .await?;
     }
 
     let libraries = {
