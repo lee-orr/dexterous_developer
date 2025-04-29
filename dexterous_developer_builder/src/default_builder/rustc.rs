@@ -136,7 +136,7 @@ impl Rustc {
                     } else if arg.starts_with("-C") && arg.split_whitespace().count() == 1 {
                         codegen_args.push(arg.trim_start_matches("-C").to_string());
                     } else if arg.starts_with("-Z") {
-                        unstable_flags.push(arg.trim_start_matches("-C").to_string());
+                        unstable_flags.push(arg.trim_start_matches("-Z").to_string());
                     }else if arg == "--cfg" {
                         if let Some(a) = args_iter.next().cloned() {
                             cfg.push(a);
@@ -260,7 +260,9 @@ impl Rustc {
                 }
                 
                 for c in &unstable_flags {
-                    command.arg(format!("-Z{c}"));
+                    if (c.len() > 0) {
+                        command.arg(format!("-Z{c}"));
+                    }
                 }
 
                 for c in &cfg {
