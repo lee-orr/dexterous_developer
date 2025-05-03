@@ -33,3 +33,4 @@ opt-level = 3
 
 [workspace.dependencies]
 thiserror = "2"
+which = "7"

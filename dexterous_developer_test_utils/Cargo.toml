@@ -19,4 +19,4 @@ dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_de
 camino = "1"
 tokio = { version = "1", features = ["full"]}
 anyhow = "1"
-which = "6"
+which = { workspace = true }

@@ -1599,7 +1599,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "target-lexicon",
- "which 7.0.3",
+ "which",
 ]
 
 [[package]]
@@ -2189,7 +2189,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "which 6.0.3",
+ "which",
  "xz2",
  "zip",
 ]
@@ -2218,7 +2218,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "which 6.0.3",
+ "which",
 ]
 
 [[package]]
@@ -2249,7 +2249,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
- "which 6.0.3",
+ "which",
 ]
 
 [[package]]
@@ -2316,7 +2316,7 @@ dependencies = [
  "dexterous_developer_manager",
  "dexterous_developer_types",
  "tokio",
- "which 6.0.3",
+ "which",
 ]
 
 [[package]]
@@ -6420,18 +6420,6 @@ dependencies = [
  "bitflags 2.9.0",
  "js-sys",
  "web-sys",
-]
-
-[[package]]
-name = "which"
-version = "6.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ee928febd44d98f2f459a4a79bd4d928591333a494a10a868418ac1b39cf1f"
-dependencies = [
- "either",
- "home",
- "rustix 0.38.44",
- "winsafe",
 ]
 
 [[package]]

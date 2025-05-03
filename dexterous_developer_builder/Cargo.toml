@@ -34,7 +34,7 @@ futures-util = { version = "0.3", default-features = false,  features = [
     "std",
 ] }
 serde_json = "1"
-which = "6"
+which = { workspace = true }
 debounced = "0.1"
 tokio-stream = "0.1"
 directories = "5"
