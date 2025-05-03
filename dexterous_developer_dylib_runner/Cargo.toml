@@ -17,7 +17,7 @@ documentation.workspace = true
 thiserror = { workspace= true }
 libloading = { version = "0.8" }
 uuid = { version = "1", features = ["v4"] }
-notify = { version = "6" }
+notify = { version = "8" }
 debounce = { version = "0.2" }
 which = { version = "6" }
 tracing = { version = "0.1" }
