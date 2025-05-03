@@ -51,3 +51,4 @@ clap = "4"
 
 [dev-dependencies]
 which = { workspace = true }
+test-temp-dir = { workspace = true}

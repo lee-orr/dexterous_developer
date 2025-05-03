@@ -32,6 +32,7 @@ which = { workspace = true }
 tracing-test = { version = "0.2", features = ["no-env-filter"] }
 tracing = "0.1"
 serde = "1"
+test-temp-dir = { workspace = true}
 
 [[example]]
 name = "simple_cli"
