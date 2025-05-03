@@ -175,7 +175,7 @@ async fn connected_to_target(
             return;
         };
 
-        if let Err(e) = ws_sender.send(ws::Message::Binary(message)).await {
+        if let Err(e) = ws_sender.send(ws::Message::Binary(message.into())).await {
             error!("Failed to send initial state to {id} - {e}");
             let _ = ws_sender.close().await;
             return;
@@ -210,7 +210,7 @@ async fn connected_to_target(
             return;
         };
 
-        if let Err(e) = ws_sender.send(ws::Message::Binary(msg)).await {
+        if let Err(e) = ws_sender.send(ws::Message::Binary(msg.into())).await {
             error!("Failed to send update to {id} - {e}");
             let _ = ws_sender.close().await;
             return;
