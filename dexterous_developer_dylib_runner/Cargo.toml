@@ -22,7 +22,7 @@ debounce = { version = "0.2" }
 which = { workspace = true }
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace= true, features = ["full"] }
 blake3 = { version = "1" }
 dunce = "1"
 serde = { version = "1"}
@@ -30,7 +30,7 @@ rmp-serde = { version = "1" }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types" }
 dexterous_developer_instance = { version = "0.4.0-alpha.3", path = "../dexterous_developer_instance", features = ["runner", "dylib"]}
 reqwest = { version = "0.12", default-features = false, features = [ "charset", "http2", "macos-system-configuration", "rustls-tls" ] }
-tokio-tungstenite = { version = "0.23", features =[ "rustls-tls-webpki-roots"] }
+tokio-tungstenite = { version = "0.26", features =[ "rustls-tls-webpki-roots"] }
 url = "2"
 futures-util = { version = "0.3", default-features = false,  features = [
     "sink",

@@ -22,5 +22,5 @@ tracing = { version = "0.1" }
 thiserror = { workspace= true }
 uuid = { version = "1.8", features = ["serde"]}
 camino ={ version = "1", features = ["serde1"] }
-tokio = { version = "1", features = ["full"], optional = true }
+tokio = { workspace= true, features = ["full"], optional = true }
 toml = { version = "0.8", optional = true }

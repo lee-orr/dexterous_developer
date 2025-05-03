@@ -17,6 +17,6 @@ dexterous_developer_dylib_runner = { version = "0.4.0-alpha.3", path = "../dexte
 dexterous_developer_builder = { version = "0.4.0-alpha.3", path = "../dexterous_developer_builder" }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types" }
 camino = "1"
-tokio = { version = "1", features = ["full"]}
+tokio = { workspace= true, features = ["full"]}
 anyhow = "1"
 which = { workspace = true }

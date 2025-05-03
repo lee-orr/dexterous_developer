@@ -17,13 +17,13 @@ test = []
 [dependencies]
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
-tokio = { version = "1", features = ["full"]}
+tokio = { workspace= true, features = ["full"]}
 serde = { version = "1", features = ["derive"]}
 thiserror = { workspace= true }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types"}
 dexterous_developer_builder = { version = "0.4.0-alpha.3", path = "../dexterous_developer_builder"}
 
-axum = { version = "0.7", features = ["ws"] }
+axum = { version = "0.8", features = ["ws"] }
 futures-util = { version = "0.3", default-features = false,  features = [
     "sink",
     "std",
@@ -31,8 +31,8 @@ futures-util = { version = "0.3", default-features = false,  features = [
 rmp-serde = { version = "1"  }
 blake3 = "1"
 walkdir = "2"
-tower-http = { version = "0.5.0", features = ["fs", "trace"] }
-tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
+tower = { version = "0.5", features = ["util"] }
 dashmap = "6"
 uuid = { version = "1.8", features = ["serde", "v4"] }
 camino = "1"

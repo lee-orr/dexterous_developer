@@ -35,3 +35,4 @@ opt-level = 3
 thiserror = "2"
 which = "7"
 test-temp-dir = "0.3"
+tokio = "1"

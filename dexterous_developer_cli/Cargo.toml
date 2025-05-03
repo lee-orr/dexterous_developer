@@ -28,7 +28,7 @@ path = "src/rustc_wrapper.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace= true, features = ["full"] }
 url = { version = "2", features = ["serde"] }
 futures-util = { version = "0.3", default-features = false, features = [
     "sink",
