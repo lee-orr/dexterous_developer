@@ -19,7 +19,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
 tokio = { version = "1", features = ["full"]}
 serde = { version = "1", features = ["derive"]}
-thiserror = "1"
+thiserror = { workspace= true }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types"}
 dexterous_developer_builder = { version = "0.4.0-alpha.3", path = "../dexterous_developer_builder"}
 

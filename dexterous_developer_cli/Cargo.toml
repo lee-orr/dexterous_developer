@@ -39,7 +39,7 @@ dunce = "1"
 camino = "1"
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
-thiserror = "1"
+thiserror = { workspace= true }
 
 toml = "0.8"
 cargo_toml = "0.20"
