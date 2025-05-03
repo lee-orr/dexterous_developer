@@ -18,7 +18,7 @@ test = []
 tracing = { version = "0.1" }
 tracing-subscriber = {  version = "0.3", features = ["env-filter", "fmt"]}
 tokio = { workspace= true, features = ["full"]}
-serde = { version = "1", features = ["derive"]}
+serde = { workspace = true }
 thiserror = { workspace= true }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../dexterous_developer_types"}
 dexterous_developer_builder = { version = "0.4.0-alpha.3", path = "../dexterous_developer_builder"}
@@ -28,7 +28,7 @@ futures-util = { version = "0.3", default-features = false,  features = [
     "sink",
     "std",
 ] }
-rmp-serde = { version = "1"  }
+rmp-serde = { workspace = true }
 blake3 = "1"
 walkdir = "2"
 tower-http = { version = "0.6", features = ["fs", "trace"] }

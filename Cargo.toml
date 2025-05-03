@@ -36,3 +36,5 @@ thiserror = "2"
 which = "7"
 test-temp-dir = "0.3"
 tokio = "1"
+serde = { version="1", features=["derive"] }
+rmp-serde = "1"

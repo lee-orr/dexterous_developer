@@ -14,7 +14,7 @@ documentation.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1", features = ["derive"]}
+serde = { workspace = true }
 anyhow = { version = "1" }
 notify = { version = "8", default-features = false, features = ["macos_kqueue"] }
 debounce = { version = "0.2" }

@@ -30,8 +30,8 @@ bevy = { version = "0.14", default-features = false, features = [
     "serialize",
     "bevy_state"
 ]}
-serde = { version = "1", features = ["derive"] }
-rmp-serde = { version = "1" }
+serde = { workspace = true}
+rmp-serde = { workspace = true }
 chrono = { version = "0.4", optional = true }
 libloading = { version = "0.8", optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }

@@ -17,7 +17,7 @@ default = []
 config = ["dep:tokio", "dep:toml"]
 
 [dependencies]
-serde = { version = "1", features = ["derive"]}
+serde = { workspace = true }
 tracing = { version = "0.1" }
 thiserror = { workspace= true }
 uuid = { version = "1.8", features = ["serde"]}
