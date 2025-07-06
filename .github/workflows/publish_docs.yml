@@ -59,7 +59,7 @@ jobs:
           mkdir ../book
           
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
             ref: 'main'
       - run: mdbook build
@@ -68,7 +68,7 @@ jobs:
           mv ./book ../book/main
 
       - name: tagcheckout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ steps.latestprerelease.outputs.prereleasetag }}
 
@@ -77,9 +77,8 @@ jobs:
         run: |
           mv ./book ../book/pre
       
-
       - name: tagcheckout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ steps.latestrelease.outputs.releasetag }}
     
