@@ -2,8 +2,8 @@ name: Static Analysis
 
 on:
   pull_request:
-    branches:
-      - '!release-plz-*'
+    branches-ignore:
+      - 'release-plz-*'
   push:
     branches: ["main"]
 
