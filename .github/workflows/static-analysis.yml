@@ -2,8 +2,8 @@ name: Static Analysis
 
 on:
   pull_request:
-    branches:
-      - '!release-plz-*'
+    branches-ignore:
+      - 'release-plz-*'
   push:
     branches: ["main"]
 
@@ -20,8 +20,8 @@ jobs:
     steps:
       - name: Dependencies
         run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev clang lld
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -41,8 +41,8 @@ jobs:
   formatting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -62,8 +62,8 @@ jobs:
   check-docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -80,7 +80,7 @@ jobs:
   mdbook:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
@@ -92,7 +92,7 @@ jobs:
   check-markdown-links:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: check dead links
         continue-on-error: true
         id: run1
@@ -139,7 +139,7 @@ jobs:
   markdownlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
