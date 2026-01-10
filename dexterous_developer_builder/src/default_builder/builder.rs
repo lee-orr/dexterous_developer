@@ -279,6 +279,7 @@ async fn build(
 
     cargo
         .env_remove("LD_DEBUG")
+        .env("CARGO_TERM_COLOR", "always")
         .env("RUSTC_WORKSPACE_WRAPPER", rustc)
         .env("DEXTEROUS_DEVELOPER_LINKER_TARGET", target.as_str())
         .env("DEXTEROUS_DEVELOPER_PACKAGE_NAME", &artifact_name)
