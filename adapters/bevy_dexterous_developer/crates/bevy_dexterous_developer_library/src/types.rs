@@ -1,10 +1,13 @@
 use super::ReloadableAppContents;
 use bevy::{
     app::PluginGroupBuilder,
-    ecs::schedule::ScheduleLabel,
+    ecs::{
+        schedule::{IntoScheduleConfigs, ScheduleLabel},
+        system::ScheduleSystem,
+    },
     log::LogPlugin,
     prelude::*,
-    state::{app::StatesPlugin, state::FreelyMutableState},
+    state::{app::StatesPlugin, state::FreelyMutableState, state::StateTransitionEvent},
 };
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -51,6 +54,7 @@ impl<T: States + ReplacableType> ReplacableType for State<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T: States + ReplacableType> ReplacableType for StateScoped<T> {
     fn get_type_name() -> &'static str {
         T::get_type_name()
@@ -74,7 +78,7 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
     fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
         schedule: L,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self;
     fn register_serializable_resource<R: Resource + ReplacableType>(&mut self) -> &mut Self;
     fn init_serializable_resource<R: Resource + ReplacableType + Default>(&mut self) -> &mut Self;
@@ -84,21 +88,30 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
     fn reset_resource_to_value<R: Resource>(&mut self, value: R) -> &mut Self;
     fn register_serializable_component<C: Component + ReplacableType>(&mut self) -> &mut Self;
     fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
-    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
+    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoScheduleConfigs<ScheduleSystem, M>) -> &mut Self;
     fn reset_setup_in_state<C: Component, S: States, M>(
         &mut self,
         state: S,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self;
-    fn add_event<T: Event>(&mut self) -> &mut Self;
+    fn add_event<T: Event + bevy::ecs::message::Message>(&mut self) -> &mut Self;
 
-    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self;
-    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self {
+    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message;
+    fn init_state<S: FreelyMutableState + ReplacableType + Default>(&mut self) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message,
+    {
         self.insert_state(S::default())
     }
 
-    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self;
-    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self;
+    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message;
+    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message;
     fn enable_state_scoped_entities<S: States + ReplacableType>(&mut self) -> &mut Self;
 }
 
@@ -113,7 +126,7 @@ pub trait ReloadableElementsSetup {
 
 pub fn clear_marked_system<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
     for entity in q.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 }
 pub fn get_default_plugins() -> PluginGroupBuilder {

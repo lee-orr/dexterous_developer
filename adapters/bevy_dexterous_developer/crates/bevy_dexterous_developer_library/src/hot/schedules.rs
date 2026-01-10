@@ -1,4 +1,5 @@
 use bevy::ecs::schedule::{InternedScheduleLabel, ScheduleLabel};
+use std::hash::Hash;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct SerializeReloadables;
@@ -27,18 +28,41 @@ impl<T: ScheduleLabel> ReloadableSchedule<T> {
     }
 }
 
+/// A wrapper around a schedule label that uses string-based comparison.
+/// This is crucial for hot reload because InternedScheduleLabel values are
+/// interned per-library and don't match after a library swap.
 #[derive(Clone)]
-pub struct WrappedSchedule(InternedScheduleLabel, std::sync::Arc<dyn ScheduleLabel>);
+pub struct WrappedSchedule {
+    interned: InternedScheduleLabel,
+    label: std::sync::Arc<dyn ScheduleLabel>,
+    /// String representation for stable hash/eq across library swaps
+    name: String,
+}
 
 impl WrappedSchedule {
     pub fn new(label: impl ScheduleLabel + Clone) -> Self {
-        Self(label.clone().intern(), std::sync::Arc::new(label.clone()))
+        let name = format!("{:?}", label);
+        Self {
+            interned: label.clone().intern(),
+            label: std::sync::Arc::new(label.clone()),
+            name,
+        }
+    }
+
+    /// Returns the inner interned schedule label (the original, unwrapped label)
+    pub fn inner(&self) -> InternedScheduleLabel {
+        self.interned
+    }
+
+    /// Returns the stable string name for this schedule
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
 impl std::fmt::Debug for WrappedSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("ReloadableSchedule").field(&self.1).finish()
+        f.debug_tuple("ReloadableSchedule").field(&self.label).finish()
     }
 }
 
@@ -46,33 +70,23 @@ impl Eq for WrappedSchedule {}
 
 impl PartialEq for WrappedSchedule {
     fn eq(&self, other: &Self) -> bool {
-        self.1.eq(&other.1)
+        // Use string comparison for stable equality across library swaps
+        self.name == other.name
     }
 }
 
 impl std::hash::Hash for WrappedSchedule {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.1.hash(state);
+        // Use string hash for stable hashing across library swaps
+        self.name.hash(state);
     }
 }
 
+// DynEq and DynHash are automatically implemented via blanket impls
+// since WrappedSchedule implements Eq and Hash
+
 impl ScheduleLabel for WrappedSchedule {
     fn dyn_clone(&self) -> ::std::boxed::Box<dyn ScheduleLabel> {
-        self.1.dyn_clone()
-    }
-
-    fn dyn_hash(&self, state: &mut dyn ::std::hash::Hasher) {
-        self.1.dyn_hash(state)
-    }
-
-    fn intern(&self) -> InternedScheduleLabel
-    where
-        Self: Sized,
-    {
-        self.0
-    }
-
-    fn as_dyn_eq(&self) -> &dyn bevy::ecs::label::DynEq {
-        self.1.as_dyn_eq()
+        Box::new(self.clone())
     }
 }

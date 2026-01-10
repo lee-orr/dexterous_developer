@@ -1,9 +1,13 @@
 use bevy::{
-    ecs::{event::EventRegistry, schedule::ScheduleLabel},
+    ecs::{
+        message::Messages,
+        schedule::{IntoScheduleConfigs, ScheduleLabel},
+        system::ScheduleSystem,
+    },
     prelude::*,
-    state::{state::FreelyMutableState, state_scoped::clear_state_scoped_entities},
-    utils::{HashMap, HashSet},
+    state::state::FreelyMutableState,
 };
+use std::collections::{HashMap, HashSet};
 
 use super::{super::types::*, reload_systems::dexterous_developer_occured};
 
@@ -12,6 +16,23 @@ use super::{replacable_types::*, schedules::*};
 #[derive(Default, Resource, Clone, Debug)]
 pub struct ReloadableAppCleanupData {
     pub labels: HashSet<ReloadableSchedule<WrappedSchedule>>,
+}
+
+/// Tracks which root schedules have had runners added.
+/// Uses string-based keys to persist across library swaps (since InternedScheduleLabel
+/// values are interned per-library and don't match after a hot reload).
+#[derive(Default, Resource, Clone, Debug)]
+pub struct RegisteredScheduleRunners {
+    pub runners: HashSet<String>,
+}
+
+/// Stores the currently active reloadable schedule labels.
+/// This allows runners to look up the current label at runtime rather than
+/// capturing a specific label that becomes stale after library swaps.
+#[derive(Default, Resource)]
+pub struct ActiveReloadableSchedules {
+    /// Maps root schedule name (e.g., "Update") to the current active reloadable schedule label
+    pub schedules: HashMap<String, bevy::ecs::schedule::InternedScheduleLabel>,
 }
 
 #[derive(Default, Resource)]
@@ -58,7 +79,7 @@ impl<'a> ReloadableAppContents<'a> {
     fn run_only_on_first_load<M>(
         &mut self,
         name: &'static str,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         if self.run_once.insert(name.to_string()) {
             self.add_systems(OnReloadComplete, systems);
@@ -73,7 +94,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
         schedule: L,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         trace!("Adding To Schedule {schedule:?}");
         let schedules = &mut self.schedules;
@@ -214,7 +235,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self {
+    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoScheduleConfigs<ScheduleSystem, M>) -> &mut Self {
         let name = self.name;
         self.add_systems(
             CleanupReloaded,
@@ -229,7 +250,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
     fn reset_setup_in_state<C: Component, S: States, M>(
         &mut self,
         state: S,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         let name = self.name;
         self.add_systems(
@@ -240,28 +261,33 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         .add_systems(
             PreUpdate,
             systems.run_if(
-                in_state(state).and_then(
+                in_state(state).and(
                     dexterous_developer_occured
-                        .and_then(element_selection_condition(name))
-                        .or_else(|res: Res<State<S>>| resource_changed::<State<S>>(res)),
+                        .and(element_selection_condition(name))
+                        .or(resource_changed::<State<S>>),
                 ),
             ),
         )
     }
 
-    fn add_event<T: Event>(&mut self) -> &mut Self {
+    #[allow(deprecated)]
+    fn add_event<T: Event + bevy::ecs::message::Message>(&mut self) -> &mut Self {
         let name = self.name;
         self.add_systems(
             OnReloadComplete,
             (move |world: &mut World| {
-                EventRegistry::register_event::<T>(world);
+                // Initialize the Messages resource if not present
+                world.init_resource::<Messages<T>>();
             })
             .run_if(element_selection_condition(name)),
         );
         self
     }
 
-    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self {
+    fn insert_state<S: FreelyMutableState + ReplacableType>(&mut self, state: S) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message,
+    {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
             {
@@ -270,7 +296,7 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
                     .reset_resource::<NextState<S>>()
                     .add_event::<StateTransitionEvent<S>>()
                     .run_only_on_first_load(name, move |world: &mut World| {
-                        world.send_event(StateTransitionEvent {
+                        world.write_message(StateTransitionEvent {
                             exited: None,
                             entered: Some(state.clone()),
                         });
@@ -298,7 +324,10 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self {
+    fn add_sub_state<S: SubStates + ReplacableType>(&mut self) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message,
+    {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
             self.register_serializable_resource::<State<S>>()
@@ -326,7 +355,10 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
-    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self {
+    fn add_computed_state<S: ComputedStates + ReplacableType>(&mut self) -> &mut Self
+    where
+        StateTransitionEvent<S>: Event + bevy::ecs::message::Message,
+    {
         let name = S::get_type_name();
         if !self.resources.contains(name) {
             self.register_serializable_resource::<State<S>>()
@@ -353,14 +385,11 @@ impl<'a> crate::ReloadableApp for ReloadableAppContents<'a> {
         self
     }
 
+    #[allow(deprecated)]
     fn enable_state_scoped_entities<S: States + ReplacableType>(&mut self) -> &mut Self {
-        self.register_serializable_component::<StateScoped<S>>()
-            .add_systems(
-                StateTransition,
-                clear_state_scoped_entities::<S>
-                    .after(ExitSchedules::<S>::default())
-                    .before(TransitionSchedules::<S>::default()),
-            )
+        // In Bevy 0.17+, state scoped entities are enabled by default
+        // This function is kept for API compatibility but does nothing
+        self
     }
 }
 

@@ -28,6 +28,12 @@ impl Watcher for SimpleWatcher {
         &self,
         directories: &[camino::Utf8PathBuf],
     ) -> Result<(), WatcherError> {
+        // Check if manual reload mode is enabled
+        if env::var("DEXTEROUS_MANUAL_RELOAD").map(|v| v == "1" || v.to_lowercase() == "true").unwrap_or(false) {
+            info!("Manual reload mode enabled - skipping file watchers. Use ./reload to trigger reloads.");
+            return Ok(());
+        }
+
         info!("Watching Directories: {directories:?}");
         for directory in directories.iter() {
             if self.watchers.contains_key(directory) {

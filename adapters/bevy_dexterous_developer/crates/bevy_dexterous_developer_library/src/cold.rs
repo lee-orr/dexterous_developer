@@ -1,5 +1,9 @@
 use super::types::*;
 use bevy::{
+    ecs::{
+        schedule::IntoScheduleConfigs,
+        system::ScheduleSystem,
+    },
     prelude::{App, OnEnter, OnExit, Startup},
     state::app::AppExtStates,
 };
@@ -22,7 +26,7 @@ impl ReloadableApp for ReloadableAppContents<'_> {
     fn add_systems<M, L: bevy::ecs::schedule::ScheduleLabel + Eq + std::hash::Hash + Clone>(
         &mut self,
         schedule: L,
-        systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         self.0.add_systems(schedule, systems);
         self
@@ -71,7 +75,7 @@ impl ReloadableApp for ReloadableAppContents<'_> {
 
     fn reset_setup<C: bevy::prelude::Component, M>(
         &mut self,
-        systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         self.0.add_systems(Startup, systems);
         self
@@ -80,7 +84,7 @@ impl ReloadableApp for ReloadableAppContents<'_> {
     fn reset_setup_in_state<C: bevy::prelude::Component, S: bevy::prelude::States, M>(
         &mut self,
         state: S,
-        systems: impl bevy::prelude::IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         self.0
             .add_systems(OnEnter(state.clone()), systems)
@@ -88,7 +92,8 @@ impl ReloadableApp for ReloadableAppContents<'_> {
         self
     }
 
-    fn add_event<T: bevy::prelude::Event>(&mut self) -> &mut Self {
+    #[allow(deprecated)]
+    fn add_event<T: bevy::prelude::Event + bevy::ecs::message::Message>(&mut self) -> &mut Self {
         self.0.add_event::<T>();
         self
     }
@@ -113,6 +118,7 @@ impl ReloadableApp for ReloadableAppContents<'_> {
         self
     }
 
+    #[allow(deprecated)]
     fn enable_state_scoped_entities<S: bevy::state::state::States + ReplacableType>(
         &mut self,
     ) -> &mut Self {

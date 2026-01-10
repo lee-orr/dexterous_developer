@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 
 use camino::Utf8Path;
 
@@ -20,12 +20,36 @@ use crate::{
     remote_connection,
 };
 
+static PANIC_HOOK_INSTALLED: Once = Once::new();
+
+/// Install a panic hook that suppresses panics from the notify-rs kqueue thread.
+/// The kqueue backend sometimes panics on macOS but the FSEvent watcher continues to work.
+fn install_panic_hook() {
+    PANIC_HOOK_INSTALLED.call_once(|| {
+        let default_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |panic_info| {
+            let thread = std::thread::current();
+            let thread_name = thread.name().unwrap_or("unknown");
+
+            // Suppress panics from the kqueue watcher thread - FSEvent still works
+            if thread_name.contains("kqueue") {
+                return;
+            }
+
+            // For all other threads, use the default panic handler
+            default_hook(panic_info);
+        }));
+    });
+}
+
 pub fn run_reloadable_app(
     working_directory: &Utf8Path,
     library_path: &Utf8Path,
     server: url::Url,
     in_workspace: bool,
 ) -> Result<(), DylibRunnerError> {
+    install_panic_hook();
+
     if !library_path.exists() {
         return Err(DylibRunnerError::LibraryDirectoryDoesntExist(
             library_path.to_owned(),

@@ -16,7 +16,7 @@ documentation.workspace = true
 crate-type = ["dylib"]
 
 [dependencies]
-bevy = { version = "0.14", default-features = false}
+bevy = { version = "0.17", default-features = false}
 bevy_dexterous_developer_library = { version = "0.4.0-alpha.3", path = "../bevy_dexterous_developer_library" }
 dexterous_developer_types = { version = "0.4.0-alpha.3", path = "../../../../dexterous_developer_types" }
 dexterous_developer_instance = { version = "0.4.0-alpha.3", path = "../../../../dexterous_developer_instance" }
