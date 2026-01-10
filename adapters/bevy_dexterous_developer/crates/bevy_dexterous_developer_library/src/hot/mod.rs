@@ -22,7 +22,7 @@ pub use crate::types::*;
 pub use reloadable_app_setup::*;
 
 use reload_systems::{cleanup_schedules, reload};
-pub use reloadable_app::{ReloadableAppCleanupData, ReloadableAppContents, ReloadableAppElements};
+pub use reloadable_app::{ActiveReloadableSchedules, ReloadableAppCleanupData, ReloadableAppContents, ReloadableAppElements, RegisteredScheduleRunners};
 use replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use schedules::*;
 
@@ -50,6 +50,8 @@ impl Plugin for HotReloadPlugin {
 
         app.init_resource::<ReloadableAppElements>()
             .init_resource::<ReloadableAppCleanupData>()
+            .init_resource::<RegisteredScheduleRunners>()
+            .init_resource::<ActiveReloadableSchedules>()
             .init_resource::<ReplacableResourceStore>()
             .init_resource::<ReplacableComponentStore>()
             .insert_resource(InternalHotReload(chrono::Local::now(), false));

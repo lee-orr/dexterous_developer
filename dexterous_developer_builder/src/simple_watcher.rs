@@ -28,6 +28,34 @@ impl Watcher for SimpleWatcher {
         &self,
         directories: &[camino::Utf8PathBuf],
     ) -> Result<(), WatcherError> {
+        // Check if manual reload mode is enabled
+        if env::var("DEXTEROUS_MANUAL_RELOAD").map(|v| v == "1" || v.to_lowercase() == "true").unwrap_or(false) {
+            info!("Manual reload mode enabled - watching .reload_trigger file only");
+
+            // In manual mode, only watch for a trigger file in the current directory
+            if let Ok(cwd) = env::current_dir() {
+                let trigger_path = cwd.join(".reload_trigger");
+                // Create trigger file if it doesn't exist
+                if !trigger_path.exists() {
+                    let _ = std::fs::write(&trigger_path, "");
+                }
+
+                let channel = self.channel.clone();
+                let mut watcher = notify::recommended_watcher(move |_| {
+                    info!("Manual reload triggered");
+                    let _ = channel.send(BuilderIncomingMessages::CodeChanged);
+                })?;
+
+                watcher.watch(&trigger_path, notify::RecursiveMode::NonRecursive)?;
+
+                // Store watcher to keep it alive
+                if let Ok(utf8_path) = Utf8PathBuf::try_from(trigger_path) {
+                    self.watchers.insert(utf8_path, watcher);
+                }
+            }
+            return Ok(());
+        }
+
         info!("Watching Directories: {directories:?}");
         for directory in directories.iter() {
             if self.watchers.contains_key(directory) {

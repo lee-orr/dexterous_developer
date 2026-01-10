@@ -3,8 +3,9 @@ use dexterous_developer_instance::internal::HOT_RELOAD_INFO;
 
 use crate::{
     hot::{
-        CleanupReloaded, CleanupSchedules, DeserializeReloadables, OnReloadComplete,
-        ReloadableAppCleanupData, ReloadableAppElements, SerializeReloadables, SetupReload,
+        ActiveReloadableSchedules, CleanupReloaded, CleanupSchedules, DeserializeReloadables,
+        OnReloadComplete, ReloadableAppCleanupData, ReloadableAppElements,
+        RegisteredScheduleRunners, SerializeReloadables, SetupReload,
     },
     ReloadSettings, ReloadableAppContents,
 };
@@ -148,34 +149,78 @@ pub fn register_schedules(world: &mut World) {
     };
     debug!("Has reloadable app");
 
-    let Some(mut schedules) = world.get_resource_mut::<Schedules>() else {
-        return;
-    };
+    // Get the registered runners tracker - uses string keys to persist across library swaps
+    let mut registered_runners = world
+        .remove_resource::<RegisteredScheduleRunners>()
+        .unwrap_or_default();
 
-    debug!("Has schedules resource");
+    // Get the active schedules resource to store current labels
+    let mut active_schedules = world
+        .remove_resource::<ActiveReloadableSchedules>()
+        .unwrap_or_default();
 
     let mut inner = ReloadableAppCleanupData::default();
 
-    for (original, schedule, reloadable_schedule_label) in reloadable.schedule_iter() {
+    // Collect schedule data first to avoid borrow issues
+    let schedule_data: Vec<_> = reloadable.schedule_iter().collect();
+
+    for (original, schedule, reloadable_schedule_label) in schedule_data {
         debug!("Adding {original:?} to schedule");
         inner.labels.insert(reloadable_schedule_label.clone());
-        let exists = schedules.insert(schedule);
-        if exists.is_none() {
-            if let Some(root) = schedules.get_mut(original.clone()) {
-                let label = reloadable_schedule_label.clone();
+
+        // Use a string key to track the root schedule
+        let root_schedule_key = format!("{:?}", original.inner());
+
+        // Get the schedule's actual interned label (this is what Bevy will use for lookup)
+        let schedule_label = schedule.label();
+
+        // Store the current active label for this root schedule
+        // The runner will look this up at runtime
+        active_schedules.schedules.insert(root_schedule_key.clone(), schedule_label);
+
+        let Some(mut schedules) = world.get_resource_mut::<Schedules>() else {
+            continue;
+        };
+
+        // Insert the new schedule (this replaces any existing schedule with the same label)
+        schedules.insert(schedule);
+
+        if !registered_runners.runners.contains(&root_schedule_key) {
+            // First time seeing this schedule - add a dynamic runner to the root
+            let inner_label = original.inner();
+            let key_for_runner = root_schedule_key.clone();
+
+            if let Some(root) = schedules.get_mut(inner_label) {
+                println!("Adding reloadable schedule runner to root schedule: {}", root_schedule_key);
+                // The runner looks up the current active label from the resource at runtime
                 root.add_systems(move |w: &mut World| {
-                    let _ = w.try_run_schedule(label.clone());
+                    if let Some(active) = w.get_resource::<ActiveReloadableSchedules>() {
+                        if let Some(label) = active.schedules.get(&key_for_runner) {
+                            let _ = w.try_run_schedule(*label);
+                        }
+                    }
                 });
+                registered_runners.runners.insert(root_schedule_key);
             } else {
-                let mut root = Schedule::new(original);
+                println!("Root schedule not found, creating new one: {}", root_schedule_key);
+                let mut root = Schedule::new(inner_label);
                 root.add_systems(move |w: &mut World| {
-                    let _ = w.try_run_schedule(reloadable_schedule_label.clone());
+                    if let Some(active) = w.get_resource::<ActiveReloadableSchedules>() {
+                        if let Some(label) = active.schedules.get(&key_for_runner) {
+                            let _ = w.try_run_schedule(*label);
+                        }
+                    }
                 });
                 schedules.insert(root);
+                registered_runners.runners.insert(root_schedule_key);
             }
+        } else {
+            println!("Runner already registered for: {}, updating active label", root_schedule_key);
         }
     }
 
+    world.insert_resource(active_schedules);
+    world.insert_resource(registered_runners);
     world.insert_resource(inner);
 }
 

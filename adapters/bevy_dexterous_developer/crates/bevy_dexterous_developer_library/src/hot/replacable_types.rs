@@ -1,8 +1,11 @@
 use bevy::{
-    ecs::schedule::IntoSystemConfigs,
+    ecs::{
+        schedule::IntoScheduleConfigs,
+        system::ScheduleSystem,
+    },
     prelude::{debug, error, Commands, Component, Entity, Query, Res, ResMut, Resource},
-    utils::HashMap,
 };
+use std::collections::HashMap;
 
 use crate::ReplacableType;
 
@@ -43,7 +46,7 @@ pub fn deserialize_replacable_resource_with_default<R: ReplacableType + Default 
 
 pub fn deserialize_replacable_resource_with_value<R: ReplacableType + Resource>(
     initializer: R,
-) -> impl IntoSystemConfigs<()> {
+) -> impl IntoScheduleConfigs<ScheduleSystem, ()> {
     let mut container = Some(initializer);
     (move |store: Res<ReplacableResourceStore>, mut commands: Commands| {
         let name = R::get_type_name();

@@ -17,7 +17,7 @@ documentation.workspace = true
 thiserror = "1"
 libloading = { version = "0.8" }
 uuid = { version = "1", features = ["v4"] }
-notify = { version = "6" }
+notify = { version = "6", default-features = false, features = ["macos_fsevent"] }
 debounce = { version = "0.2" }
 which = { version = "6" }
 tracing = { version = "0.1" }
